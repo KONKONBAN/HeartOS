@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HeartOS</string>
+    <string name="title_activity_main">HeartOS</string>
+    <string name="package_name">vn.heartos.app</string>
+    <string name="custom_url_scheme">vn.heartos.app</string>
+</resources>

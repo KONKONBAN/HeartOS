@@ -127,7 +127,7 @@ export function seedRules(): AutomationRule[] {
       trigger: { type: 'sensor', deviceId: 'leak-kitchen', event: 'leak' },
       actions: [
         { type: 'device', deviceId: 'valve-main', action: 'set', params: { open: false } },
-        { type: 'notify', text: 'Phát hiện nước ở bếp — đã gửi lệnh khóa van tổng.', severity: 'warning' },
+        { type: 'notify', text: 'Phát hiện nước ở bếp, đã gửi lệnh khóa van tổng.', severity: 'warning' },
         { type: 'incident', kind: 'leak', priority: 'P2' },
       ],
       fireCount: 0,
@@ -163,7 +163,7 @@ export function seedRules(): AutomationRule[] {
       enabled: true,
       builtin: true,
       trigger: { type: 'power', event: 'mains_lost' },
-      actions: [{ type: 'shed' }, { type: 'notify', text: 'Mất điện lưới — UPS đang cấp cho tải ưu tiên.', severity: 'warning' }],
+      actions: [{ type: 'shed' }, { type: 'notify', text: 'Mất điện lưới, UPS đang cấp cho tải ưu tiên.', severity: 'warning' }],
       fireCount: 0,
     },
     {

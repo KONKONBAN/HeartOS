@@ -1,10 +1,3 @@
-/**
- * Tác tử AI hỗ trợ truy dấu (§3.12, §4.6, I5).
- * AI đọc bản giảm nhạy cảm, dựng dòng thời gian, chỉ khoảng thiếu bằng chứng và ĐỀ XUẤT hành động có cấu trúc.
- * Bộ thực thi độc lập kiểm allowlist, phạm vi, thời hạn và khả năng hoàn tác. Log là dữ liệu không tin cậy.
- *
- * Bản cài đặt này là mô hình luật cục bộ chạy trên thiết bị (không gửi log ra dịch vụ ngoài).
- */
 import type { JournalEntry } from './journal';
 
 export type ActionKind =
@@ -13,7 +6,6 @@ export type ActionKind =
   | 'isolate_workload'
   | 'deploy_canary'
   | 'block_egress'
-  // các hành động dưới đây luôn bị bộ thực thi từ chối
   | 'seal_all'
   | 'open_source_gate'
   | 'assign_entropy_k'
@@ -32,7 +24,6 @@ export interface Proposal {
   reversible: boolean;
   rationale: string;
   evidence: string[];
-  /** Suy luận (không phải quan sát). */
   inference: boolean;
 }
 
@@ -61,7 +52,6 @@ type Redacted = Pick<JournalEntry, 'id' | 'ts' | 'kind' | 'severity' | 'decision
 let pid = 0;
 const mk = (p: Omit<Proposal, 'id'>): Proposal => ({ ...p, id: `prop-${++pid}` });
 
-/** Phân tích luật: đọc nhật ký giảm nhạy cảm, không giữ khóa, không có shell. */
 export function analyze(entries: Redacted[]): Analysis {
   const timeline: Analysis['timeline'] = [];
   const proposals: Proposal[] = [];
@@ -102,14 +92,14 @@ export function analyze(entries: Redacted[]): Analysis {
         scope: 'tenant hiện tại',
         ttlSec: 3600,
         reversible: true,
-        rationale: 'Ngân sách giải mã chạm trần nhiều lần — dấu hiệu đọc tăng đột biến.',
+        rationale: 'Ngân sách giải mã chạm trần nhiều lần, dấu hiệu đọc tăng đột biến.',
         evidence: budget.slice(-5).map((e) => e.id),
         inference: true,
       }),
     );
   }
   if (replays.length) {
-    timeline.push({ id: replays.at(-1)!.id, ts: replays.at(-1)!.ts, text: 'Có grant bị phát lại — có thể token bị lấy cắp hoặc ứng dụng bị chiếm.', kind: 'inferred' });
+    timeline.push({ id: replays.at(-1)!.id, ts: replays.at(-1)!.ts, text: 'Có grant bị phát lại, có thể token bị lấy cắp hoặc ứng dụng bị chiếm.', kind: 'inferred' });
   }
   if (attest.length) {
     proposals.push(
@@ -119,7 +109,7 @@ export function analyze(entries: Redacted[]): Analysis {
         scope: 'một workload',
         ttlSec: 3600,
         reversible: true,
-        rationale: 'Chứng thực thất bại — host có thể đang thay khóa nhận hoặc phát lại bằng chứng.',
+        rationale: 'Chứng thực thất bại, host có thể đang thay khóa nhận hoặc phát lại bằng chứng.',
         evidence: attest.slice(-3).map((e) => e.id),
         inference: true,
       }),
@@ -140,7 +130,6 @@ export function analyze(entries: Redacted[]): Analysis {
     );
   }
 
-  // Log là dữ liệu không tin cậy: nội dung chèn lệnh có thể khiến mô hình đề xuất hành động cấm.
   const injected = entries.find((e) => /ignore previous|bỏ qua chỉ dẫn|grant root|cấp quyền root|mở cổng nguồn/i.test(e.summary + JSON.stringify(e.data ?? {})));
   if (injected) {
     proposals.push(
@@ -157,9 +146,9 @@ export function analyze(entries: Redacted[]): Analysis {
     );
   }
 
-  if (!entries.some((e) => e.kind === 'session')) gaps.push('Thiếu sự kiện phiên đăng nhập trong cửa sổ — cần đối chiếu nguồn IdP.');
-  gaps.push('Không có dấu vết kết nối tại biên (IP+cổng nguồn) — không suy từ header; ghi rõ dữ liệu thiếu, không tự điền.');
-  if (entries.length && entries[0].ts > Date.now() - 600_000) gaps.push('Cửa sổ log ngắn hơn 10 phút — có thể thiếu sự kiện trước đó.');
+  if (!entries.some((e) => e.kind === 'session')) gaps.push('Thiếu sự kiện phiên đăng nhập trong cửa sổ, cần đối chiếu nguồn IdP.');
+  gaps.push('Không có dấu vết kết nối tại biên (IP+cổng nguồn), không suy từ header; ghi rõ dữ liệu thiếu, không tự điền.');
+  if (entries.length && entries[0].ts > Date.now() - 600_000) gaps.push('Cửa sổ log ngắn hơn 10 phút, có thể thiếu sự kiện trước đó.');
 
   return {
     timeline: timeline.sort((a, b) => a.ts - b.ts),
@@ -177,7 +166,6 @@ export interface ExecutionCheck {
   reasons: string[];
 }
 
-/** Bộ thực thi độc lập: allowlist, phạm vi, thời hạn, khả năng hoàn tác, phê duyệt hành động tác động lớn. */
 export function checkExecution(p: Proposal, opts: { humanApproved: boolean }): ExecutionCheck {
   const reasons: string[] = [];
   if (!ALLOWED.includes(p.action)) {

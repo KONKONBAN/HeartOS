@@ -1,10 +1,3 @@
-/**
- * Nguyên thủy mật mã của Sentinel — chỉ dùng WebCrypto (thư viện được duy trì, §3.6: "Không tự thiết kế thuật toán").
- *  - AEAD: AES-256-GCM, nonce 96 bit ngẫu nhiên, AAD gắn ngữ cảnh (3.11–3.12).
- *  - Chữ ký: ECDSA P-256/SHA-256 cho grant và báo cáo chứng thực.
- *  - Chuyển khóa gắn người nhận: ECDH P-256 → HKDF-SHA-256 (info = ngữ cảnh) → AES-KW.
- *  - Niêm phong cho đích đã xác minh: ECIES (ECDH tạm thời + HKDF + AES-GCM).
- */
 import { buf, canonical, concatBytes, fromB64, randomBytes, sha256, toB64, toB64Url, utf8 } from './encoding';
 
 const subtle = () => {
@@ -16,7 +9,6 @@ export const EC = { name: 'ECDSA', namedCurve: 'P-256' } as const;
 export const ECDH = { name: 'ECDH', namedCurve: 'P-256' } as const;
 
 export async function genSigningKey(): Promise<CryptoKeyPair> {
-  // Khóa riêng không xuất được: chỉ ký trong phạm vi chủ thể giữ khóa.
   return subtle().generateKey(EC, false, ['sign', 'verify']) as Promise<CryptoKeyPair>;
 }
 
@@ -36,7 +28,6 @@ export async function importEcdhPub(raw: string): Promise<CryptoKey> {
   return subtle().importKey('raw', buf(fromB64(raw)), ECDH, true, []);
 }
 
-/** Dấu vân tay khóa công khai — dùng để ràng buộc grant với khóa nhận. */
 export async function thumbprint(rawPubB64: string): Promise<string> {
   return toB64Url(await sha256(fromB64(rawPubB64)));
 }
@@ -54,14 +45,11 @@ export async function verifyObject(pub: CryptoKey, obj: unknown, sigB64: string)
   }
 }
 
-// ---------- AEAD ----------
-
 export async function genDek(extractable: boolean): Promise<CryptoKey> {
   return subtle().generateKey({ name: 'AES-GCM', length: 256 }, extractable, ['encrypt', 'decrypt']) as Promise<CryptoKey>;
 }
 
 export async function genKek(): Promise<CryptoKey> {
-  // KEK không xuất qua API thông thường (§3.6.1).
   return subtle().generateKey({ name: 'AES-KW', length: 256 }, false, ['wrapKey', 'unwrapKey']) as Promise<CryptoKey>;
 }
 
@@ -79,8 +67,6 @@ export async function aeadDecrypt(dek: CryptoKey, ivB64: string, ctB64: string, 
   );
   return new Uint8Array(pt);
 }
-
-// ---------- Bọc khóa ----------
 
 export async function wrapWithKek(dek: CryptoKey, kek: CryptoKey): Promise<string> {
   return toB64(await subtle().wrapKey('raw', dek, kek, 'AES-KW'));
@@ -104,14 +90,12 @@ async function hkdfKey(shared: ArrayBuffer, salt: Uint8Array, info: string, alg:
   );
 }
 
-/** Khóa bọc dẫn xuất ECDH, ràng buộc với ngữ cảnh (đối tượng, phiên bản, grant). */
 export async function deriveWrapKey(myPriv: CryptoKey, peerPubRaw: string, context: unknown): Promise<CryptoKey> {
   const peer = await importEcdhPub(peerPubRaw);
   const shared = await subtle().deriveBits({ name: 'ECDH', public: peer }, myPriv, 256);
   return hkdfKey(shared, utf8('HOS-recipient-v1'), canonical(context), { name: 'AES-KW', length: 256 }, ['wrapKey', 'unwrapKey']);
 }
 
-/** HSM bọc DEK cho khóa nhận đã được chứng thực (tương tự CiphertextForRecipient). */
 export async function wrapForRecipient(dek: CryptoKey, recipientPubRaw: string, context: unknown) {
   const eph = await genEcdhKey();
   const kw = await deriveWrapKey(eph.privateKey, recipientPubRaw, context);
@@ -119,13 +103,10 @@ export async function wrapForRecipient(dek: CryptoKey, recipientPubRaw: string, 
   return { wrapped, ephPub: await exportPub(eph.publicKey) };
 }
 
-/** Vùng nhận mở DEK bằng khóa phiên riêng; DEK kết quả không xuất được. */
 export async function unwrapAsRecipient(recipientPriv: CryptoKey, ephPubRaw: string, wrapped: string, context: unknown): Promise<CryptoKey> {
   const kw = await deriveWrapKey(recipientPriv, ephPubRaw, context);
   return subtle().unwrapKey('raw', buf(fromB64(wrapped)), kw, 'AES-KW', { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
-
-// ---------- Niêm phong (ECIES) ----------
 
 export interface Sealed {
   ephPub: string;
@@ -151,7 +132,6 @@ export async function openSealed(myPriv: CryptoKey, sealed: Sealed, info: string
   return new Uint8Array(pt);
 }
 
-/** Cam kết có giá trị ngẫu nhiên bí mật riêng (§3.8): không băm trần dữ liệu có không gian đoán nhỏ. */
 export async function commit(value: string): Promise<{ commitment: string; opening: string }> {
   const r = randomBytes(32);
   const c = await sha256(concatBytes(r, utf8(value)));

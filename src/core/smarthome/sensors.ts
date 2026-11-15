@@ -1,9 +1,3 @@
-/**
- * Mô phỏng cảm biến tại nhà:
- *  - Radar LD2450: tối đa 3 mục tiêu, tọa độ 2D (mm) và tốc độ (cm/s).
- *  - Ảnh nhiệt MLX90640: khung 32×24 (°C). Người đứng là vệt dọc; người nằm là vệt ngang, thấp trong khung.
- * Ảnh nhiệt không nhận diện khuôn mặt — phù hợp quy tắc tối thiểu hóa dữ liệu.
- */
 import type { RadarTarget, RoomId, ThermalFrame } from './types';
 
 export interface Person {
@@ -15,13 +9,11 @@ export interface Person {
   vy: number;
   posture: 'standing' | 'walking' | 'lying' | 'sitting';
   stillSince?: number;
-  /** Kịch bản ngã mô phỏng: giai đoạn và mốc thời gian. */
   fall?: { phase: 'walk' | 'drop' | 'down'; at: number };
 }
 
 let rngState = 0x2f6b9a1d;
 function rnd() {
-  // PRNG xác định chỉ dùng cho mô phỏng hình ảnh cảm biến — KHÔNG dùng cho mật mã.
   rngState ^= rngState << 13;
   rngState ^= rngState >>> 17;
   rngState ^= rngState << 5;
@@ -124,7 +116,6 @@ export interface Blob {
   peak: number;
 }
 
-/** Tách vệt nóng lớn nhất (ngưỡng = trung vị + 4°C), loang 4 hướng. */
 export function largestBlob(f: ThermalFrame): Blob | null {
   const sorted = [...f.data].sort((a, b) => a - b);
   const thr = sorted[Math.floor(sorted.length / 2)] + 4;

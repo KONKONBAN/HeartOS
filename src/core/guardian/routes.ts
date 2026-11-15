@@ -1,9 +1,3 @@
-/**
- * So tuyến tới cơ sở y tế — đồ thị đường minh họa (không phải bản đồ thật).
- * Mỗi đoạn có thời gian cơ sở và trạng thái ngập: clear / flooded / unknown.
- * Tuyến chỉ "đủ dữ kiện" khi mọi đoạn có dữ liệu ngập; đoạn ngập bị loại khỏi tìm đường.
- */
-
 export type FloodState = 'clear' | 'flooded' | 'unknown';
 
 export interface RoadNode {
@@ -72,12 +66,11 @@ export function seedEdges(): RoadEdge[] {
 }
 
 export const FACILITIES: Facility[] = [
-  { id: 'fa', name: 'Cơ sở A', gate: 'Cổng 2', node: 'fa', address: 'Bệnh viện gần nhà — cổng cấp cứu số 2', note: 'Cổng và đường đã đối chiếu' },
-  { id: 'fb', name: 'Cơ sở B', gate: 'Cổng 1', node: 'fb', address: 'Bệnh viện khu vực — cổng số 1', note: 'Cổng và đường đã đối chiếu' },
+  { id: 'fa', name: 'Cơ sở A', gate: 'Cổng 2', node: 'fa', address: 'Bệnh viện gần nhà, cổng cấp cứu số 2', note: 'Cổng và đường đã đối chiếu' },
+  { id: 'fb', name: 'Cơ sở B', gate: 'Cổng 1', node: 'fb', address: 'Bệnh viện khu vực, cổng số 1', note: 'Cổng và đường đã đối chiếu' },
   { id: 'fc', name: 'Cơ sở C', gate: 'Cổng chính', node: 'fc', address: 'Trung tâm y tế ven sông', note: 'Đang chờ kiểm tra dữ liệu ngập' },
 ];
 
-/** Dijkstra, bỏ qua đoạn đang ngập; đoạn "unknown" vẫn đi được nhưng đánh dấu tuyến chưa đủ dữ kiện. */
 export function route(edges: RoadEdge[], from: string, facility: Facility): RouteResult {
   const usable = edges.filter((e) => e.flood !== 'flooded');
   const dist = new Map<string, number>([[from, 0]]);

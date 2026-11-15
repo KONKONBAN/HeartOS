@@ -1,9 +1,3 @@
-/**
- * H — Ranh giới HSM và K — bộ điều phối vòng đời khóa (§1.6.1, §3.6.3, §3.8.1).
- *  - KEK theo tenant, không xuất được, có phiên bản (luân chuyển giữ ánh xạ phiên bản → dữ liệu).
- *  - Chỉ danh tính dịch vụ của cổng cấp khóa được gọi (A không có đường giải mã trực tiếp — I2, I7).
- *  - DEK chỉ rời HSM dưới dạng bọc cho KEK (lưu trữ) hoặc bọc cho khóa nhận đã chứng thực.
- */
 import type { ObjectStore } from '../storage';
 import { genDek, genKek, unwrapWithKek, wrapForRecipient, wrapWithKek } from './crypto';
 import { randomId } from './encoding';
@@ -27,12 +21,10 @@ export interface HsmStatus {
 }
 
 export class Hsm {
-  /** Danh tính dịch vụ duy nhất được phép gọi HSM — chỉ cổng cấp khóa nhận được giá trị này. */
   readonly gateIdentity = randomId('svc-key-gate', 8);
   private keks = new Map<string, KekRecord[]>();
   private ops = { generate: 0, release: 0, refused: 0 };
   private compromised = false;
-  /** true nếu KEK vừa được tạo mới khi nạp (bản mã cũ, nếu có, không còn mở được). */
   freshlyCreated = false;
 
   constructor(private store: ObjectStore, private now: () => number = Date.now) {}
@@ -67,7 +59,6 @@ export class Hsm {
     return rec;
   }
 
-  /** Luân chuyển KEK: phiên bản cũ chuyển sang chỉ-giải-mã, không hủy (giữ khả năng phục hồi). */
   async rotate(tenant: string): Promise<number> {
     const list = this.keks.get(tenant) ?? [];
     list.forEach((r) => (r.state = 'decrypt-only'));
@@ -78,14 +69,10 @@ export class Hsm {
     return version;
   }
 
-  /**
-   * GenerateDataKey có người nhận: trả CiphertextBlob (bọc KEK) và CiphertextForRecipient.
-   * Không có trường bản rõ trong phản hồi.
-   */
   async generateDataKey(caller: string, tenant: string, recipientPub: string, context: KeyContext) {
     this.assertCaller(caller);
     const kek = this.active(tenant);
-    const dek = await genDek(true); // chỉ tồn tại bên trong ranh giới này
+    const dek = await genDek(true);
     const blob = { kekVersion: kek.version, wrapped: await wrapWithKek(dek, kek.key) };
     const forRecipient = await wrapForRecipient(dek, recipientPub, context);
     this.ops.generate++;
@@ -93,7 +80,6 @@ export class Hsm {
     return { blob, release };
   }
 
-  /** Mở DEK đã lưu và chỉ chuyển lại cho khóa nhận đã được cổng chấp nhận. */
   async releaseForRecipient(caller: string, tenant: string, blob: { kekVersion: number; wrapped: string }, recipientPub: string, context: KeyContext) {
     this.assertCaller(caller);
     const kek = this.byVersion(tenant, blob.kekVersion);
@@ -104,7 +90,6 @@ export class Hsm {
     return release;
   }
 
-  /** Bọc lại DEK sang KEK hiện hành (quản lý khóa; không thu hồi dữ liệu đã lộ — §3.8). */
   async rewrap(caller: string, tenant: string, blob: { kekVersion: number; wrapped: string }) {
     this.assertCaller(caller);
     const old = this.byVersion(tenant, blob.kekVersion);
@@ -124,7 +109,6 @@ export class Hsm {
     };
   }
 
-  /** T7: đánh dấu thành phần gốc bị phá — các bảo đảm dựa trên H không còn hiệu lực. */
   markCompromised(v: boolean) {
     this.compromised = v;
   }

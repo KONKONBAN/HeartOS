@@ -18,8 +18,10 @@ import * as SF from './screens/safety/Safety';
 import * as SG from './screens/safety/Guardian';
 import * as SD from './screens/safety/Devices';
 import * as AC from './screens/access/Access';
+import { FHub } from './screens/access/HubLink';
+import { isDesktop } from './lib/hubApi';
+import { initHubLink } from './state/hublink';
 
-// Bàn vận hành (desktop) tải chậm để gói di động nhẹ hơn.
 const ops = () => import('./screens/ops/Ops');
 const lab = () => import('./screens/ops/Lab');
 const O = {
@@ -30,6 +32,15 @@ const O = {
   OpsAudit: lazy(() => ops().then((m) => ({ default: m.OpsAudit }))),
   OpsVault: lazy(() => ops().then((m) => ({ default: m.OpsVault }))),
   OpsRecovery: lazy(() => ops().then((m) => ({ default: m.OpsRecovery }))),
+};
+const admin = () => import('./screens/admin/Admin');
+const AD = {
+  AdminLayout: lazy(() => admin().then((m) => ({ default: m.AdminLayout }))),
+  AdminOverview: lazy(() => admin().then((m) => ({ default: m.AdminOverview }))),
+  AdminDevices: lazy(() => admin().then((m) => ({ default: m.AdminDevices }))),
+  AdminDevice: lazy(() => admin().then((m) => ({ default: m.AdminDevice }))),
+  AdminPair: lazy(() => admin().then((m) => ({ default: m.AdminPair }))),
+  AdminAudit: lazy(() => admin().then((m) => ({ default: m.AdminAudit }))),
 };
 const OL = {
   OpsLab: lazy(() => lab().then((m) => ({ default: m.OpsLab }))),
@@ -51,7 +62,6 @@ function Splash({ error }: { error?: string }) {
   );
 }
 
-/** Vòng lặp hub (250 ms), đồng bộ quyền, hết hạn phiên camera và thông báo từ hub. */
 function Runtime() {
   const nav = useNavigate();
   const seen = useRef<string | null>(null);
@@ -66,7 +76,7 @@ function Runtime() {
       const n = home.s.notices[0];
       if (n && n.id !== seen.current) {
         seen.current = n.id;
-        toast(`${n.title} — ${n.body}`, n.severity === 'critical' ? 'critical' : n.severity === 'warning' ? 'warning' : 'info', 5200);
+        toast(`${n.title}, ${n.body}`, n.severity === 'critical' ? 'critical' : n.severity === 'warning' ? 'warning' : 'info', 5200);
         if (app.prefs.notifications) void systemNotify(n.title, n.body);
       }
     }, 250);
@@ -100,7 +110,16 @@ export default function App() {
   useEffect(() => {
     if (ready) return;
     bootstrap()
-      .then(() => setReady(true))
+      .then(async () => {
+        if (!isDesktop()) {
+          await initHubLink(() => {
+            const app = getApp();
+            const me = app.members.find((m) => m.id === app.session.actingAs);
+            return `Điện thoại của ${me?.name ?? 'gia đình'}`;
+          });
+        }
+        setReady(true);
+      })
       .catch((e) => setError('Không khởi động được: ' + (e as Error).message));
   }, [ready]);
   if (!ready) return <Splash error={error} />;
@@ -187,6 +206,7 @@ export default function App() {
         <Route path="/f/sentinel" element={g(<AC.FSentinel />)} />
         <Route path="/f/security-log" element={g(<AC.FSecurityLog />)} />
         <Route path="/f/settings" element={g(<AC.FSettings />)} />
+        <Route path="/f/hub" element={g(<FHub />)} />
 
         <Route path="/ops" element={g(<O.OpsLayout />, 'home')}>
           <Route index element={<Navigate to="live" replace />} />
@@ -201,6 +221,23 @@ export default function App() {
           <Route path="math" element={<OL.OpsMath />} />
           <Route path="sources" element={<OL.OpsSources />} />
           <Route path="incident" element={<OL.OpsIncident />} />
+        </Route>
+        <Route path="/admin" element={<AD.AdminLayout />}>
+          <Route index element={<AD.AdminOverview />} />
+          <Route path="devices" element={<AD.AdminDevices />} />
+          <Route path="device/:id" element={<AD.AdminDevice />} />
+          <Route path="pair" element={<AD.AdminPair />} />
+          <Route path="audit" element={<AD.AdminAudit />} />
+          <Route path="lab" element={<OL.OpsLab />} />
+          <Route path="gate" element={<OL.OpsGate />} />
+          <Route path="vault" element={<O.OpsVault />} />
+          <Route path="recovery" element={<O.OpsRecovery />} />
+          <Route path="math" element={<OL.OpsMath />} />
+          <Route path="sources" element={<OL.OpsSources />} />
+          <Route path="incident" element={<OL.OpsIncident />} />
+          <Route path="replay" element={<O.OpsReplay />} />
+          <Route path="trace" element={<O.OpsTrace />} />
+          <Route path="audit-local" element={<O.OpsAudit />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

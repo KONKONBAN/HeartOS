@@ -1,8 +1,3 @@
-/**
- * ARGOLET Sentinel trong HeartOS — mặt tiền ghép các chủ thể A, G, Ve, K/H, R, B, J, AI.
- * Ứng dụng (A) chỉ gọi protect/read/revoke; mọi bản rõ được bảo vệ đi qua Ve (A2),
- * DEK chỉ đi qua cổng cấp khóa (3.13) và kết quả được niêm phong cho client đã xác minh (A8).
- */
 import type { JsonStore, ObjectStore } from '../storage';
 import { analyze, checkExecution, type Analysis, type Proposal } from './ai';
 import { exportPub, genEcdhKey, openSealed, sealTo, thumbprint } from './crypto';
@@ -25,7 +20,6 @@ export interface SentinelOptions {
   tenant: string;
   directory: DirectoryEntry[];
   now?: () => number;
-  /** Tiền tố khóa lưu trữ — cho phép sandbox Replay tách biệt khỏi Live. */
   prefix?: string;
   code?: CodeIdentity;
 }
@@ -114,12 +108,10 @@ export class Sentinel {
     const pub = await exportPub(kp.publicKey);
     this.client = { priv: kp.privateKey, pub, thumb: await thumbprint(pub) };
     this.sources = json.get<EntropySource[]>(this.k('sentinel.sources')) ?? defaultSources();
-    // Sau khởi động lại, KEK có thể được tạo mới (môi trường không giữ IndexedDB) — bản mã cũ không mở được.
     for (const sub of [this.journal, this.R, this.vault, this.recovery, this.incident]) sub.subscribe(() => this.bump());
     await this.log({ kind: 'session', actor: 'A', summary: `Sentinel khởi động · epoch ${this.R.epoch(this.tenant)} · KEK v${this.H.status(this.tenant).activeVersion}`, epoch: this.R.epoch(this.tenant) });
   }
 
-  // ---------- quan sát ----------
   subscribe(fn: () => void) {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -143,13 +135,11 @@ export class Sentinel {
     const challenge = this.verifier.challenge();
     const ses = await this.Ve.openSession(challenge);
     trace.push({ actor: 'Ve', label: 'Tạo khóa phiên trong vùng và báo cáo chứng thực', ok: true, detail: `${ses.sessionId} · measurement ${this.Ve.measurement.slice(0, 12)}…`, ms: this.now() - t0 });
-    // Client kiểm chứng thực trước khi niêm phong dữ liệu cho vùng (A8).
     const v = await this.verifier.verify(ses.attestation, { consume: false });
     trace.push({ actor: 'Verifier', label: 'Xác minh chứng thực: gốc ký, measurement, TCB, debug, tính mới', ok: v.ok, detail: v.ok ? `khóa nhận ${v.recipient?.slice(0, 12)}…` : v.reasons.join(' ') });
     return { ses, recipient: v.recipient ?? (await thumbprint(ses.pub)), attOk: v.ok };
   }
 
-  /** Ghi đối tượng mới: niêm phong cho Ve → grant ghi → cổng cấp DEK mới → AEAD trong Ve → commit. */
   async protect(input: ProtectInput): Promise<ReadResult<ObjectMeta>> {
     const trace: TraceStep[] = [];
     const meta: ObjectMeta = {
@@ -170,7 +160,7 @@ export class Sentinel {
     const { ses, recipient } = await this.session(trace);
     try {
       const sealed = await sealTo(ses.pub, plaintext, `input|${meta.objectId}|${ses.sessionId}`);
-      trace.push({ actor: 'Client', label: 'Niêm phong dữ liệu cho khóa phiên của enclave — host chỉ chuyển tiếp bản mã', ok: true, detail: `${plaintext.length} B → ${sealed.ct.length} ký tự bản mã` });
+      trace.push({ actor: 'Client', label: 'Niêm phong dữ liệu cho khóa phiên của enclave, host chỉ chuyển tiếp bản mã', ok: true, detail: `${plaintext.length} B → ${sealed.ct.length} ký tự bản mã` });
       const out = await this.G.issueForNewObject(
         { subject: input.subject, workload: 'heartos-app', objectId: meta.objectId, operation: 'write', purpose: input.purposes[0] ?? 'store', recipient, sessionId: ses.sessionId, destination: this.client.thumb },
         meta,
@@ -201,7 +191,6 @@ export class Sentinel {
     }
   }
 
-  /** Đọc: grant → chứng thực → cổng → HSM chuyển DEK cho khóa nhận → Ve giải mã, lọc trường, niêm phong cho client. */
   async read<T = Record<string, unknown>>(input: ReadInput): Promise<ReadResult<T>> {
     const trace: TraceStep[] = [];
     const stored = this.vault.get(input.objectId);
@@ -233,7 +222,7 @@ export class Sentinel {
       const grant = out.signed.grant;
       trace.push({ actor: 'G', label: 'Ký grant: chủ thể, đối tượng, trường, đích nhận, hạn 60 s, nonce, hạn mức, epoch', ok: true, detail: `${grant.grantId} · ${grant.fields.join(', ')} · ${grant.budgetBytes} B · epoch ${grant.epoch}` });
       const g = await this.gate.evaluate({ signed: out.signed, attestation: ses.attestation, meta: stored.meta, operation: 'read', stored });
-      trace.push({ actor: 'K', label: 'Cổng cấp khóa: Gok ∧ Aok ∧ Eok ∧ Bok', ok: g.decision.release, detail: `G${tick(g.decision.Gok)} A${tick(g.decision.Aok)} E${tick(g.decision.Eok)} B${tick(g.decision.Bok)}${g.decision.release ? '' : ' · ' + g.decision.reasons.join(' ')}` });
+      trace.push({ actor: 'K', label: 'Cổng cấp khóa: Gok ∧ Aok ∧ Eok ∧ Bok', ok: g.decision.release, detail: `Gok ${tick(g.decision.Gok)} · Aok ${tick(g.decision.Aok)} · Eok ${tick(g.decision.Eok)} · Bok ${tick(g.decision.Bok)}${g.decision.release ? '' : ' · ' + g.decision.reasons.join(' ')}` });
       if (!g.decision.release || !g.release) {
         await this.log({ kind: g.decision.Bok === false && g.decision.Gok && g.decision.Aok && g.decision.Eok ? 'budget.deny' : 'gate.deny', actor: 'K', severity: 'warning', summary: `Cổng từ chối DEK cho ${stored.meta.label}`, subject: input.subject, objectId: input.objectId, decision: 'deny', epoch: grant.epoch, data: { reasons: g.decision.reasons.join(' | ') } });
         this.checkSpike();
@@ -272,9 +261,6 @@ export class Sentinel {
     }
   }
 
-  // ---------- quản trị chính sách ----------
-
-  /** Thu hồi người xem/mục đích: tăng epoch (mọi grant cũ mất hiệu lực tại cổng — I4). */
   async revoke(p: { actor: string; objectId: string; viewer?: string; purpose?: string; reason: string }) {
     const meta = this.vault.meta(p.objectId);
     if (!meta) return { ok: false as const, reason: 'Không có đối tượng.' };
@@ -289,7 +275,6 @@ export class Sentinel {
     return { ok: true as const, epoch };
   }
 
-  /** Thu hồi theo phạm vi (ví dụ lịch, vị trí, camera) — chỉ tăng epoch và ghi bằng chứng. */
   async revokeScope(p: { actor: string; scope: string; target?: string; reason: string }) {
     const epoch = this.R.bumpEpoch(this.tenant);
     await this.log({ kind: 'policy.revoke', actor: 'G', severity: 'notice', summary: `Thu hồi phạm vi ${p.scope}${p.target ? ' · ' + p.target : ''}`, subject: p.actor, epoch, data: { reason: p.reason } });
@@ -306,8 +291,6 @@ export class Sentinel {
     return true;
   }
 
-  // ---------- phục hồi ----------
-
   async checkpoint(by: string) {
     const cp = await this.recovery.createCheckpoint(this.vault, this.tenant, by, this.epoch());
     await this.log({ kind: 'recovery.checkpoint', actor: 'B', summary: `Niêm phong điểm phục hồi ${cp.id} (${cp.manifest.length} đối tượng)`, subject: by, data: { manifestHash: cp.manifestHash.slice(0, 16) } });
@@ -323,7 +306,6 @@ export class Sentinel {
     return r;
   }
 
-  /** Bước 2: môi trường mới tạo khóa phiên mới và chứng thực lại trước khi nhận DEK; thử giải mã một đối tượng. */
   async recoveryStep2(id: string, sampleSubject: string) {
     this.recovery.updateStep(2, 'running');
     const cp = this.recovery.get(id);
@@ -346,8 +328,6 @@ export class Sentinel {
     await this.log({ kind: r.ok ? 'recovery.step' : 'recovery.denied', actor: by.isAI ? 'AI' : 'Human', severity: r.ok ? 'notice' : 'warning', summary: `Bước 3 đưa vào phục vụ: ${r.reason}`, subject: by.id });
     return r;
   }
-
-  // ---------- AI & sự cố ----------
 
   async aiAnalyze(): Promise<Analysis> {
     const a = analyze(await this.journal.redactedForAI(150));
@@ -393,8 +373,6 @@ export class Sentinel {
     return r;
   }
 
-  // ---------- nguồn ngẫu nhiên ----------
-
   private saveSources() {
     this.opts.json.set(this.k('sentinel.sources'), this.sources);
     this.bump();
@@ -406,11 +384,10 @@ export class Sentinel {
     const rep = healthTest(sampleStream(mode), src.assumedHPerSample, mode, this.now());
     src.lastHealth = rep;
     if (!rep.ok && src.kind === 'research') src.status = src.status === 'approved' ? 'degraded' : src.status === 'closed' ? 'closed' : 'degraded';
-    // Trạng thái nguồn tách khỏi trạng thái xâm nhập (Hình 3.3).
     const anyBad = this.sources.some((s) => s.lastHealth && !s.lastHealth.ok);
     this.incident.setSource(anyBad ? 'degraded' : 'healthy');
     this.saveSources();
-    await this.log({ kind: 'source.health', actor: 'R', severity: rep.ok ? 'info' : 'warning', summary: `Kiểm tra sức khỏe ${src.name}: ${rep.ok ? 'đạt' : 'lỗi — đóng nhánh, không phải tín hiệu xâm nhập'}`, data: { mode, rct: rep.rct.maxRun, apt: rep.apt.maxCount, dup: rep.replay.duplicateBlocks } });
+    await this.log({ kind: 'source.health', actor: 'R', severity: rep.ok ? 'info' : 'warning', summary: `Kiểm tra sức khỏe ${src.name}: ${rep.ok ? 'đạt' : 'lỗi, đóng nhánh, không phải tín hiệu xâm nhập'}`, data: { mode, rct: rep.rct.maxRun, apt: rep.apt.maxCount, dup: rep.replay.duplicateBlocks } });
     return rep;
   }
 
@@ -436,7 +413,6 @@ export class Sentinel {
     return r;
   }
 
-  /** Đặt lại toàn bộ trạng thái Sentinel (dùng khi đặt lại dữ liệu mẫu). */
   async resetAll() {
     this.journal.clear();
     this.R.reset();
@@ -457,4 +433,4 @@ export class Sentinel {
   }
 }
 
-const tick = (b: boolean) => (b ? '✓' : '✗');
+const tick = (b: boolean) => (b ? 'đạt' : 'không đạt');

@@ -1,10 +1,8 @@
-/** Kiểu dữ liệu dùng chung của mô hình ARGOLET Sentinel (Chương 3). */
 import type { Sealed } from './crypto';
 
 export type Operation = 'read' | 'write' | 'export' | 'compute';
 export type Role = 'admin' | 'member' | 'child' | 'carer' | 'ops';
 
-/** Chủ thể chức năng (Bảng 3.1). */
 export type Actor = 'A' | 'G' | 'Ve' | 'K' | 'H' | 'R' | 'B' | 'J' | 'AI' | 'Client' | 'Verifier' | 'Human';
 
 export const ACTOR_LABEL: Record<Actor, string> = {
@@ -28,7 +26,6 @@ export interface DirectoryEntry {
   tenant: string;
   role: Role;
   guardian?: string;
-  /** Quyền có thời hạn (người hỗ trợ theo ca). */
   expiresAt?: number;
   disabled?: boolean;
 }
@@ -52,7 +49,6 @@ export interface StoredObject {
   meta: ObjectMeta;
   iv: string;
   ciphertext: string;
-  /** DEK được bọc dưới KEK (CiphertextBlob) — để lưu và dùng lại qua cổng cấp khóa. */
   blob: { kekVersion: number; wrapped: string };
   alg: 'AES-256-GCM';
   size: number;
@@ -70,10 +66,8 @@ export interface Grant {
   fields: string[];
   operation: Operation;
   purpose: string;
-  /** Dấu vân tay khóa phiên của enclave nhận DEK (I8). */
   recipient: string;
   sessionId: string;
-  /** Dấu vân tay khóa của đích nhận kết quả (client đã xác thực). */
   destination: string;
   issuedAt: number;
   expiresAt: number;

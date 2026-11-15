@@ -1,9 +1,3 @@
-/**
- * Đặc tả: bất biến I1–I11 (Bảng 3.2), giả thiết A1–A10 (§3.16), mệnh đề K1–K3 (§3.17),
- * kịch bản đối phương T1–T7 (§3.2), ma trận truy nguyên (Phụ lục B) và hồ sơ cấu hình C (Phụ lục D).
- * Mỗi mục liên kết tới điểm thực thi trong mã nguồn HeartOS.
- */
-
 export interface InvariantDef {
   id: string;
   title: string;

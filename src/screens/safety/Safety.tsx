@@ -36,7 +36,7 @@ export function FSafe() {
           <span>Vùng có tín hiệu</span>
         </div>
       </div>
-      {!home.s.net.internet && <Row tone="rose" icon={<WifiOff size={18} />} tileTone="white" title="Kết nối đang gián đoạn" meta="Hub mất Internet — LAN vẫn hoạt động" to="/f/offline" />}
+      {!home.s.net.internet && <Row tone="rose" icon={<WifiOff size={18} />} tileTone="white" title="Kết nối đang gián đoạn" meta="Hub mất Internet, LAN vẫn hoạt động" to="/f/offline" />}
       <Row icon={<Siren size={18} />} tileTone="rose" title="Sự cố đang theo dõi" meta="SOS và tín hiệu nghi ngã" badge={<Badge tone={open.length ? 'danger' : undefined}>{open.length} ca</Badge>} to="/f/incidents" />
       <Row icon={<MapIcon size={18} />} tileTone="sand" title="Bản đồ vùng quan sát" meta={stale.length ? `${stale.map((r) => r.name).join(', ')} chưa có dữ liệu mới` : 'Mọi vùng có tín hiệu gần đây'} to="/f/map" />
       <Row icon={<Radar size={18} />} title="Guardian radar–nhiệt trực tiếp" meta="LD2450 2D · MLX90640 32×24 · điểm ghép" to="/f/guardian" />
@@ -63,7 +63,7 @@ export function FIncidents() {
       {open.map((i) => (
         <Row key={i.id} icon={kindIcon(i.kind)} tileTone={i.priority === 'P1' ? 'rose' : 'sand'} title={i.title} meta={`${hhmm(i.createdAt)} · ${i.status === 'verifying' ? 'Đang kiểm tra' : i.assignee ? `${i.assignee} đã nhận việc` : i.evidence[0]?.summary ?? ''}`} right={prioBadge(i)} to={`/f/incident/${i.id}`} />
       ))}
-      <Row tone="tint" icon={<Siren size={18} />} tileTone="white" title="Báo tại chỗ" meta="Còi khói/CO và đường SOS tối thiểu theo cấu hình tại nhà — chạy cả khi mất Internet." />
+      <Row tone="tint" icon={<Siren size={18} />} tileTone="white" title="Báo tại chỗ" meta="Còi khói/CO và đường SOS tối thiểu theo cấu hình tại nhà, chạy cả khi mất Internet." />
       {closed.length > 0 && <div className="section-title">Đã đóng gần đây</div>}
       {closed.map((i) => (
         <Row key={i.id} icon={kindIcon(i.kind)} title={`${i.id} · ${i.title}`} meta={i.closedReason} to={`/f/incident/${i.id}`} />
@@ -83,7 +83,7 @@ export function FIncident() {
   const [loc, setLoc] = useState<string>('');
   useEffect(() => {
     if (!inc || inc.kind !== 'sos') return;
-    void readSupportLocation(me.id).then((r) => setLoc(r.ok && r.data ? `${r.data.place} · ${r.data.lat.toFixed(4)}, ${r.data.lng.toFixed(4)}` : '🔒 ' + (r.error ?? 'Không có quyền vị trí')));
+    void readSupportLocation(me.id).then((r) => setLoc(r.ok && r.data ? `${r.data.place} · ${r.data.lat.toFixed(4)}, ${r.data.lng.toFixed(4)}` : 'Không mở được vị trí: ' + (r.error ?? 'Không có quyền vị trí')));
   }, [inc?.id, inc?.kind, me.id, inc]);
   if (!inc) return <Phone tabs><TopBar back backTo="/f/incidents" /><div className="empty">Không tìm thấy ca.</div></Phone>;
   const actor = { id: me.id, name: me.name, role: me.role };
@@ -250,7 +250,7 @@ export function FSos() {
         </button>
       )}
       <div className="card sand">
-        <p style={{ color: '#6E4E20' }}>Bản mô phỏng: SOS báo tại nhà, tới người thân trong ứng dụng và kênh từ xa giả lập — không tự gọi dịch vụ cấp cứu. Khi nguy hiểm thật, hãy gọi 115 (cấp cứu), 114 (cứu hỏa) hoặc 113 (công an).</p>
+        <p style={{ color: '#6E4E20' }}>Bản mô phỏng: SOS báo tại nhà, tới người thân trong ứng dụng và kênh từ xa giả lập, không tự gọi dịch vụ cấp cứu. Khi nguy hiểm thật, hãy gọi 115 (cấp cứu), 114 (cứu hỏa) hoặc 113 (công an).</p>
         <a className="btn sm danger" style={{ marginTop: 10 }} href="tel:115"><PhoneIcon size={16} /> Gọi 115</a>
       </div>
     </Phone>

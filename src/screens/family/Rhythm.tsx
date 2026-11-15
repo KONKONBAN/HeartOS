@@ -97,7 +97,6 @@ export function FCalendar() {
   const reload = () => void computeRhythm(me.id, ['u-an', 'u-linh', 'u-lan']).then(setRhythm);
   useEffect(() => {
     reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.id]);
   const dirty = JSON.stringify(windows) !== JSON.stringify(cal?.windows ?? []);
   return (

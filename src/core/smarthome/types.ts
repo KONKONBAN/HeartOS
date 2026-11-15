@@ -1,5 +1,3 @@
-/** Mô hình nhà thông minh của HeartOS Hub (LAN, xử lý và lưu tại nhà). */
-
 export type RoomId = 'living' | 'kitchen' | 'door' | 'hall' | 'bedroom' | 'laundry';
 export type HouseholdRole = 'admin' | 'member' | 'child' | 'carer';
 export type HomeMode = 'home' | 'away' | 'night';
@@ -8,7 +6,6 @@ export interface Room {
   id: RoomId;
   name: string;
   short: string;
-  /** Hình chữ nhật trên sơ đồ mặt bằng 0–100. */
   rect: { x: number; y: number; w: number; h: number };
   sensing: ('radar' | 'thermal' | 'door' | 'leak' | 'smoke' | 'camera')[];
   lastSignal: number;
@@ -51,9 +48,7 @@ export interface Device {
   lastSeen: number;
   confirmedAt?: number;
   state: Record<string, string | number | boolean>;
-  /** Vai trò được điều khiển; rỗng = chỉ đọc. */
   controlRoles: HouseholdRole[];
-  /** Thiết bị chỉ gửi tín hiệu trong vùng được gán. */
   zoneLocked: boolean;
   latencyMs: number;
 }
@@ -130,7 +125,6 @@ export interface PowerState {
   generator: 'standby' | 'cranking' | 'running' | 'cooldown';
   ats: 'mains' | 'battery' | 'generator';
   lastChange: number;
-  /** Thời điểm chuyển trạng thái kế tiếp dự kiến (mô phỏng ATS). */
   nextAt?: number;
   history: { at: number; text: string }[];
 }
@@ -184,9 +178,9 @@ export interface Notice {
 
 export interface RadarTarget {
   id: number;
-  x: number; // mm, −3000..3000
-  y: number; // mm, 0..6000
-  speed: number; // cm/s
+  x: number;
+  y: number;
+  speed: number;
   room: RoomId;
 }
 

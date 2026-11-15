@@ -95,7 +95,7 @@ export function SSos() {
             nav('/s');
           }}
         >
-          Tôi bấm nhầm — hủy SOS
+          Tôi bấm nhầm, hủy SOS
         </button>
       )}
       <button className="btn secondary" onClick={() => nav('/s')}>Về trang nhà</button>

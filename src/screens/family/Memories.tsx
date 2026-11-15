@@ -99,7 +99,7 @@ export function FMemory() {
           {(mem.kind === 'story' || audio) && (
             <div className="card tint">
               <h3>Bản thu gốc</h3>
-              <p>{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}` : '—'} · Tiếng Việt</p>
+              <p>{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}` : '-'} · Tiếng Việt</p>
               {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 8 }} /> : <p className="small" style={{ marginTop: 6 }}>Bản mẫu chưa có tệp âm thanh.</p>}
             </div>
           )}
@@ -157,7 +157,6 @@ export function FMemoryNew() {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (params.get('mode') === 'audio' && rec.state === 'idle') void rec.start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const pick = async (f?: File) => {
     if (!f) return;

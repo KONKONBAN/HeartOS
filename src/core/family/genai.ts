@@ -1,10 +1,3 @@
-/**
- * GenAI · soạn lời mời từ dữ kiện ĐÃ ĐƯỢC CẤP QUYỀN (khung giờ chung, người nhận, ngôn ngữ).
- *  - Đầu ra luôn là JSON theo schema, được kiểm dữ kiện (giờ, người nhận, tiếng Việt có dấu) trước khi hiện.
- *  - Mặc định: bộ soạn mẫu trên thiết bị (không gửi dữ liệu ra ngoài).
- *  - Tùy chọn: Claude API bằng khóa của chính người dùng (lưu trên máy). Nếu AI chưa đạt kiểm → dùng mẫu sẵn.
- *  - Bản nháp KHÔNG tự gửi: người dùng duyệt, hệ thống kiểm lại quyền khi phát hành.
- */
 import * as z from 'zod/v4';
 import { enTime, fromMin, viTime, type Slot } from './calendar';
 
@@ -27,7 +20,6 @@ export type InviteDraft = z.infer<typeof InviteSchema>;
 export interface Recipient {
   id: string;
   name: string;
-  /** Cách người gửi gọi người nhận trong tiếng Việt (mẹ, con, em…). */
   address: string;
   lang: 'vi' | 'en';
 }
@@ -37,7 +29,7 @@ export interface InviteFacts {
   slot: Slot;
   tz: string;
   host: string;
-  hostSelf: string; // cách người gửi xưng (con, anh…)
+  hostSelf: string;
   place: string;
   recipients: Recipient[];
   tone: 'warm' | 'short' | 'formal';
@@ -78,7 +70,6 @@ export function localDraft(f: InviteFacts): InviteDraft {
   };
 }
 
-/** Kiểm schema + đối chiếu dữ kiện. */
 export function checkDraft(raw: unknown, f: InviteFacts): { ok: boolean; draft?: InviteDraft; checks: DraftResult['checks'] } {
   const checks: DraftResult['checks'] = [];
   const parsed = InviteSchema.safeParse(raw);
@@ -108,13 +99,8 @@ export interface ClaudeConfig {
   model: string;
 }
 
-/**
- * Gọi Claude qua SDK chính thức ngay trên trình duyệt bằng khóa API của người dùng.
- * Chỉ gửi dữ kiện tối thiểu: dịp, khung giờ, cách xưng hô, ngôn ngữ — không gửi lịch hay dữ liệu khác.
- */
 export async function claudeDraft(f: InviteFacts, cfg: ClaudeConfig): Promise<{ raw: unknown; model: string }> {
   const [{ default: Anthropic }, { betaZodOutputFormat }] = await Promise.all([import('@anthropic-ai/sdk'), import('@anthropic-ai/sdk/helpers/beta/zod')]);
-  // Khóa do chính người dùng nhập và chỉ lưu trên thiết bị này; yêu cầu đi thẳng tới api.anthropic.com.
   const client = new Anthropic({ apiKey: cfg.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: 45_000 });
   const facts = {
     occasion: f.occasion,
@@ -150,17 +136,15 @@ export async function draftInvitation(f: InviteFacts, cfg?: ClaudeConfig | null)
       if (c.ok && c.draft) return { draft: c.draft, provider: 'claude', model, checks: c.checks, ms: Math.round(performance.now() - t0) };
       const local = localDraft(f);
       const lc = checkDraft(local, f);
-      return { draft: local, provider: 'local', checks: lc.checks, fellBack: 'Bản AI chưa đạt kiểm dữ kiện: ' + c.checks.filter((x) => !x.ok).map((x) => x.name).join(', ') + ' — dùng mẫu sẵn.', ms: Math.round(performance.now() - t0) };
+      return { draft: local, provider: 'local', checks: lc.checks, fellBack: 'Bản AI chưa đạt kiểm dữ kiện: ' + c.checks.filter((x) => !x.ok).map((x) => x.name).join(', ') + ', dùng mẫu sẵn.', ms: Math.round(performance.now() - t0) };
     } catch (e) {
       const local = localDraft(f);
-      return { draft: local, provider: 'local', checks: checkDraft(local, f).checks, fellBack: 'Không gọi được Claude (' + (e as Error).message + ') — dùng mẫu sẵn trên thiết bị.', ms: Math.round(performance.now() - t0) };
+      return { draft: local, provider: 'local', checks: checkDraft(local, f).checks, fellBack: 'Không gọi được Claude (' + (e as Error).message + '), dùng mẫu sẵn trên thiết bị.', ms: Math.round(performance.now() - t0) };
     }
   }
   const local = localDraft(f);
   return { draft: local, provider: 'local', checks: checkDraft(local, f).checks, ms: Math.round(performance.now() - t0) };
 }
-
-// ---------- Trợ lý: hiểu ý định đơn giản trên thiết bị ----------
 
 export type AssistantIntent =
   | { kind: 'invite'; occasion: string }
@@ -183,7 +167,6 @@ export function parseIntent(text: string): AssistantIntent {
   return { kind: 'unknown' };
 }
 
-/** Tóm tắt lời kể thành bản nháp (trên thiết bị): tiêu đề + câu mở đầu, giữ nguyên lời gốc. */
 export function summarizeStory(transcript: string) {
   const sentences = transcript.split(/(?<=[.!?…])\s+/).filter(Boolean);
   const first = sentences[0] ?? transcript;

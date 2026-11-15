@@ -40,7 +40,7 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   const signIn = async () => {
     setBusy(true);
-    const ok = session.passkey?.kind === 'webauthn' ? await verifyPasskey() : true;
+    const ok = await verifyPasskey(session.passkey?.kind);
     setBusy(false);
     if (!ok) {
       toast('Xác thực khóa truy cập chưa thành công. Thử lại hoặc lấy lại quyền truy cập.', 'warning');
@@ -87,7 +87,7 @@ export function Register() {
   const makeKey = async () => {
     const k = await createPasskey(email);
     setKey(k);
-    toast(k.kind === 'webauthn' ? 'Đã tạo passkey trên thiết bị.' : 'Thiết bị không hỗ trợ passkey — đã tạo khóa thiết bị thay thế.', 'info');
+    toast(k.kind === 'webauthn' ? 'Đã tạo passkey trên thiết bị.' : 'Thiết bị không hỗ trợ passkey, đã tạo khóa thiết bị thay thế.', 'info');
   };
   const finish = () => {
     set((s) => {

@@ -1,10 +1,3 @@
-/**
- * Ve — Bộ thực thi trong enclave (Core Vault), Platform (gốc chứng thực phần cứng mô phỏng)
- * và Verifier — trình xác minh chứng thực (§1.6.2, §3.6.3–3.6.4, A5, A6, I7, I8).
- *
- * Mô phỏng: trên điện thoại/hub, "enclave" là một ranh giới mô-đun có khóa phiên riêng không xuất được.
- * Thuộc tính mật mã (khóa nhận, chữ ký chứng thực, unwrap DEK không xuất được, AEAD) là thật.
- */
 import {
   aeadDecrypt,
   aeadEncrypt,
@@ -23,7 +16,6 @@ import {
 import { encodeAAD, fromUtf8, randomId, sha256Hex, utf8 } from './encoding';
 import type { Attestation, AttestationReport, Grant, ObjectMeta, RecipientRelease } from './types';
 
-/** Gốc chứng thực của nền tảng (vai trò của nhà sản xuất phần cứng). */
 export class Platform {
   private keys!: CryptoKeyPair;
   publicKey = '';
@@ -33,7 +25,6 @@ export class Platform {
     this.publicKey = await exportPub(this.keys.publicKey);
     return this;
   }
-  /** Chỉ phần mềm chạy bên trong vùng được đo mới xin được quote với measurement của chính nó. */
   async quote(report: AttestationReport): Promise<Attestation> {
     return { report, sig: await signObject(this.keys.privateKey, report) };
   }
@@ -53,7 +44,6 @@ export interface VerifyResult {
   recipient?: string;
 }
 
-/** Trình xác minh: nguồn chữ ký, giá trị tham chiếu, TCB, debug, tính mới, thu hồi (A6). */
 export class Verifier {
   private allow = new Map<string, AllowEntry>();
   private challenges = new Map<string, number>();
@@ -84,7 +74,6 @@ export class Verifier {
     return !!e && !e.revoked;
   }
 
-  /** Thử thách một lần, chống tái dùng bằng chứng cũ cho phiên mới. */
   challenge(): string {
     const c = randomId('chal', 12);
     this.challenges.set(c, this.now());
@@ -102,7 +91,7 @@ export class Verifier {
       if (entry.revoked) reasons.push(`Mã ${entry.codeName}@${entry.codeVersion} đã bị thu hồi.`);
       if (r.tcb < entry.minTcb) reasons.push(`Mức TCB ${r.tcb} thấp hơn tối thiểu ${entry.minTcb}.`);
     }
-    if (r.debug) reasons.push('Enclave đang ở chế độ debug — không được nhận DEK.');
+    if (r.debug) reasons.push('Enclave đang ở chế độ debug, không được nhận DEK.');
     const issued = this.challenges.get(r.challenge);
     if (issued === undefined) reasons.push('Thử thách không do trình xác minh cấp hoặc đã dùng (bằng chứng cũ bị phát lại).');
     else if (this.now() - issued > this.maxAgeMs) reasons.push('Bằng chứng quá hạn tính mới.');
@@ -135,7 +124,6 @@ export async function measure(code: { name: string; version: string }) {
 
 export class EnclaveError extends Error {}
 
-/** Ve — kiểm tra grant, giải mã, xử lý và giới hạn đầu ra trong vùng được bảo vệ. */
 export class Enclave {
   measurement = '';
   private sessions = new Map<string, EnclaveSession>();
@@ -150,7 +138,6 @@ export class Enclave {
     return this;
   }
 
-  /** Bước 2: tạo khóa phiên trong vùng và bằng chứng gắn khóa công khai với môi trường. */
   async openSession(challenge: string): Promise<EnclaveSession> {
     const kp = await genEcdhKey();
     const sessionId = randomId('ses', 6);
@@ -173,7 +160,6 @@ export class Enclave {
     return s;
   }
 
-  /** Bước 8: kết thúc quyền sử dụng của phiên, loại vật liệu tạm. */
   endSession(sessionId: string) {
     const s = this.sessions.get(sessionId);
     if (s) {
@@ -199,10 +185,6 @@ export class Enclave {
     return s;
   }
 
-  /**
-   * Ghi: mở dữ liệu đầu vào được niêm phong cho khóa phiên, mã hóa AEAD với DEK mới nhận từ HSM.
-   * DEK bản rõ không bao giờ rời Ve.
-   */
   async encryptRecord(sessionId: string, signed: { grant: Grant; sig: string }, meta: ObjectMeta, sealedInput: Sealed, release: RecipientRelease) {
     const s = await this.checkGrant(sessionId, signed, meta, 'write');
     const plaintext = await openSealed(s.priv, sealedInput, `input|${meta.objectId}|${sessionId}`);
@@ -212,10 +194,6 @@ export class Enclave {
     return { ...out, size: plaintext.length };
   }
 
-  /**
-   * Đọc: mở DEK gửi cho khóa phiên, xác thực AEAD (AAD phát hiện tráo ngữ cảnh), lọc trường theo grant,
-   * kiểm tra kích thước theo ngân sách và niêm phong kết quả cho đích đã xác minh.
-   */
   async decryptRecord(
     sessionId: string,
     signed: { grant: Grant; sig: string },
@@ -226,14 +204,14 @@ export class Enclave {
   ): Promise<{ sealed: Sealed; bytes: number }> {
     const s = await this.checkGrant(sessionId, signed, meta, 'read');
     const g = signed.grant;
-    if (g.destination !== (await thumbprint(destinationPub))) throw new EnclaveError('Ve: đích nhận không khớp grant — khóa do host tự thay không phải đích hợp lệ.');
+    if (g.destination !== (await thumbprint(destinationPub))) throw new EnclaveError('Ve: đích nhận không khớp grant, khóa do host tự thay không phải đích hợp lệ.');
     const dek = await unwrapAsRecipient(s.priv, release.ephPub, release.wrapped, release.context);
     const aad = encodeAAD({ tenant: meta.tenant, object: meta.objectId, version: meta.version, type: meta.type });
     let pt: Uint8Array;
     try {
       pt = await aeadDecrypt(dek, record.iv, record.ciphertext, aad);
     } catch {
-      throw new EnclaveError('Ve: xác thực AEAD thất bại — bản mã hoặc ngữ cảnh đã bị tráo.');
+      throw new EnclaveError('Ve: xác thực AEAD thất bại, bản mã hoặc ngữ cảnh đã bị tráo.');
     }
     const full = JSON.parse(fromUtf8(pt)) as Record<string, unknown>;
     const filtered: Record<string, unknown> = {};

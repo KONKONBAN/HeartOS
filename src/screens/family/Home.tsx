@@ -61,7 +61,7 @@ export function FHome() {
           </div>
           <div className="body">
             <h2>{(draft ?? queued)!.occasion}</h2>
-            <p>{draft ? 'Bản nháp GenAI đang chờ bạn duyệt.' : queued!.status === 'blocked' ? 'Cần duyệt lại — quyền chia sẻ đã thay đổi.' : 'Đã duyệt · đang chờ gửi.'}</p>
+            <p>{draft ? 'Bản nháp GenAI đang chờ bạn duyệt.' : queued!.status === 'blocked' ? 'Cần duyệt lại, quyền chia sẻ đã thay đổi.' : 'Đã duyệt · đang chờ gửi.'}</p>
             <div className="cta">{draft ? 'Xem bản nháp' : 'Xem trạng thái'} <span>›</span></div>
           </div>
         </Link>
@@ -118,7 +118,7 @@ export function FFund() {
   const pct = Math.round((total / goal.target) * 100);
   const reveal = async (id: string) => {
     const r = await readContribution(id, me.id);
-    setRevealed((x) => ({ ...x, [id]: r.ok && r.data ? vnd((r.data as { amount: number }).amount) : '🔒 ' + (r.error ?? 'Không có quyền') }));
+    setRevealed((x) => ({ ...x, [id]: r.ok && r.data ? vnd((r.data as { amount: number }).amount) : 'Không có quyền xem chi tiết' }));
   };
   return (
     <Phone tabs>

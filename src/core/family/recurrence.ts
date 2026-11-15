@@ -1,5 +1,3 @@
-/** Lịch lặp cho nghi thức gia đình (GMT+7, theo giờ thiết bị). */
-
 export type Recurrence =
   | { freq: 'weekly'; weekday: number; time: string }
   | { freq: 'monthly-last'; weekday: number; time: string }

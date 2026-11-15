@@ -16,7 +16,6 @@ export interface Member {
   lang: Lang;
   phone: string;
   color: string;
-  /** Cách An gọi người này trong lời mời tiếng Việt. */
   address: string;
   selfRef: string;
   guardian?: string;

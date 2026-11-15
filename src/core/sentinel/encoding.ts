@@ -1,8 +1,3 @@
-/**
- * Mã hóa không mơ hồ cho ngữ cảnh mật mã (AAD), chữ ký grant và chuỗi bằng chứng.
- * Luận văn §3.6.1: "Context được mã hóa thành một biểu diễn không mơ hồ trước khi đưa vào AAD."
- */
-
 const te = new TextEncoder();
 const td = new TextDecoder();
 
@@ -10,7 +5,6 @@ export const utf8 = (s: string): Uint8Array => te.encode(s);
 export const fromUtf8 = (b: ArrayBuffer | Uint8Array): string =>
   td.decode(b instanceof Uint8Array ? b : new Uint8Array(b));
 
-/** Trả về ArrayBuffer độc lập (WebCrypto yêu cầu BufferSource không chia sẻ). */
 export function buf(b: Uint8Array): ArrayBuffer {
   return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 }
@@ -47,7 +41,6 @@ export function toHex(bytes: ArrayBuffer | Uint8Array): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-/** JSON chuẩn hóa: khóa sắp xếp, không khoảng trắng — dùng trước khi ký hoặc băm. */
 export function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') {
     if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('canonical: số không hữu hạn');
@@ -59,10 +52,6 @@ export function canonical(value: unknown): string {
   return '{' + keys.map((k) => JSON.stringify(k) + ':' + canonical(obj[k])).join(',') + '}';
 }
 
-/**
- * AAD = Encode(tenant, object, version, type) — biểu thức (3.12).
- * Mỗi trường được tiền tố độ dài byte nên "ab|c" và "a|bc" không thể trùng biểu diễn.
- */
 export function encodeAAD(ctx: { tenant: string; object: string; version: number; type: string; alg?: string }): Uint8Array {
   const fields = [
     ['tenant', ctx.tenant],
@@ -95,11 +84,9 @@ export async function sha256Hex(data: string | Uint8Array): Promise<string> {
   return toHex(await sha256(data));
 }
 
-/** Byte ngẫu nhiên từ nền RNG của hệ điều hành (giả thiết A4). Không có seed thay thế. */
 export function randomBytes(n: number): Uint8Array {
   if (!globalThis.crypto?.getRandomValues) {
-    // §3.13: nếu nền RNG không sẵn sàng thì thao tác cần nó phải từ chối, không dùng thời gian/seed cố định.
-    throw new Error('Nền RNG của hệ điều hành không sẵn sàng — từ chối thao tác cần ngẫu nhiên mới.');
+    throw new Error('Nền RNG của hệ điều hành không sẵn sàng, từ chối thao tác cần ngẫu nhiên mới.');
   }
   const out = new Uint8Array(n);
   crypto.getRandomValues(out);

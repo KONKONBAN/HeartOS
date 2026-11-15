@@ -1,10 +1,3 @@
-/**
- * Cổng phê duyệt nguồn và hồ sơ bảo đảm (§3.13, §3.14, Phụ lục C), giả thuyết H1–H3 (§2.14).
- *  - Nền RNG của hệ điều hành là cấu phần vận hành bắt buộc.
- *  - Nguồn nghiên cứu mặc định ĐÓNG cho tới khi có hồ sơ được người có thẩm quyền xét duyệt.
- *  - Thay firmware/chế độ thu làm mất hiệu lực phê duyệt cũ.
- *  - Kiểm tra sức khỏe RCT/APT; lỗi nguồn chỉ đóng nhánh tương ứng, KHÔNG phải tín hiệu xâm nhập.
- */
 import { randomBytes } from './encoding';
 import { aptCutoff, rctCutoff } from './math';
 
@@ -90,7 +83,7 @@ export function defaultSources(): EntropySource[] {
     },
     {
       id: 'microplasma',
-      name: 'Microplasma — đường thu điện',
+      name: 'Microplasma, đường thu điện',
       kind: 'research',
       hypothesis: 'H2',
       description: 'Đường thu điện áp của buồng phóng điện vi mô. Chưa có hồ sơ thiết bị.',
@@ -117,19 +110,16 @@ export function tryOpenGate(src: EntropySource, by: { id: string; human: boolean
   if (by.isAI || !by.human) reasons.push('AI không được tự mở cổng nguồn hoặc tự cấp nhãn QRNG (§3.14).');
   const c = profileCompleteness(src.profile);
   if (c.filled < c.total) reasons.push(`Hồ sơ thiếu ${c.total - c.filled}/${c.total} trường: ${c.missing.join(', ')}.`);
-  if (!src.constructionEvaluated) reasons.push('Construction tích hợp chưa được thẩm định — không tự sửa trạng thái nội bộ CSPRNG, không XOR/hash tự phát.');
+  if (!src.constructionEvaluated) reasons.push('Construction tích hợp chưa được thẩm định, không tự sửa trạng thái nội bộ CSPRNG, không XOR/hash tự phát.');
   if (src.lastHealth && !src.lastHealth.ok) reasons.push('Lần kiểm tra sức khỏe gần nhất thất bại.');
   if (reasons.length) return { ok: false, reasons };
   return { ok: true, source: { ...src, status: 'approved', approvedFirmware: src.firmware, approvals: [...src.approvals, { by: by.id, at: now }] } };
 }
 
-/** Thay đổi firmware/chế độ thu: phê duyệt cũ mất hiệu lực tới khi xem xét lại. */
 export function changeFirmware(src: EntropySource, fw: string): EntropySource {
   const invalid = src.kind === 'research' && src.status === 'approved' && src.approvedFirmware !== fw;
   return { ...src, firmware: fw, status: invalid ? 'closed' : src.status };
 }
-
-// ---------- Kiểm tra sức khỏe ----------
 
 export type StreamMode = 'normal' | 'stuck' | 'biased' | 'replay';
 
@@ -145,18 +135,16 @@ export interface HealthReport {
   histogram: number[];
 }
 
-/** Sinh luồng mẫu 8 bit mô phỏng cho nhánh nghiên cứu (không dùng làm khóa). */
 export function sampleStream(mode: StreamMode, n = 2048): Uint8Array {
   const raw = randomBytes(n);
   const out = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
-    // nguồn "bình thường": phân bố lệch nhẹ (~4 bit min-entropy mỗi mẫu)
     out[i] = raw[i] & 0x3f ? raw[i] & 0x0f | ((raw[i] >> 6) << 4) : 7;
   }
   if (mode === 'stuck') out.fill(out[100], 600, 600 + 220);
   if (mode === 'biased') {
     for (let i = 0; i < n; i++) if (raw[i] < 180) out[i] = 7;
-    for (let i = 0; i < n; i += 512) out[i] = 7; // giá trị tham chiếu của cửa sổ APT
+    for (let i = 0; i < n; i += 512) out[i] = 7;
   }
   if (mode === 'replay') for (let b = 8; b < 20; b++) out.set(out.subarray(0, 64), b * 64);
   return out;

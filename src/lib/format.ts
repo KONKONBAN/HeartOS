@@ -37,7 +37,6 @@ export const greetPart = () => {
   return h < 11 ? 'sáng' : h < 14 ? 'trưa' : h < 18 ? 'chiều' : 'tối';
 };
 
-/** Đồng hồ cập nhật theo chu kỳ (mặc định 1 giây). */
 export function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {

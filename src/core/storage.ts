@@ -1,9 +1,3 @@
-/**
- * Kho lưu trữ bền vững cho các miền của HeartOS.
- * - JsonStore: dữ liệu JSON (localStorage trên trình duyệt, bộ nhớ trong khi chạy test).
- * - ObjectStore: giá trị structured-clone như CryptoKey không xuất được hoặc Blob ghi âm (IndexedDB).
- */
-
 export interface JsonStore {
   get<T>(key: string): T | undefined;
   set<T>(key: string, value: T): void;
@@ -47,14 +41,14 @@ export function localJsonStore(prefix = 'heartos:'): JsonStore {
       try {
         localStorage.setItem(prefix + k, JSON.stringify(v));
       } catch {
-        /* hết dung lượng hoặc bị chặn — dữ liệu chỉ còn trong phiên */
+        return;
       }
     },
     del(k) {
       try {
         localStorage.removeItem(prefix + k);
       } catch {
-        /* bỏ qua */
+        return;
       }
     },
   };

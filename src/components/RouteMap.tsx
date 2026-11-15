@@ -1,6 +1,5 @@
 import { NODES, type RoadEdge, type RouteResult } from '../core/guardian/routes';
 
-/** Bản đồ tuyến minh họa: đoạn ngập (đỏ), chưa rõ dữ liệu ngập (vàng), tuyến đã chọn (xanh đậm). */
 export function RouteMap({ edges, highlight, height = 210 }: { edges: RoadEdge[]; highlight?: RouteResult; height?: number }) {
   const pos = (id: string) => NODES.find((n) => n.id === id)!;
   const on = new Set(highlight?.edges.map((e) => e.id));

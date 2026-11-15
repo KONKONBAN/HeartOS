@@ -375,7 +375,7 @@ export function FScenes() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/smart" />
-      <Header title="Cảnh" sub="Một chạm gửi nhiều lệnh — mỗi lệnh vẫn kiểm quyền và chờ xác nhận." />
+      <Header title="Cảnh" sub="Một chạm gửi nhiều lệnh, mỗi lệnh vẫn kiểm quyền và chờ xác nhận." />
       {home.s.scenes.map((s) => (
         <div key={s.id} className="card stack" style={{ gap: 8 }}>
           <div className="hstack">
@@ -426,7 +426,7 @@ export function FAutomations() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/smart" />
-      <Header title="Tự động hóa" sub="Luật chạy trên hub tại nhà — vẫn hoạt động khi mất Internet." />
+      <Header title="Tự động hóa" sub="Luật chạy trên hub tại nhà, vẫn hoạt động khi mất Internet." />
       {home.s.rules.map((r) => (
         <Row
           key={r.id}

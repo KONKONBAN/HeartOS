@@ -74,7 +74,6 @@ function drawThermal(c: HTMLCanvasElement | null, f?: ThermalFrame) {
   c.width = f.w;
   c.height = f.h;
   const img = ctx.createImageData(f.w, f.h);
-  // bảng màu kiểu "inferno": nền lạnh tối, thân nhiệt sáng
   const stops: [number, number, number, number][] = [
     [0, 0, 0, 4],
     [0.25, 59, 15, 112],
@@ -154,7 +153,7 @@ export function FGuardian() {
         <div className="small muted">{targets.length ? summarizeTargets(targets) : 'Không có mục tiêu trong vùng.'}</div>
       </div>
       <div className="card stack">
-        <div className="hstack"><Thermometer size={16} /><b className="small" style={{ flex: 1 }}>Ảnh nhiệt MLX90640 · 32×24</b><span className="small muted">{frame ? `${frame.min.toFixed(1)}–${frame.max.toFixed(1)}°C` : '—'}</span></div>
+        <div className="hstack"><Thermometer size={16} /><b className="small" style={{ flex: 1 }}>Ảnh nhiệt MLX90640 · 32×24</b><span className="small muted">{frame ? `${frame.min.toFixed(1)}–${frame.max.toFixed(1)}°C` : '-'}</span></div>
         <canvas ref={tRef} className="thermal" aria-label="Ảnh nhiệt" />
       </div>
       {fusion && (
@@ -176,7 +175,7 @@ export function FGuardian() {
           </div>
         </div>
       )}
-      <button className="btn soft" onClick={() => { home.simulate(room === 'bedroom' ? 'fall_bedroom' : 'fall_hall'); toast('Đang mô phỏng: người đi bộ rồi ngã — theo dõi điểm ghép.'); }}>
+      <button className="btn soft" onClick={() => { home.simulate(room === 'bedroom' ? 'fall_bedroom' : 'fall_hall'); toast('Đang mô phỏng: người đi bộ rồi ngã, theo dõi điểm ghép.'); }}>
         <Activity size={18} /> Mô phỏng ngã trong vùng này
       </button>
       <p className="small muted" style={{ margin: 0 }}>Vượt ngưỡng chỉ mở ca “đang xác minh”; Guardian không tự kết luận hay tự gọi cấp cứu.</p>
@@ -210,7 +209,6 @@ export function FCamera() {
     ctx.fillRect(40, 150, 170, 60);
     ctx.fillStyle = '#6f8a7a';
     ctx.fillRect(300, 60, 120, 90);
-    // vùng riêng tư bị che ngay trên luồng từ nhà
     ctx.fillStyle = '#18382D';
     ctx.fillRect(30, 120, 200, 100);
     ctx.fillRect(420, 40, 60, 170);

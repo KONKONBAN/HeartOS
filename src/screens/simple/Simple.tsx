@@ -319,7 +319,7 @@ export function SStory() {
               <PlayCircle size={26} color="#244C3E" />
               <div style={{ flex: 1 }}>
                 <b style={{ fontSize: 17 }}>Lời kể đã lưu</b>
-                <div className="muted">{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}` : '—'} · Tiếng Việt</div>
+                <div className="muted">{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}` : '-'} · Tiếng Việt</div>
               </div>
             </div>
             {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 10 }} /> : (

@@ -1,9 +1,3 @@
-/**
- * Mô hình trạng thái sự cố (Hình 3.3, §3.9, §4.5).
- * Trạng thái nguồn ngẫu nhiên được TÁCH khỏi trạng thái xâm nhập: nguồn suy giảm không phải bằng chứng xâm nhập.
- *
- *   Bình thường → Nghi vấn xâm nhập → Đủ điều kiện cô lập → Đã cô lập → Phục hồi có kiểm soát → Bình thường
- */
 import type { JsonStore } from '../storage';
 
 export type SecurityState = 'normal' | 'suspected' | 'isolation_ready' | 'isolated' | 'recovering';
@@ -33,7 +27,7 @@ export const SECURITY_STATE_HINT: Record<SecurityState, string> = {
   suspected: 'Đối chiếu tín hiệu từ nguồn độc lập; hạn chế phiên nghi vấn; chặn xuất hàng loạt theo chính sách đã kiểm thử.',
   isolation_ready: 'Rule có chứng cứ hỗ trợ hoặc quyết định của người trực. Sẵn sàng thu hồi quyền mở khóa và chặn egress.',
   isolated: 'Đã thu hồi quyền mở khóa liên quan (tăng epoch), chặn phiên và khóa đường đọc trong két.',
-  recovering: 'Máy sạch, quyền mới, phạm vi lộ đã đánh giá. Người có thẩm quyền duyệt mở lại — không mở chỉ vì AI đánh giá an toàn.',
+  recovering: 'Máy sạch, quyền mới, phạm vi lộ đã đánh giá. Người có thẩm quyền duyệt mở lại, không mở chỉ vì AI đánh giá an toàn.',
 };
 
 export const SOURCE_STATE_LABEL: Record<SourceState, string> = {
@@ -91,7 +85,6 @@ export class IncidentMachine {
     this.persist();
   }
 
-  /** Tín hiệu từ rule/người/AI. Rule tự đưa hệ thống sang "Nghi vấn" và chặn xuất hàng loạt. */
   signal(s: Omit<Signal, 'id' | 'at'>): Signal {
     const sig: Signal = { ...s, id: `sig-${String(this.m.signals.length + 1).padStart(3, '0')}`, at: this.now() };
     this.m.signals.push(sig);
@@ -107,7 +100,6 @@ export class IncidentMachine {
     this.persist();
   }
 
-  /** Đủ điều kiện cô lập: ≥2 loại tín hiệu độc lập (rule) hoặc quyết định của người trực. */
   markIsolationReady(by: { id: string; isAI?: boolean; human: boolean }, reason: string): TransitionResult {
     if (this.m.state !== 'suspected') return { ok: false, reason: 'Chỉ chuyển từ trạng thái Nghi vấn.' };
     const kinds = new Set(this.m.signals.filter((s) => s.at >= (this.m.history.at(-1)?.at ?? 0) - 3600_000).map((s) => s.kind));
@@ -159,7 +151,6 @@ export class IncidentMachine {
     return { ok: true };
   }
 
-  /** Trạng thái nguồn tách riêng — không bao giờ tự đẩy trạng thái xâm nhập. */
   setSource(s: SourceState) {
     this.m.source = s;
     this.persist();

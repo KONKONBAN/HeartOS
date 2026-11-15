@@ -55,7 +55,7 @@ describe('GenAI local draft', () => {
 
 describe('recurrence', () => {
   it('finds next Sunday 19:00 and last Sunday of month', () => {
-    const from = new Date(2026, 10, 14, 18, 42); // Thứ bảy 14/11/2026
+    const from = new Date(2026, 10, 14, 18, 42);
     const w = nextOccurrence({ freq: 'weekly', weekday: 0, time: '19:00' }, from);
     expect([w.getDate(), w.getHours()]).toEqual([15, 19]);
     const m = nextOccurrence({ freq: 'monthly-last', weekday: 0, time: '19:00' }, from);

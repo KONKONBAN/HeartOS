@@ -8,7 +8,7 @@ const FAMILY_TABS = [
   { to: '/f/rhythm', label: 'Nhịp Nhà', icon: CalendarDays, match: ['/f/rhythm', '/f/calendar', '/f/draft', '/f/compose', '/f/queued', '/f/rituals', '/f/ritual', '/f/ritual-new'] },
   { to: '/f/memories', label: 'Ký ức', icon: Image, match: ['/f/memories', '/f/memory', '/f/memory-new', '/f/memory-review'] },
   { to: '/f/safe', label: 'An toàn', icon: ShieldCheck, match: ['/f/safe', '/f/incidents', '/f/incident', '/f/assign', '/f/routes', '/f/route', '/f/map', '/f/camera', '/f/devices', '/f/pair', '/f/power', '/f/smart', '/f/scenes', '/f/automations', '/f/sos', '/f/offline', '/f/guardian', '/f/simulate'] },
-  { to: '/f/more', label: 'Thêm', icon: Ellipsis, match: ['/f/more', '/f/members', '/f/member', '/f/permissions', '/f/revoke', '/f/sync', '/f/sentinel', '/f/security-log', '/f/settings'] },
+  { to: '/f/more', label: 'Thêm', icon: Ellipsis, match: ['/f/more', '/f/members', '/f/member', '/f/permissions', '/f/revoke', '/f/sync', '/f/sentinel', '/f/security-log', '/f/settings', '/f/hub'] },
 ];
 
 const SIMPLE_TABS = [

@@ -1,8 +1,3 @@
-/**
- * G — Dịch vụ cấp quyền (§3.7). Xác định quyền từ nguồn thuộc tính chuẩn (Directory),
- * không tin vai trò/tenant do ứng dụng tự khai; ký grant gắn chủ thể, tenant, đối tượng, phiên bản,
- * trường, thao tác, đích nhận, thời hạn, nonce, hạn mức và epoch.
- */
 import { exportPub, genSigningKey, signObject } from './crypto';
 import { randomId } from './encoding';
 import type { StateService } from './state';
@@ -10,7 +5,6 @@ import type { DirectoryEntry, Grant, ObjectMeta, Operation, SignedGrant } from '
 
 export interface GrantRequest {
   subject: string;
-  /** Vai trò do ứng dụng tự khai — G bỏ qua, chỉ ghi nhận để phát hiện bất thường (T2). */
   claimedRole?: string;
   claimedTenant?: string;
   workload: string;
@@ -21,7 +15,6 @@ export interface GrantRequest {
   recipient: string;
   sessionId: string;
   destination: string;
-  /** Bằng chứng xác minh bổ sung cho thao tác nhạy cảm (khóa phê duyệt trên thiết bị). */
   stepUp?: { approvalId: string; verified: boolean };
 }
 
@@ -65,14 +58,12 @@ export class GrantService {
     return this;
   }
 
-  /** PDP: quyết định theo chính sách và ngữ cảnh. */
   decide(req: GrantRequest, meta: ObjectMeta | undefined): GrantOutcome | { ok: true; meta: ObjectMeta; subject: DirectoryEntry; fields: string[] } {
     const subject = this.directory.get(req.subject);
     if (!subject || subject.disabled) return { ok: false, code: 'unauthenticated', reason: 'Chủ thể không có trong nguồn thuộc tính hoặc đã bị vô hiệu.' };
     if (subject.expiresAt && subject.expiresAt < this.now()) return { ok: false, code: 'expired', reason: 'Quyền theo ca của chủ thể đã hết hạn.' };
     if (!meta) return { ok: false, code: 'unknown', reason: 'Đối tượng không tồn tại trong két.' };
-    if (meta.canary) return { ok: false, code: 'canary', reason: 'Đối tượng mồi (canary) — mọi yêu cầu là tín hiệu nghi vấn.' };
-    // I1: tenant lấy từ nguồn chuẩn; tenant tự khai không có hiệu lực.
+    if (meta.canary) return { ok: false, code: 'canary', reason: 'Đối tượng mồi (canary), mọi yêu cầu là tín hiệu nghi vấn.' };
     if (subject.tenant !== meta.tenant) return { ok: false, code: 'tenant', reason: `Không đọc chéo tenant (${subject.tenant} ≠ ${meta.tenant}).` };
     if (meta.expiresAt && meta.expiresAt < this.now()) return { ok: false, code: 'expired', reason: 'Quyền lưu giữ của đối tượng đã hết hạn.' };
 
@@ -131,9 +122,6 @@ export class GrantService {
     return { ok: true, signed: { grant, sig: await signObject(this.keys.privateKey, grant) } };
   }
 
-  /**
-   * Cấp grant cho đối tượng mới (ghi). Đối tượng chưa tồn tại nên G kiểm tra quyền ghi theo vai trò.
-   */
   async issueForNewObject(req: GrantRequest, meta: ObjectMeta, budgetBytes: number): Promise<GrantOutcome> {
     const subject = this.directory.get(req.subject);
     if (!subject || subject.disabled) return { ok: false, code: 'unauthenticated', reason: 'Chủ thể không xác thực.' };

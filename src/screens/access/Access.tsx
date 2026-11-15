@@ -1,4 +1,4 @@
-import { Bell, Camera, Check, ClipboardCopy, Cpu, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, LogOut, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
+import { Bell, Camera, Monitor, Check, ClipboardCopy, Cpu, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, LogOut, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
@@ -27,6 +27,7 @@ export function FMore() {
       <Row icon={<Users size={18} />} title="Thành viên và vai trò" meta="Quản lý hộ theo quyền của bạn" to="/f/members" />
       <Row icon={<KeyRound size={18} />} title="Quyền chia sẻ" meta="Lịch, ký ức, camera và hỗ trợ" to="/f/permissions" />
       <Row icon={<ShieldCheck size={18} />} title="Bảo mật Sentinel" meta={`Phiên, thiết bị tin cậy, sự kiện · ${SECURITY_STATE_LABEL[s.incident.view().state]}`} to="/f/sentinel" />
+      <Row icon={<Monitor size={18} />} title="Máy quản trị Sentinel" meta="Ghép với phần mềm quản trị trên máy tính" to="/f/hub" />
       <Row icon={<Languages size={18} />} title="Ngôn ngữ và giọng đọc" meta="Giao diện, trợ lý và người nhận" to="/f/language" />
       <Row icon={<Sun size={18} />} title="Đổi cách hiển thị" meta="Gia Đình / Thân Quen" to="/mode" />
       <Row icon={<Sparkles size={18} />} tileTone="sand" title="Cài đặt ứng dụng" meta="GenAI, thông báo, dùng với tư cách, dữ liệu mẫu" to="/f/settings" />
@@ -173,7 +174,7 @@ export function FSync() {
             icon={d.deviceId === 'dev-hub' ? <Cpu size={18} /> : <Smartphone size={18} />}
             tileTone={d.status === 'applied' ? undefined : 'sand'}
             title={dev.name}
-            meta={d.status === 'applied' ? `Đã áp dụng phiên bản ${job.version}${d.at ? ' · ' + hhmm(d.at) : ''}` : dev.online ? 'Đang áp dụng…' : `Ngoại tuyến · Hạn quyền cũ ${d.oldExpiry ? hhmm(d.oldExpiry) : '—'}`}
+            meta={d.status === 'applied' ? `Đã áp dụng phiên bản ${job.version}${d.at ? ' · ' + hhmm(d.at) : ''}` : dev.online ? 'Đang áp dụng…' : `Ngoại tuyến · Hạn quyền cũ ${d.oldExpiry ? hhmm(d.oldExpiry) : '-'}`}
             badge={<Badge tone={d.status === 'applied' ? undefined : 'warm'}>{d.status === 'applied' ? 'Đã áp dụng' : 'Chờ xác nhận'}</Badge>}
             chevron={false}
             right={d.deviceId !== 'dev-hub' && d.status !== 'applied' ? <Switch label={`${dev.name} trực tuyến`} checked={dev.online} onChange={(v) => setSyncDeviceOnline(dev.id, v)} /> : undefined}
@@ -213,8 +214,9 @@ export function FSentinel() {
       <div className="card">
         <h3>Chuỗi bằng chứng</h3>
         <p>{s.journal.all().length} sự kiện nối chuỗi SHA-256. {verify}</p>
-        <button className="btn sm secondary" style={{ marginTop: 8 }} onClick={() => void s.journal.verify().then((r) => setVerify(r.ok ? `✓ Kiểm ${r.checked} sự kiện: nguyên vẹn.` : `✗ Hỏng tại sự kiện #${r.brokenAt}.`))}>Kiểm tra toàn vẹn</button>
+        <button className="btn sm secondary" style={{ marginTop: 8 }} onClick={() => void s.journal.verify().then((r) => setVerify(r.ok ? `Kiểm ${r.checked} sự kiện: nguyên vẹn.` : `Hỏng tại sự kiện #${r.brokenAt}.`))}>Kiểm tra toàn vẹn</button>
       </div>
+      <Link to="/f/hub" className="btn secondary"><Monitor size={18} /> Máy quản trị Sentinel</Link>
       <Link to="/ops/live" className="btn"><LayoutDashboard size={18} /> Mở bàn vận hành</Link>
     </Phone>
   );
@@ -245,20 +247,20 @@ export function FSettings() {
   const actAs = useApp((s) => s.actAs);
   const [key, setKey] = useState(prefs.claudeKey);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState('');
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   useEffect(() => {
     setKey(prefs.claudeKey);
   }, [prefs.claudeKey]);
   const test = async () => {
     setTesting(true);
-    setTestResult('');
+    setTestResult(null);
     const r = await draftInvitation(
       { occasion: 'Bữa cơm cùng nhà', slot: { start: 1140, end: 1200 }, tz: 'GMT+7', host: 'An', hostSelf: 'con', place: 'nhà An', tone: 'warm', recipients: [{ id: 'u-lan', name: 'Bà Lan', address: 'mẹ', lang: 'vi' }, { id: 'u-linh', name: 'Linh', address: 'em', lang: 'en' }] },
       { apiKey: key, model: prefs.claudeModel },
     );
     setTesting(false);
-    setTestResult(r.provider === 'claude' ? `✓ ${r.model} · ${r.ms} ms · ${r.draft.messages.map((m) => m.text).join(' | ')}` : `✗ ${r.fellBack}`);
+    setTestResult(r.provider === 'claude' ? { ok: true, text: `${r.model} · ${r.ms} ms · ${r.draft.messages.map((m) => m.text).join(' | ')}` } : { ok: false, text: r.fellBack ?? 'Không gọi được Claude' });
   };
   return (
     <Phone tabs>
@@ -288,7 +290,7 @@ export function FSettings() {
           <button className="btn sm secondary" disabled={!key.trim() || testing} onClick={() => { set((s) => void (s.prefs.claudeKey = key.trim())); void test(); }}>{testing ? 'Đang thử…' : 'Thử soạn một lời mời'}</button>
           {prefs.claudeKey && <button className="btn sm ghost" onClick={() => { set((s) => { s.prefs.claudeKey = ''; s.prefs.claudeEnabled = false; }); setKey(''); }}><Trash2 size={14} /> Xóa khóa</button>}
         </div>
-        {testResult && <p className="small" style={{ color: testResult.startsWith('✓') ? '#244C3E' : '#9E3830' }}>{testResult}</p>}
+        {testResult && <p className="small" style={{ color: testResult.ok ? '#244C3E' : '#9E3830' }}>{testResult.ok ? 'Claude trả lời: ' : 'Chưa dùng được Claude: '}{testResult.text}</p>}
         <p className="small muted">Bản nháp luôn qua kiểm schema và dữ kiện; nếu chưa đạt sẽ dùng mẫu sẵn. Yêu cầu bật dự phòng phía máy chủ (fallbacks) khi mô hình từ chối.</p>
       </div>
       <Row

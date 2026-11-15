@@ -15,7 +15,7 @@ export function Logo({ size = 36 }: { size?: number }) {
 export function Brand({ to }: { to?: string }) {
   const nav = useNavigate();
   return (
-    <button className="brand" type="button" onClick={() => to && nav(to)} aria-label="HeartOS — về trang nhà">
+    <button className="brand" type="button" onClick={() => to && nav(to)} aria-label="HeartOS, về trang nhà">
       <Logo />
       HeartOS
     </button>
@@ -179,7 +179,6 @@ export function Toasts() {
   );
 }
 
-/** Hộp xác nhận kiểu Protected Confirmation: chỉ nội dung hiển thị được ký. */
 export function ApprovalSheet() {
   const a = useUi((s) => s.approval);
   if (!a) return null;

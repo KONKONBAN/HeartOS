@@ -1,7 +1,3 @@
-/**
- * Luồng nghiệp vụ nối kho gia đình với Sentinel và hub.
- * Mọi dữ liệu được bảo vệ đọc qua sentinel.read (grant → chứng thực → cổng cấp khóa → Ve).
- */
 import { commonSlots, fmtSlot, type MemberWindows, type Slot } from '../core/family/calendar';
 import { draftInvitation, parseIntent, type InviteFacts } from '../core/family/genai';
 import { buf, fromB64, randomId, toB64 } from '../core/sentinel/encoding';
@@ -17,7 +13,6 @@ export const MEMORY_TEXT: Record<string, { transcript: string; caption: string }
   'm-sunday': { transcript: 'Bữa cơm Chủ nhật tháng trước, Minh lần đầu tự rán trứng cho cả nhà.', caption: 'Ảnh được chia sẻ với nhà An' },
 };
 
-/** Khởi động dịch vụ và gieo đối tượng được bảo vệ ở lần chạy đầu (hoặc khi KEK được tạo lại). */
 export async function bootstrap() {
   const app = getApp();
   await initServices(app.members);
@@ -26,7 +21,7 @@ export async function bootstrap() {
   if (needsSeed) {
     if (s.H.freshlyCreated && s.vault.list().length) {
       s.vault.replaceAll([]);
-      await s.log({ kind: 'note', actor: 'K', severity: 'warning', summary: 'KEK mới được tạo (kho khóa thiết bị trống) — gieo lại dữ liệu mẫu được bảo vệ' });
+      await s.log({ kind: 'note', actor: 'K', severity: 'warning', summary: 'KEK mới được tạo (kho khóa thiết bị trống), gieo lại dữ liệu mẫu được bảo vệ' });
     }
     for (const c of app.calendars) {
       await s.protect({ subject: c.memberId, objectId: `cal-${c.memberId}`, type: 'calendar.freebusy', label: `Lịch rảnh/bận của ${memberName(c.memberId)}`, data: { windows: c.windows, quietFrom: c.quietFrom, tz: 'GMT+7' }, viewers: c.viewers, purposes: ['rhythm.intersect'] });
@@ -44,8 +39,6 @@ export async function bootstrap() {
   }
 }
 
-// ---------- Nhịp Nhà ----------
-
 export interface RhythmResult {
   slot: Slot | null;
   readable: { memberId: string; windows: { start: string; end: string }[] }[];
@@ -54,7 +47,6 @@ export interface RhythmResult {
   traces: TraceStep[][];
 }
 
-/** Đọc lịch rảnh/bận được chia sẻ qua Sentinel (chủ thể = người tổ chức) rồi tính khung chung. */
 export async function computeRhythm(hostId: string, participants: string[]): Promise<RhythmResult> {
   const s = getSentinel();
   const readable: RhythmResult['readable'] = [];
@@ -108,7 +100,7 @@ export async function createInvitation(p: { hostId: string; occasion: string; re
   set((s) => {
     s.invitations.unshift(inv);
   });
-  await getSentinel().log({ kind: 'note', actor: 'AI', summary: `GenAI soạn bản nháp "${p.occasion}" ${fmtSlot(rhythm.slot)} cho ${namesOf(p.recipients)} — chờ duyệt`, data: { provider: result.provider, checks: result.checks.filter((c) => c.ok).length + '/' + result.checks.length } });
+  await getSentinel().log({ kind: 'note', actor: 'AI', summary: `GenAI soạn bản nháp "${p.occasion}" ${fmtSlot(rhythm.slot)} cho ${namesOf(p.recipients)}, chờ duyệt`, data: { provider: result.provider, checks: result.checks.filter((c) => c.ok).length + '/' + result.checks.length } });
   return { ok: true, id, rhythm };
 }
 
@@ -131,7 +123,6 @@ export function setInvitationRecipientLang(id: string, recipientId: string, lang
   });
 }
 
-/** Duyệt bằng khóa phê duyệt trên thiết bị, xếp hàng gửi; phát hành sẽ kiểm lại quyền hiện hành. */
 export async function approveInvitation(id: string, by: string) {
   const inv = getApp().invitations.find((i) => i.id === id);
   if (!inv) return;
@@ -147,7 +138,6 @@ export async function approveInvitation(id: string, by: string) {
   });
 }
 
-/** Phát hành: kiểm lại quyền đọc lịch của từng người nhận theo epoch hiện hành (I4). */
 export async function releaseInvitation(id: string): Promise<{ ok: boolean; reason?: string }> {
   const inv = getApp().invitations.find((i) => i.id === id);
   if (!inv || inv.status !== 'queued') return { ok: false, reason: 'Lời mời không ở hàng đợi.' };
@@ -197,7 +187,6 @@ export function setInvitationStatus(id: string, status: Invitation['status']) {
   });
 }
 
-/** Cập nhật khoảng rảnh của mình → bản mới trong két (phiên bản +1). */
 export async function saveMyWindows(memberId: string, windows: { start: string; end: string }[]) {
   const s = getSentinel();
   const cal = getApp().calendars.find((c) => c.memberId === memberId);
@@ -210,8 +199,6 @@ export async function saveMyWindows(memberId: string, windows: { start: string; 
     c.version = version;
   });
 }
-
-// ---------- Quyền chia sẻ & đồng bộ thiết bị ----------
 
 export async function revokePermission(permId: string, by: string, reason = 'Người sở hữu thu hồi') {
   const app = getApp();
@@ -267,7 +254,6 @@ export async function regrantPermission(permId: string, by: string) {
   await s.log({ kind: 'policy.change', actor: 'G', summary: `${memberName(by)} cấp lại quyền ${p.title.toLowerCase()}` });
 }
 
-/** Thiết bị trực tuyến xác nhận áp dụng phiên bản quyền mới. */
 export function tickSync() {
   const app = getApp();
   const now = Date.now();
@@ -294,8 +280,6 @@ export function setSyncDeviceOnline(id: string, online: boolean) {
   });
 }
 
-// ---------- Ký ức ----------
-
 async function sealBlob(bytes: ArrayBuffer) {
   const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -308,10 +292,6 @@ async function openBlob(rawKey: string, iv: string, ct: ArrayBuffer) {
   return crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf(fromB64(iv)) }, key, ct);
 }
 
-/**
- * Thêm ký ức: bản ghi âm được mã hóa phong bì (khóa AES riêng mỗi bản, khóa đó nằm trong đối tượng được Sentinel bảo vệ),
- * lời chép và metadata được Sentinel mã hóa; quyền bản dẫn xuất tối đa bằng bản gốc.
- */
 export async function addMemory(p: { by: string; title: string; kind: Memory['kind']; transcript: string; caption: string; image?: string; audio?: Blob; durationSec?: number; viewers: string[]; ritualId?: string; derivedAllowed: boolean; retention: string; share: boolean }) {
   const id = randomId('m', 4);
   const objectId = `mem-${id}`;
@@ -361,8 +341,6 @@ export async function setMemoryViewers(memId: string, viewers: string[], by: str
   });
 }
 
-// ---------- Quỹ ----------
-
 export async function addContribution(goalId: string, amount: number, by: string, visibleTo: string[]) {
   const id = randomId('c', 4);
   const objectId = `fund-${id}`;
@@ -379,8 +357,6 @@ export async function readContribution(id: string, subject: string): Promise<Rea
   if (!c) return { ok: false, error: 'Không có khoản', trace: [] };
   return getSentinel().read<{ amount: number; note: string; by: string }>({ subject, objectId: c.objectId, purpose: 'fund.view' });
 }
-
-// ---------- Camera ----------
 
 export async function startCamera(deviceId: string, subject: string) {
   const r = await getSentinel().read<{ maxSessionSec: number; masks: string }>({ subject, objectId: 'cam-living', purpose: 'camera.view', fields: ['maxSessionSec', 'masks'] });
@@ -401,10 +377,8 @@ export async function endCamera(id: string, reason = 'Người xem kết thúc p
       c.endedAt = Date.now();
     }
   });
-  await getSentinel().log({ kind: 'session', actor: 'Ve', summary: `Đóng phiên xem camera ${id}: ${reason} — đầu phát xác nhận` });
+  await getSentinel().log({ kind: 'session', actor: 'Ve', summary: `Đóng phiên xem camera ${id}: ${reason}, đầu phát xác nhận` });
 }
-
-// ---------- Thành viên ----------
 
 export async function changeRole(memberId: string, role: Member['role'], by: string) {
   const me = getApp().members.find((m) => m.id === by);
@@ -425,8 +399,6 @@ export function newInviteCode() {
   const part = () => randomId('', 2).slice(1).toUpperCase();
   return `NHA-AN-${part()}${part()}`;
 }
-
-// ---------- Trợ lý ----------
 
 export async function assistantSend(text: string, by: string) {
   const at = Date.now();
@@ -464,8 +436,6 @@ export async function assistantSend(text: string, by: string) {
   });
 }
 
-// ---------- SOS ----------
-
 export function sendSOS(byId: string, room: 'living' | 'bedroom' = 'living') {
   const by = getApp().members.find((m) => m.id === byId)!;
   return getHome().sos({ id: by.id, name: by.name, role: by.role }, room);
@@ -482,7 +452,6 @@ export async function resetEverything() {
   await bootstrap();
 }
 
-/** Bật/tắt chia sẻ lịch rảnh/bận của chính mình (tắt = thu hồi, tăng epoch). */
 export async function setCalendarShared(memberId: string, shared: boolean) {
   const s = getSentinel();
   const objectId = `cal-${memberId}`;
@@ -506,7 +475,6 @@ export async function setCalendarShared(memberId: string, shared: boolean) {
   });
 }
 
-/** Ghi nhận phê duyệt đã ký trên thiết bị (từ hộp xác nhận) và xếp hàng gửi. */
 export function markInvitationApproved(id: string, by: string, approval: { id: string; epoch: number }) {
   set((s) => {
     const x = s.invitations.find((i) => i.id === id);
@@ -520,7 +488,6 @@ export function markInvitationApproved(id: string, by: string, approval: { id: s
   });
 }
 
-/** Tạo lại bản nháp với giọng điệu khác cho cùng dữ kiện. */
 export async function regenerateInvitation(id: string, tone: 'warm' | 'short' | 'formal') {
   const inv = getApp().invitations.find((i) => i.id === id);
   if (!inv) return;

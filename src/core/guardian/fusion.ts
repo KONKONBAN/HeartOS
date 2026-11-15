@@ -1,13 +1,7 @@
-/**
- * Guardian — ghép radar và ảnh nhiệt theo cặp vùng để phát hiện "nghi ngã".
- * Nguyên tắc: tín hiệu chỉ là quan sát; chưa đủ bằng chứng thì giữ trạng thái "đang xác minh",
- * không tự kết luận và không tự gọi dịch vụ khẩn cấp.
- */
 import type { Blob } from '../smarthome/sensors';
 import type { RadarTarget } from '../smarthome/types';
 
 export interface FusionInput {
-  /** Lịch sử tốc độ mục tiêu radar (cm/s) trong ~10 giây gần nhất, mới nhất ở cuối. */
   speedHistory: number[];
   stillSeconds: number;
   blob: Blob | null;
@@ -34,7 +28,7 @@ export function fuse(inp: FusionInput): FusionResult {
   const cues = [
     { name: 'Radar: tăng tốc đột ngột rồi đứng yên', value: `đỉnh ${peak} cm/s`, weight: 0.35, hit: radarDrop },
     { name: 'Nhiệt: vệt nằm ngang', value: inp.blob ? `tỉ lệ ${inp.blob.aspect.toFixed(2)}` : 'không thấy vệt', weight: 0.35, hit: lying },
-    { name: 'Nhiệt: vệt thấp trong khung', value: inp.blob ? `tâm y ${inp.blob.centroidY.toFixed(1)}/${inp.frameHeight}` : '—', weight: 0.15, hit: low },
+    { name: 'Nhiệt: vệt thấp trong khung', value: inp.blob ? `tâm y ${inp.blob.centroidY.toFixed(1)}/${inp.frameHeight}` : '-', weight: 0.15, hit: low },
     { name: 'Thời gian bất động', value: `${Math.round(inp.stillSeconds)} s`, weight: 0.15, hit: still >= 1 },
   ];
   const score = (radarDrop ? 0.35 : 0) + (lying ? 0.35 : 0) + (low ? 0.15 : 0) + 0.15 * still;

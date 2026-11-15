@@ -1,0 +1,68 @@
+{
+  "appId": "vn.heartos.sentinel.admin",
+  "productName": "HeartOS Sentinel Admin",
+  "copyright": "HeartOS",
+  "electronVersion": "45.3.2",
+  "directories": {
+    "app": "app",
+    "output": "release",
+    "buildResources": "build"
+  },
+  "files": [
+    "**/*"
+  ],
+  "asar": true,
+  "afterPack": "./after-pack.cjs",
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "build/icon.ico",
+    "signAndEditExecutable": false,
+    "artifactName": "HeartOS-Sentinel-Admin-${version}-win-x64.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "shortcutName": "HeartOS Sentinel Admin",
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
+    "artifactName": "HeartOS-Sentinel-Admin-Setup-${version}.${ext}"
+  },
+  "portable": {
+    "artifactName": "HeartOS-Sentinel-Admin-${version}-portable.exe"
+  },
+  "linux": {
+    "target": [
+      "AppImage",
+      "deb"
+    ],
+    "icon": "build/icon.png",
+    "category": "Utility",
+    "maintainer": "HeartOS <admin@heartos.local>",
+    "artifactName": "HeartOS-Sentinel-Admin-${version}-${arch}.${ext}"
+  },
+  "deb": {
+    "packageName": "heartos-sentinel-admin"
+  },
+  "mac": {
+    "target": [
+      "dmg"
+    ],
+    "icon": "build/icon.png",
+    "category": "public.app-category.utilities"
+  }
+}

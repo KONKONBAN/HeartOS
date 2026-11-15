@@ -1,12 +1,3 @@
-/**
- * HomeEngine — HeartOS Hub mô phỏng (xử lý và lưu tại nhà, chạy qua LAN).
- *  - Vòng đời lệnh: xếp hàng → gửi tới hub → chờ thiết bị xác nhận → đã xác nhận / hết hạn.
- *    Giao diện chỉ đổi trạng thái thiết bị khi thiết bị phản hồi (không hiển thị lạc quan).
- *  - Quyền điều khiển theo vai trò hộ và vùng được gán.
- *  - Cảnh, luật tự động, điện lưới/UPS/máy phát + ATS, mất Internet (chỉ còn LAN).
- *  - Guardian: radar LD2450 + nhiệt MLX90640, ghép theo vùng → ca "nghi ngã" cần xác minh.
- *  - SOS: báo tại nhà, kênh từ xa, người hỗ trợ nhận việc, so tuyến và chốt đích bàn giao.
- */
 import { fuse, type FusionResult } from '../guardian/fusion';
 import { FACILITIES, compareRoutes, seedEdges, type FloodState, type RoadEdge } from '../guardian/routes';
 import type { JsonStore } from '../storage';
@@ -137,7 +128,6 @@ export class HomeEngine {
     };
   }
 
-  // ---------- quan sát ----------
   subscribe(fn: () => void) {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -183,8 +173,6 @@ export class HomeEngine {
     this.s.notices.forEach((n) => (n.read = true));
     this.emit();
   }
-
-  // ---------- lệnh ----------
 
   canControl(d: Device, actor: Actor): { ok: boolean; reason?: string } {
     if (!d.paired) return { ok: false, reason: 'Thiết bị chưa ghép với hub.' };
@@ -258,10 +246,10 @@ export class HomeEngine {
           changed = true;
         } else if (!d.online && t - c.at > 60_000) {
           c.status = 'expired';
-          c.reason = 'Thiết bị không phản hồi trong 60 giây — lệnh hết hạn, trạng thái giữ nguyên.';
+          c.reason = 'Thiết bị không phản hồi trong 60 giây, lệnh hết hạn, trạng thái giữ nguyên.';
           changed = true;
         } else if (!d.online && !c.reason && t - c.at > 6000) {
-          c.reason = 'Thiết bị ngoại tuyến — lệnh vẫn chờ, sẽ áp dụng khi thiết bị phản hồi.';
+          c.reason = 'Thiết bị ngoại tuyến, lệnh vẫn chờ, sẽ áp dụng khi thiết bị phản hồi.';
           changed = true;
         }
       }
@@ -276,8 +264,6 @@ export class HomeEngine {
     this.audit('smarthome.command', `Chạy cảnh "${sc.name}" bởi ${actor.name}: ${out.filter((c) => c.status !== 'rejected').length}/${out.length} lệnh được nhận`);
     return out;
   }
-
-  // ---------- luật tự động ----------
 
   toggleRule(id: string) {
     const r = this.s.rules.find((x) => x.id === id);
@@ -302,7 +288,6 @@ export class HomeEngine {
     if (t.type === 'sensor' && ev.type === 'sensor') {
       if (t.event !== ev.event) return false;
       if (t.deviceId === ev.deviceId) return true;
-      // luật SOS/khói/nước áp cho mọi thiết bị cùng loại
       const td = this.device(t.deviceId);
       const ed = this.device(ev.deviceId);
       return !!td && !!ed && td.kind === ed.kind && ['sos', 'smoke', 'leak'].includes(td.kind);
@@ -354,8 +339,6 @@ export class HomeEngine {
     this.emit();
   }
 
-  // ---------- sự cố ----------
-
   private openIncident(kind: IncidentKind, priority: 'P1' | 'P2' | 'P3', room: RoomId, evidence?: Evidence): HomeIncident {
     const existing = this.s.incidents.find((i) => i.status !== 'closed' && i.kind === kind && i.room === room && this.now() - i.createdAt < 10 * 60_000);
     if (existing) {
@@ -375,7 +358,7 @@ export class HomeEngine {
       status: kind === 'fall' ? 'verifying' : 'open',
       steps: {
         local: isSos ? { state: 'done', at: t } : { state: 'todo' },
-        remote: isSos ? (this.s.net.internet ? { state: 'active', note: 'Đang chuyển tới nhà cung cấp' } : { state: 'unknown', note: 'Hub mất Internet — chưa rõ tình trạng gửi' }) : { state: 'todo' },
+        remote: isSos ? (this.s.net.internet ? { state: 'active', note: 'Đang chuyển tới nhà cung cấp' } : { state: 'unknown', note: 'Hub mất Internet, chưa rõ tình trạng gửi' }) : { state: 'todo' },
         helper: { state: isSos ? 'active' : 'todo' },
         handover: { state: 'todo' },
       },
@@ -386,7 +369,7 @@ export class HomeEngine {
       this.sendCommand('siren', 'set', { on: true }, SYSTEM, 'guardian');
       if (this.s.net.internet) this.s.timers.push({ at: t + 1200, kind: 'remote_ack', ref: id });
       if (this.s.simulateHelpers) this.s.timers.push({ at: t + 6000, kind: 'helper_ack', ref: id });
-      this.notify(inc.title, kind === 'sos' ? 'Đã phát báo tại nhà. Đang chuyển tới người thân trong danh sách hỗ trợ.' : 'Còi khói/CO kích hoạt — đã bật còi và đèn dẫn lối.', 'critical', `/f/incident/${id}`);
+      this.notify(inc.title, kind === 'sos' ? 'Đã phát báo tại nhà. Đang chuyển tới người thân trong danh sách hỗ trợ.' : 'Còi khói/CO kích hoạt, đã bật còi và đèn dẫn lối.', 'critical', `/f/incident/${id}`);
     } else if (kind === 'fall') {
       this.notify('Tín hiệu nghi ngã', `${this.room(room).name}: quan sát từ radar và nhiệt. Chưa đủ bằng chứng để kết luận.`, 'warning', `/f/incident/${id}`);
     } else {
@@ -422,7 +405,6 @@ export class HomeEngine {
     this.emit();
   }
 
-  /** Người dùng xác nhận tín hiệu nghi ngã: nâng thành P1 (cần hỗ trợ) hoặc đóng (không sao). */
   verifyFall(id: string, outcome: 'needs_help' | 'false_alarm', by: Actor) {
     const inc = this.incident(id);
     if (!inc) return;
@@ -483,8 +465,6 @@ export class HomeEngine {
       this.emit();
     }
   }
-
-  // ---------- ghép thiết bị ----------
 
   startPairing(code: string) {
     const t = this.now();
@@ -565,8 +545,6 @@ export class HomeEngine {
     }
   }
 
-  // ---------- mô phỏng ----------
-
   simulate(ev: SimEvent) {
     const t = this.now();
     const ev2 = (deviceId: string, event: 'open' | 'leak' | 'smoke' | 'motion' | 'sos'): Trigger => ({ type: 'sensor', deviceId, event });
@@ -616,12 +594,12 @@ export class HomeEngine {
       }
       case 'mains_lost':
         this.s.power = { ...this.s.power, mains: 'off', voltage: 0, ats: 'battery', generator: 'cranking', lastChange: t, nextAt: t + 8000, ups: { ...this.s.power.ups, charging: false } };
-        this.s.power.history.unshift({ at: t, text: 'Mất điện lưới — UPS cấp tải ưu tiên, máy phát khởi động' });
+        this.s.power.history.unshift({ at: t, text: 'Mất điện lưới, UPS cấp tải ưu tiên, máy phát khởi động' });
         this.fire({ type: 'power', event: 'mains_lost' }, 'hall');
         break;
       case 'mains_restored':
         this.s.power = { ...this.s.power, mains: 'on', voltage: 226, lastChange: t, nextAt: t + 6000 };
-        this.s.power.history.unshift({ at: t, text: 'Điện lưới trở lại — chờ ổn định trước khi ATS chuyển về' });
+        this.s.power.history.unshift({ at: t, text: 'Điện lưới trở lại, chờ ổn định trước khi ATS chuyển về' });
         this.fire({ type: 'power', event: 'mains_restored' }, 'hall');
         break;
       case 'internet_lost':
@@ -654,8 +632,6 @@ export class HomeEngine {
       d.lastSeen = this.now();
     }
   }
-
-  // ---------- vòng lặp ----------
 
   tick() {
     const t = this.now();
@@ -760,7 +736,7 @@ export class HomeEngine {
         p.generator = 'running';
         p.ats = 'generator';
         p.nextAt = undefined;
-        p.history.unshift({ at: t, text: 'Máy phát chạy ổn định — ATS chuyển sang máy phát' });
+        p.history.unshift({ at: t, text: 'Máy phát chạy ổn định, ATS chuyển sang máy phát' });
       } else if (p.mains === 'on' && p.ats !== 'mains') {
         p.ats = 'mains';
         p.generator = p.generator === 'standby' ? 'standby' : 'cooldown';
@@ -769,7 +745,7 @@ export class HomeEngine {
       } else if (p.generator === 'cooldown') {
         p.generator = 'standby';
         p.nextAt = undefined;
-        p.history.unshift({ at: t, text: 'Máy phát làm mát xong — về chế độ chờ' });
+        p.history.unshift({ at: t, text: 'Máy phát làm mát xong, về chế độ chờ' });
       }
       p.history = p.history.slice(0, 20);
     }

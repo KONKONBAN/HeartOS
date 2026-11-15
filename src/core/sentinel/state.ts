@@ -1,21 +1,9 @@
-/**
- * R — Dịch vụ trạng thái an ninh bền vững (Bảng 3.1, §3.10, A3, A9).
- *  - Epoch thu hồi theo tenant, chỉ tăng (I4, I9).
- *  - Mã chống dùng lại toàn cục (I3).
- *  - Token bucket B + rT và hạn mức L_rem; đặt chỗ nguyên tử (I3, K2).
- *  - Khởi động lại / phục hồi snapshot không hạ epoch, không hoàn ngân sách (I9).
- * JavaScript đơn luồng: mỗi phương thức đồng bộ dưới đây là một thao tác nguyên tử.
- */
 import type { JsonStore } from '../storage';
 
 export interface BucketConfig {
-  /** B — ngân sách burst (byte). */
   capacity: number;
-  /** r — tốc độ cấp hạn mức (byte/giây). */
   rate: number;
-  /** Hạn mức tổng trong cửa sổ (byte). */
   quota: number;
-  /** Độ dài cửa sổ hạn mức (ms). */
   windowMs: number;
 }
 
@@ -39,7 +27,6 @@ export interface RState {
   quotaRemaining: number;
   windowStart: number;
   reservations: Record<string, Reservation>;
-  /** Mốc cao nhất từng thấy — bảo toàn qua restart/rollback. */
   highWater: { epochs: Record<string, number>; consumed: number };
   locks: Record<string, boolean>;
   stats: { releasedBytes: number; denials: number; replays: number };
@@ -101,7 +88,6 @@ export class StateService {
     return Math.max(this.s.epochs[tenant] ?? this.s.initialEpoch ?? 42, this.s.highWater.epochs[tenant] ?? 0);
   }
 
-  /** Thu hồi: tăng epoch đơn điệu. Mọi grant cũ hơn mất hiệu lực tại cổng (I4). */
   bumpEpoch(tenant: string): number {
     const next = this.epoch(tenant) + 1;
     this.s.epochs[tenant] = next;
@@ -129,7 +115,6 @@ export class StateService {
       this.s.windowStart = t;
       this.s.quotaRemaining = b.quota;
     }
-    // dọn nonce hết hạn (giữ thêm 10 phút để chống phát lại sát hạn)
     for (const [n, exp] of Object.entries(this.s.usedNonces)) if (exp + 600_000 < t) delete this.s.usedNonces[n];
   }
 
@@ -137,10 +122,6 @@ export class StateService {
     return nonce in this.s.usedNonces;
   }
 
-  /**
-   * Kiểm tra chống dùng lại + đặt chỗ hạn mức trong cùng một bước nguyên tử (Bước 4, §3.6.4).
-   * Nonce bị tiêu thụ ngay cả khi ngân sách không đủ, để yêu cầu không thể thử lại cùng grant.
-   */
   checkAndReserve(tenant: string, nonce: string, bytes: number, nonceExpiresAt: number, reservationId: string): ReserveResult {
     this.refill();
     if (!Number.isFinite(bytes) || bytes <= 0) return { ok: false, reason: 'invalid', detail: 'Kích thước đặt chỗ không hợp lệ' };
@@ -176,7 +157,6 @@ export class StateService {
     return { ok: true, reservation, tokensLeft: b.tokens, quotaLeft: this.s.quotaRemaining };
   }
 
-  /** Đối chiếu số byte đã dùng; chỉ hoàn phần dư khi hoàn tất sạch (§3.6.4 Bước 7–8). */
   settle(reservationId: string, used: number, clean: boolean) {
     const r = this.s.reservations[reservationId];
     if (!r || r.status !== 'reserved') return;
@@ -184,14 +164,12 @@ export class StateService {
     this.s.stats.releasedBytes += r.used;
     if (clean && r.used < r.bytes) {
       const refund = r.bytes - r.used;
-      // Hoàn vào hạn mức cửa sổ, KHÔNG hoàn vào bucket burst — giữ cận B + rT bảo thủ.
       this.s.quotaRemaining = Math.min(this.s.bucket.quota, this.s.quotaRemaining + refund);
       r.status = 'refunded';
     } else r.status = 'settled';
     this.persist();
   }
 
-  /** Crash khi chưa biết lượng đã phát hành: quy tắc bảo thủ không hoàn ngân sách. */
   markUnknown(reservationId: string) {
     const r = this.s.reservations[reservationId];
     if (r && r.status === 'reserved') {
@@ -228,10 +206,6 @@ export class StateService {
     return JSON.parse(JSON.stringify(this.s));
   }
 
-  /**
-   * Phục hồi snapshot cũ theo I9/I10: epoch = max, nonce = hợp, ngân sách = min.
-   * Snapshot không phải nguồn quyền hiện hành.
-   */
   restoreSnapshot(old: RState) {
     this.refill();
     const cur = this.s;
@@ -250,7 +224,6 @@ export class StateService {
     this.persist();
   }
 
-  /** Mô phỏng khởi động lại tiến trình: nạp lại từ kho bền vững. */
   simulateRestart() {
     const saved = this.store.get<RState>(this.key);
     if (saved) this.s = saved;

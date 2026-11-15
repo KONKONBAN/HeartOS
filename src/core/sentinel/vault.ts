@@ -1,8 +1,3 @@
-/**
- * Core Vault — kho ciphertext, DEK bọc và metadata phiên bản (§3.6).
- * Host ngoài vùng chỉ thấy bản mã. ACL (người xem, mục đích) là nguồn quyền của PDP;
- * mọi thay đổi ACL đi qua quản trị chính sách và tăng epoch khi thu hồi.
- */
 import type { JsonStore } from '../storage';
 import { sha256Hex } from './encoding';
 import type { ObjectMeta, StoredObject } from './types';
@@ -37,7 +32,6 @@ export class CoreVault {
     return Object.values(this.objects).filter((o) => !tenant || o.meta.tenant === tenant);
   }
 
-  /** Xác nhận commit sau khi Ve trả bản mã; DEK bản rõ không có ở đây. */
   commit(obj: StoredObject) {
     this.objects[obj.meta.objectId] = obj;
     this.persist();
@@ -50,7 +44,6 @@ export class CoreVault {
     this.persist();
   }
 
-  /** Mô phỏng host sửa bản mã/metadata ngoài vùng (để thấy AEAD + AAD phát hiện). */
   tamper(objectId: string, kind: 'ciphertext' | 'swap-version') {
     const o = this.objects[objectId];
     if (!o) return;

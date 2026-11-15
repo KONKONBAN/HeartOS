@@ -1,8 +1,3 @@
-/**
- * Replay · Sandbox kịch bản F.8 (lời mời ăn cơm từ lịch đã chia sẻ).
- * Chạy trên một Sentinel riêng (bộ nhớ trong), đồng hồ và người nhận giả lập — không chạm dữ liệu Live.
- * Kỳ vọng được tính bằng "oracle" quét từng phút (thuật toán độc lập với commonSlots) để đối chiếu.
- */
 import { create } from 'zustand';
 import { commonSlots, fmtSlot, fromMin, toMin } from '../core/family/calendar';
 import { checkDraft, localDraft, type InviteFacts } from '../core/family/genai';
@@ -45,7 +40,6 @@ export interface ReplayResult {
 
 export const DEFAULT_FACTS: ReplayFacts = { aStart: '18:30', aEnd: '20:00', bStart: '19:00', bEnd: '20:30', quiet: '20:00', revokeBBeforeRelease: false };
 
-/** Oracle: quét từng phút, đánh dấu phút mà cả A và B đều rảnh và trước giờ yên tĩnh. */
 function oracle(f: ReplayFacts) {
   const free = (m: number, s: string, e: string) => m >= toMin(s) && m < toMin(e);
   let start = -1;
@@ -83,7 +77,7 @@ export async function runReplay(): Promise<ReplayResult> {
   const slot = res.best ? fmtSlot(res.best) : 'không có khung';
   let draftStatus = 'Không tạo';
   let released = 'Không phát hành';
-  let previewHash = '—';
+  let previewHash = '-';
   let draftOk = false;
   if (res.best) {
     const facts: InviteFacts = { occasion: 'Bữa cơm cùng nhà', slot: res.best, tz: 'GMT+7', host: 'A', hostSelf: 'con', place: 'nhà A', tone: 'warm', recipients: [{ id: 'B', name: 'B', address: 'mẹ', lang: 'vi' }] };
@@ -100,8 +94,8 @@ export async function runReplay(): Promise<ReplayResult> {
   const rows: ReplayRow[] = [
     { name: 'Giao lịch', expected: expectedSlot, observed: slot, match: expectedSlot === slot },
     { name: 'Bản nháp chờ người dùng duyệt (không tự gửi)', expected: res.best ? 'Chờ duyệt' : 'Không tạo', observed: draftStatus, match: draftStatus === (res.best ? 'Chờ duyệt' : 'Không tạo') },
-    { name: 'Bản nháp đạt kiểm dữ kiện', expected: res.best ? 'Đạt' : '—', observed: res.best ? (draftOk ? 'Đạt' : 'Không đạt') : '—', match: !res.best || draftOk },
-    { name: 'Quyền bị thu hồi chặn chuyển giao', expected: f.revokeBBeforeRelease ? 'Chặn' : 'Không chặn', observed: released === 'Đã chặn' ? 'Chặn' : res.best ? 'Không chặn' : '—', match: !res.best || (f.revokeBBeforeRelease ? released === 'Đã chặn' : released !== 'Đã chặn') },
+    { name: 'Bản nháp đạt kiểm dữ kiện', expected: res.best ? 'Đạt' : '-', observed: res.best ? (draftOk ? 'Đạt' : 'Không đạt') : '-', match: !res.best || draftOk },
+    { name: 'Quyền bị thu hồi chặn chuyển giao', expected: f.revokeBBeforeRelease ? 'Chặn' : 'Không chặn', observed: released === 'Đã chặn' ? 'Chặn' : res.best ? 'Không chặn' : '-', match: !res.best || (f.revokeBBeforeRelease ? released === 'Đã chặn' : released !== 'Đã chặn') },
     { name: 'Tác động ghi trong sandbox', expected: 'Tách biệt với Live', observed: liveAfter === liveBefore ? 'Tách biệt' : `Live +${liveAfter - liveBefore} sự kiện`, match: liveAfter === liveBefore },
   ];
   const n = useReplay.getState().results.length + 1;

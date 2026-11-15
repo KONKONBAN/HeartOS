@@ -1,10 +1,5 @@
-/**
- * Nhịp Nhà — tính giao các khoảng rảnh ĐÃ ĐƯỢC CHIA SẺ (rảnh/bận, không đọc nội dung lịch),
- * cắt theo giờ yên tĩnh và độ dài tối thiểu. Múi giờ hộ: GMT+7.
- */
-
 export interface Window {
-  start: string; // HH:MM
+  start: string;
   end: string;
 }
 
@@ -14,7 +9,7 @@ export interface MemberWindows {
 }
 
 export interface Slot {
-  start: number; // phút trong ngày
+  start: number;
   end: number;
 }
 
@@ -44,10 +39,6 @@ export interface IntersectResult {
   reason?: string;
 }
 
-/**
- * Giao khoảng rảnh của mọi người tham gia, cắt bởi giờ yên tĩnh (từ quietFrom tới hết ngày),
- * giữ khung ≥ minMinutes và chọn khung sớm nhất, giới hạn tối đa maxMinutes.
- */
 export function commonSlots(members: MemberWindows[], quietFrom = '20:00', minMinutes = 60, maxMinutes = 60): IntersectResult {
   if (members.length === 0) return { slots: [], best: null, reason: 'Chưa có ai chia sẻ khoảng rảnh.' };
   let acc: Slot[] = members[0].windows.map((w) => ({ start: toMin(w.start), end: toMin(w.end) }));

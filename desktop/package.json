@@ -1,0 +1,7 @@
+{
+  "name": "heartos-sentinel-admin-build",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cấu hình đóng gói HeartOS Sentinel Admin (Electron).",
+  "type": "module"
+}

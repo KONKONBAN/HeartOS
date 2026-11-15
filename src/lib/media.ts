@@ -1,4 +1,3 @@
-/** Giọng nói (Web Speech API), ghi âm (MediaRecorder), ảnh (nén bằng canvas) và thông báo hệ thống. */
 import { useEffect, useRef, useState } from 'react';
 
 export function speak(text: string, lang = 'vi-VN') {
@@ -33,7 +32,6 @@ interface Recog {
   onend: () => void;
 }
 
-/** Nhận dạng giọng nói: người dùng xem lại phần nhận dạng trước khi gửi cho trợ lý. */
 export function useSpeechInput(lang: string) {
   const [text, setText] = useState('');
   const [listening, setListening] = useState(false);
@@ -66,7 +64,6 @@ export function useSpeechInput(lang: string) {
   return { text, setText, listening, error, start, stop };
 }
 
-/** Ghi âm lời kể; người kể nghe lại trước khi chọn người nghe. */
 export function useRecorder() {
   const [state, setState] = useState<'idle' | 'recording' | 'done' | 'error'>('idle');
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -118,7 +115,6 @@ export function useRecorder() {
   return { state, blob, url, seconds, error, start, stop, reset };
 }
 
-/** Nén ảnh về cạnh dài ≤ 960 px (JPEG) để lưu trên thiết bị. */
 export function compressImage(file: File, max = 960): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -143,6 +139,6 @@ export async function systemNotify(title: string, body: string) {
     if (reg) await reg.showNotification(title, { body, icon: './icon-192.png', badge: './icon-192.png', tag: title });
     else new Notification(title, { body, icon: './icon-192.png' });
   } catch {
-    /* bỏ qua */
+    return;
   }
 }

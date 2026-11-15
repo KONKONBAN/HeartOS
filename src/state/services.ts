@@ -1,10 +1,6 @@
-/**
- * Dịch vụ dùng chung của ứng dụng: Sentinel (bảo vệ dữ liệu), HomeEngine (hub tại nhà),
- * khóa phê duyệt trên thiết bị (§3.8.2) và kho blob (ghi âm, ảnh).
- */
 import { useSyncExternalStore } from 'react';
 import { canonical, randomId, toB64 } from '../core/sentinel/encoding';
-import { exportPub, genSigningKey, signObject } from '../core/sentinel/crypto';
+import { exportPub, genSigningKey, signObject, verifyObject } from '../core/sentinel/crypto';
 import { Sentinel } from '../core/sentinel/sentinel';
 import type { DirectoryEntry } from '../core/sentinel/types';
 import { HomeEngine } from '../core/smarthome/engine';
@@ -58,14 +54,12 @@ export function getHome(): HomeEngine {
 
 export const servicesReady = () => !!sentinel && !!home;
 
-/** Hook: render lại khi Sentinel thay đổi. */
 export function useSentinel(): Sentinel {
   const s = getSentinel();
   useSyncExternalStore((cb) => s.subscribe(cb), () => s.version);
   return s;
 }
 
-/** Hook: render lại khi hub thay đổi. */
 export function useHome(): HomeEngine {
   const h = getHome();
   useSyncExternalStore((cb) => h.subscribe(cb), () => h.version);
@@ -84,10 +78,6 @@ export interface ApprovalRecord {
   at: number;
 }
 
-/**
- * Khóa phê duyệt trên thiết bị: ký đúng nội dung đã hiển thị, đích nhận, nonce, thời hạn và epoch.
- * Khóa riêng không xuất được, lưu trong IndexedDB của thiết bị.
- */
 export async function signApproval(content: string[], recipient: string): Promise<ApprovalRecord> {
   if (!approvalKey) throw new Error('Khóa phê duyệt chưa sẵn sàng');
   const s = getSentinel();
@@ -102,11 +92,25 @@ export function approvalPub() {
   return approvalKey?.pub ?? '';
 }
 
-// ---------- Passkey (WebAuthn) ----------
+async function platformAuthenticator(): Promise<boolean> {
+  try {
+    if (!window.PublicKeyCredential || !navigator.credentials?.create) return false;
+    return await Promise.race([PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(), new Promise<boolean>((r) => setTimeout(() => r(false), 1500))]);
+  } catch {
+    return false;
+  }
+}
+
+export async function deviceKeyAuth(): Promise<boolean> {
+  if (!approvalKey) return false;
+  const challenge = { purpose: 'sign-in', nonce: randomId('auth', 12), at: Date.now() };
+  const sig = await signObject(approvalKey.key.privateKey, challenge);
+  return verifyObject(approvalKey.key.publicKey, challenge, sig);
+}
 
 export async function createPasskey(email: string): Promise<{ id: string; kind: 'webauthn' | 'device-key' }> {
   try {
-    if (window.PublicKeyCredential && navigator.credentials?.create) {
+    if (await platformAuthenticator()) {
       const cred = (await navigator.credentials.create({
         publicKey: {
           challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -123,19 +127,19 @@ export async function createPasskey(email: string): Promise<{ id: string; kind: 
       if (cred) return { id: cred.id, kind: 'webauthn' };
     }
   } catch {
-    /* thiết bị không hỗ trợ hoặc người dùng hủy — dùng khóa thiết bị */
+    return { id: randomId('devkey', 8), kind: 'device-key' };
   }
   return { id: randomId('devkey', 8), kind: 'device-key' };
 }
 
-export async function verifyPasskey(): Promise<boolean> {
-  try {
-    if (window.PublicKeyCredential && navigator.credentials?.get) {
+export async function verifyPasskey(kind: 'webauthn' | 'device-key' | undefined): Promise<boolean> {
+  if (kind === 'webauthn' && (await platformAuthenticator())) {
+    try {
       const c = await navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), timeout: 60_000, userVerification: 'preferred' } });
       return !!c;
+    } catch {
+      return false;
     }
-  } catch {
-    return false;
   }
-  return false;
+  return deviceKeyAuth();
 }

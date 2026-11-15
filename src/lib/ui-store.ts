@@ -1,4 +1,3 @@
-/** Trạng thái giao diện tạm thời: thông báo nổi và hộp phê duyệt trên thiết bị. */
 import { create } from 'zustand';
 import { signApproval, type ApprovalRecord } from '../state/services';
 
@@ -30,10 +29,6 @@ export function toast(text: string, tone: Toast['tone'] = 'info', ms = 3600) {
   setTimeout(() => useUi.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), ms);
 }
 
-/**
- * Hiển thị chính xác nội dung sẽ được ký bằng khóa phê duyệt trên thiết bị (§3.8.2).
- * Chỉ nội dung hiển thị mới là nội dung được người dùng xác nhận.
- */
 export function requestApproval(title: string, lines: string[], recipient: string, danger = false): Promise<ApprovalRecord | null> {
   return new Promise((resolve) => {
     useUi.setState({

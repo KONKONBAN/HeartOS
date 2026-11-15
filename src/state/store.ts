@@ -1,8 +1,3 @@
-/**
- * Kho trạng thái gia đình (zustand + immer, lưu bền trên thiết bị).
- * Dữ liệu nhạy cảm (lời kể gốc, chi tiết khoản góp, lịch rảnh được chia sẻ, vị trí hỗ trợ)
- * nằm trong Core Vault của Sentinel dưới dạng bản mã; ở đây chỉ giữ metadata và tham chiếu.
- */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -42,7 +37,6 @@ export interface AppState {
   prefs: Prefs;
   chat: ChatMsg[];
   seededAt: number;
-  // ---- setters ----
   set: (fn: (s: AppState) => void) => void;
   setMode: (m: UiMode) => void;
   actAs: (id: string) => void;
@@ -141,7 +135,7 @@ export const useApp = create<AppState>()(
           s.session.householdId = null;
           s.session.mode = null;
         }),
-      resetAll: () => set(() => ({ ...seed() })),
+      resetAll: () => set((s) => ({ ...seed(), session: { ...s.session } })),
     })),
     {
       name: 'heartos-app',

@@ -1,8 +1,3 @@
-/**
- * J — Miền bằng chứng (§3.6, §3.12).
- * Nhật ký nối chuỗi băm SHA-256, root Merkle để neo ở nơi kiểm chứng độc lập.
- * Không ghi DEK, token, mật khẩu hoặc toàn bộ bản rõ; AI chỉ đọc bản giảm nhạy cảm.
- */
 import type { JsonStore } from '../storage';
 import { canonical, randomBytes, sha256Hex, toHex } from './encoding';
 import type { Actor } from './types';
@@ -93,7 +88,6 @@ export class Journal {
     return this.entries;
   }
 
-  /** Ghi sự kiện. Thứ tự được tuần tự hóa để chuỗi băm không bị rẽ nhánh. */
   append(input: JournalInput): Promise<JournalEntry> {
     const run = this.queue.then(() => this.doAppend(input));
     this.queue = run.catch(() => undefined);
@@ -123,7 +117,6 @@ export class Journal {
     const entry: JournalEntry = { ...body, hash };
     this.entries.push(entry);
     if (this.entries.length > this.cap) {
-      // Bản vận hành giữ cửa sổ gần nhất; mốc băm đầu cửa sổ vẫn kiểm được qua prevHash.
       this.entries = this.entries.slice(this.entries.length - this.cap);
     }
     this.store.set(this.key, this.entries);
@@ -131,7 +124,6 @@ export class Journal {
     return entry;
   }
 
-  /** Kiểm tra lại toàn bộ chuỗi; trả về vị trí hỏng đầu tiên nếu có. */
   async verify(): Promise<{ ok: boolean; checked: number; brokenAt?: number }> {
     for (let i = 0; i < this.entries.length; i++) {
       const e = this.entries[i];
@@ -142,7 +134,6 @@ export class Journal {
     return { ok: true, checked: this.entries.length };
   }
 
-  /** Root Merkle của các băm sự kiện — cam kết mật mã tối thiểu để neo (không chứa bản rõ). */
   async merkleRoot(): Promise<string> {
     let level = this.entries.map((e) => e.hash);
     if (level.length === 0) return GENESIS;
@@ -158,7 +149,6 @@ export class Journal {
     return level[0];
   }
 
-  /** Bản giảm nhạy cảm cho AI: định danh chủ thể được giả danh bằng HMAC-like salt cục bộ. */
   async redactedForAI(limit = 120) {
     const slice = this.entries.slice(-limit);
     const out = [];
@@ -179,7 +169,6 @@ export class Journal {
     return out;
   }
 
-  /** Mô phỏng sửa đổi trái phép một bản ghi (dùng trong phòng thí nghiệm để thấy verify() phát hiện). */
   tamperForDemo(seq: number, summary: string) {
     const e = this.entries.find((x) => x.seq === seq);
     if (e) {

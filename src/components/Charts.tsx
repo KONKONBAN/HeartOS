@@ -1,8 +1,3 @@
-/**
- * Biểu đồ SVG nội tuyến cho bàn vận hành.
- * Bảng màu đã kiểm bằng validator (xanh #2F8A60, cam #D8612A trên nền #FFFDFA); vì CVD ở ngưỡng sàn,
- * chuỗi thứ hai luôn có nét đứt + nhãn trực tiếp + chú giải (không phân biệt bằng màu đơn thuần).
- */
 import { useState } from 'react';
 
 export const SERIES = ['#2F8A60', '#D8612A'];
@@ -108,7 +103,6 @@ function niceStep(raw: number) {
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
 }
 
-/** Histogram một chuỗi (một sắc độ), đầu cột bo 4px, khe 2px, tooltip trên từng cột. */
 export function Histogram({ values, labels, height = 120, color = SERIES[0], title }: { values: number[]; labels: string[]; height?: number; color?: string; title: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 320;

@@ -1,6 +1,6 @@
 import { Activity, ArrowLeft, Beaker, Calculator, CircleDot, Clock, Download, FileText, FlaskConical, KeyRound, LayoutDashboard, LineChart as LineIcon, Lock, RefreshCw, ShieldAlert, ShieldCheck, Shuffle } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from '../../components/ui';
 import { fmtSlot } from '../../core/family/calendar';
 import { SECURITY_STATE_LABEL } from '../../core/sentinel/incident';
@@ -24,6 +24,10 @@ const NAV: { to: string; label: string; icon: ReactNode; grp?: string }[] = [
   { to: 'sources', label: 'Nguồn ngẫu nhiên', icon: <Shuffle size={16} /> },
   { to: 'incident', label: 'Sự cố & tác tử AI', icon: <ShieldAlert size={16} /> },
 ];
+
+export function useOpsBase() {
+  return useLocation().pathname.startsWith('/admin') ? '/admin' : '/ops';
+}
 
 export function OpsLayout() {
   const me = useMe();
@@ -106,6 +110,7 @@ export function OpsLive() {
   const s = useSentinel();
   const invitations = useApp((st) => st.invitations);
   const nav = useNavigate();
+  const base = useOpsBase();
   const open = home.openIncidents();
   const fresh = home.freshRooms();
   const stale = home.s.rooms.filter((r) => !fresh.includes(r));
@@ -131,13 +136,13 @@ export function OpsLive() {
         <div className="panel">
           <h2>Lời mời và thiết bị</h2>
           {invitations.slice(0, 3).map((i) => (
-            <Item key={i.id} t={i.occasion} m={`Nhịp Nhà · ${i.status === 'draft' ? 'Chờ người dùng duyệt' : i.status === 'queued' ? 'Đang chờ gửi' : i.status === 'blocked' ? 'Đã chặn — cần duyệt lại' : i.status === 'delivered' ? 'Đã chuyển giao' : i.status}`} right={<span className="badge line">{fmtSlot(i.slot).split('–')[0]}</span>} />
+            <Item key={i.id} t={i.occasion} m={`Nhịp Nhà · ${i.status === 'draft' ? 'Chờ người dùng duyệt' : i.status === 'queued' ? 'Đang chờ gửi' : i.status === 'blocked' ? 'Đã chặn, cần duyệt lại' : i.status === 'delivered' ? 'Đã chuyển giao' : i.status}`} right={<span className="badge line">{fmtSlot(i.slot).split('–')[0]}</span>} />
           ))}
           <Item t="Hub phòng khách" m={`LAN · ${home.s.net.internet ? 'Internet ổn định' : 'mất Internet'} · dữ liệu mới`} right={<span className="badge line">{hhmm(hub.lastSeen)}</span>} />
           <Item t="Lệnh thiết bị đang chờ" m={`${home.s.commands.filter((c) => ['queued', 'sent', 'awaiting'].includes(c.status)).length} lệnh · ${home.s.devices.filter((d) => !d.online).length} thiết bị ngoại tuyến`} />
         </div>
       </div>
-      <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav('/ops/audit')}>Xem nhật ký truy vết</button>
+      <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav(base + '/audit')}>Xem nhật ký truy vết</button>
     </>
   );
 }
@@ -145,6 +150,7 @@ export function OpsLive() {
 export function OpsReplay() {
   const { facts, running } = useReplay();
   const nav = useNavigate();
+  const base = useOpsBase();
   const set = (patch: Partial<typeof facts>) => useReplay.setState((s) => ({ facts: { ...s.facts, ...patch } }));
   const T = ({ k }: { k: keyof typeof facts }) => <input className="input" type="time" value={String(facts[k])} onChange={(e) => set({ [k]: e.target.value })} style={{ maxWidth: 130 }} />;
   return (
@@ -166,12 +172,12 @@ export function OpsReplay() {
         <div className="panel">
           <h2>Điểm kiểm</h2>
           <Item t="Tính giao lịch" m="Oracle quét từng phút, độc lập với thuật toán chính" right={<span className="badge">Kỳ vọng</span>} />
-          <Item t="Tạo bản nháp" m="Chờ người dùng duyệt — không tự gửi" right={<span className="badge">Kỳ vọng</span>} />
+          <Item t="Tạo bản nháp" m="Chờ người dùng duyệt, không tự gửi" right={<span className="badge">Kỳ vọng</span>} />
           <Item t="Kiểm quyền khi phát hành" m="Đọc lại lịch B qua cổng cấp khóa" right={<span className="badge">Kỳ vọng</span>} />
           <Item t="Tách biệt sandbox" m="Nhật ký Live không đổi trong lúc chạy" right={<span className="badge">Kỳ vọng</span>} />
         </div>
       </div>
-      <button className="btn" style={{ maxWidth: 260 }} disabled={running} onClick={() => void runReplay().then(() => nav('/ops/trace'))}>
+      <button className="btn" style={{ maxWidth: 260 }} disabled={running} onClick={() => void runReplay().then(() => nav(base + '/trace'))}>
         <Beaker size={18} /> {running ? 'Đang chạy…' : 'Chạy mô phỏng'}
       </button>
     </>
@@ -181,12 +187,13 @@ export function OpsReplay() {
 export function OpsTrace() {
   const { results } = useReplay();
   const nav = useNavigate();
+  const base = useOpsBase();
   const r = results[0];
   if (!r)
     return (
       <>
         <OpsHead crumb="VẬN HÀNH / REPLAY" badge="REPLAY · SANDBOX" title="Đối chiếu kết quả mô phỏng" sub="Chưa có lần chạy nào." />
-        <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav('/ops/replay')}>Về dữ liệu thử</button>
+        <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav(base + '/replay')}>Về dữ liệu thử</button>
       </>
     );
   const ok = r.rows.filter((x) => x.match).length;
@@ -207,7 +214,7 @@ export function OpsTrace() {
         </div>
         <div className="panel">
           <h2>Đích thử</h2>
-          <Item t="Adapter Replay" m="Tác động ghi trong sandbox — không phát hành tới người thật" right={<span className="badge">Tách biệt</span>} />
+          <Item t="Adapter Replay" m="Tác động ghi trong sandbox, không phát hành tới người thật" right={<span className="badge">Tách biệt</span>} />
           <Item t="Dấu bản xem trước" m={r.previewHash} right={<span className="badge">Đã ghi</span>} />
           <Item t="Nhật ký Live" m={`${r.liveEventsBefore} → ${r.liveEventsAfter} sự kiện trong lúc chạy`} />
           <h2 style={{ marginTop: 8 }}>Các lần chạy</h2>
@@ -216,7 +223,7 @@ export function OpsTrace() {
           ))}
         </div>
       </div>
-      <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav('/ops/replay')}>Về dữ liệu thử</button>
+      <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav(base + '/replay')}>Về dữ liệu thử</button>
     </>
   );
 }
@@ -245,7 +252,7 @@ export function OpsAudit() {
     <>
       <OpsHead crumb="VẬN HÀNH / NHẬT KÝ" badge="SENTINEL" title="Nhật ký và bằng chứng" sub="Nhà An · Phạm vi của người được cấp quyền" />
       <div className="ops-grid">
-        <Metric tint label="Mã ca" value={lastInc?.id ?? '—'} sub="Guardian" />
+        <Metric tint label="Mã ca" value={lastInc?.id ?? '-'} sub="Guardian" />
         <Metric label="Sự kiện trong chuỗi" value={s.journal.all().length} sub={verify || 'Chưa kiểm'} />
         <Metric label="Phiên bản quyền" value={s.epoch()} sub="Áp dụng theo thiết bị" />
       </div>
@@ -271,7 +278,7 @@ export function OpsAudit() {
             <option value="">Mọi loại</option>
             {['grant', 'gate', 'vault', 'policy', 'incident', 'ai', 'source', 'recovery', 'smarthome', 'guardian', 'approval', 'session'].map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          <button className="btn xs secondary" onClick={() => void s.journal.verify().then((r) => setVerify(r.ok ? `✓ nguyên vẹn (${r.checked})` : `✗ hỏng tại #${r.brokenAt}`))}><ShieldCheck size={14} /> Kiểm chuỗi</button>
+          <button className="btn xs secondary" onClick={() => void s.journal.verify().then((r) => setVerify(r.ok ? `Nguyên vẹn (${r.checked})` : `Hỏng tại #${r.brokenAt}`))}><ShieldCheck size={14} /> Kiểm chuỗi</button>
           <button className="btn xs secondary" onClick={() => void s.journal.merkleRoot().then(setRoot)}><CircleDot size={14} /> Root Merkle</button>
           <button className="btn xs secondary" onClick={exportJson}><Download size={14} /> Xuất JSON</button>
         </div>
@@ -286,7 +293,7 @@ export function OpsAudit() {
                   <td className="mono">{e.id}</td>
                   <td>{e.actor}</td>
                   <td><div style={{ fontWeight: 600 }}>{e.summary}</div><div className="small muted">{e.kind}{e.subject ? ' · ' + e.subject : ''}{e.objectId ? ' · ' + e.objectId : ''}</div></td>
-                  <td>{e.decision ? <span className={'badge' + (e.decision === 'deny' ? ' danger' : '')}>{e.decision === 'deny' ? 'Từ chối' : e.decision === 'allow' ? 'Cho phép' : 'Chờ'}</span> : '—'}</td>
+                  <td>{e.decision ? <span className={'badge' + (e.decision === 'deny' ? ' danger' : '')}>{e.decision === 'deny' ? 'Từ chối' : e.decision === 'allow' ? 'Cho phép' : 'Chờ'}</span> : '-'}</td>
                   <td>{e.epoch ?? ''}</td>
                   <td className="mono muted">{e.hash.slice(0, 10)}</td>
                 </tr>
@@ -302,6 +309,7 @@ export function OpsAudit() {
 export function OpsVault() {
   const s = useSentinel();
   const nav = useNavigate();
+  const base = useOpsBase();
   const [busy, setBusy] = useState(false);
   const hsm = s.H.status(s.tenant);
   const objs = s.vault.list();
@@ -316,7 +324,7 @@ export function OpsVault() {
       const blob = await s.H.rewrap(s.H.gateIdentity, s.tenant, o.blob);
       s.vault.commit({ ...o, blob });
     }
-    await s.log({ kind: 'note', actor: 'K', severity: 'notice', summary: `Luân chuyển KEK sang v${v}, bọc lại ${objs.length} DEK (không thu hồi dữ liệu đã lộ — §3.8)` });
+    await s.log({ kind: 'note', actor: 'K', severity: 'notice', summary: `Luân chuyển KEK sang v${v}, bọc lại ${objs.length} DEK (không thu hồi dữ liệu đã lộ, §3.8)` });
     setBusy(false);
     toast(`Đã luân chuyển KEK sang v${v}.`);
   };
@@ -325,7 +333,7 @@ export function OpsVault() {
       <OpsHead crumb="VẬN HÀNH / SENTINEL" badge="SENTINEL" title="Tình trạng bảo vệ dữ liệu" sub="Hiển thị cho vai trò vận hành có quyền" />
       <div className="ops-grid">
         <Metric tint label="Thế hệ quyền" value={s.epoch()} sub="Cổng chính sách" />
-        <Metric label="Điểm phục hồi" value={cp ? (cp.status === 'verified' || cp.status === 'restored' ? 'Đã kiểm' : cp.status === 'corrupt' ? 'Lỗi' : 'Đã niêm phong') : '—'} sub={`Recovery Vault · ${cp?.id ?? ''}`} />
+        <Metric label="Điểm phục hồi" value={cp ? (cp.status === 'verified' || cp.status === 'restored' ? 'Đã kiểm' : cp.status === 'corrupt' ? 'Lỗi' : 'Đã niêm phong') : '-'} sub={`Recovery Vault · ${cp?.id ?? ''}`} />
         <Metric label="Khóa vận hành" value="Tách miền" sub={`Core / Recovery · KEK v${hsm.activeVersion}`} />
       </div>
       <div className="ops-cols">
@@ -339,7 +347,7 @@ export function OpsVault() {
         </div>
         <div className="panel">
           <h2>Dữ kiện vận hành</h2>
-          <Item t="Đường báo an toàn" m="Đường tối thiểu tại nhà — không phụ thuộc Core Vault" right={<span className="badge">Độc lập</span>} />
+          <Item t="Đường báo an toàn" m="Đường tối thiểu tại nhà, không phụ thuộc Core Vault" right={<span className="badge">Độc lập</span>} />
           <Item t="Quyền đã thu hồi" m="Áp chính sách hiện hành khi phục hồi (I10)" right={<span className="badge">Đối chiếu</span>} />
           <Item t="Cổng cấp khóa" m={`Đã cấp ${s.gate.stats.released} · từ chối ${s.gate.stats.denied} · G cấp ${s.G.issued} / từ chối ${s.G.denied}`} />
           <Item t="Hạn mức R" m={`Bucket ${fmt(s.R.snapshotView().bucket.tokens)} / B=${fmt(s.R.snapshotView().bucket.capacity)} · r=${fmt(s.R.snapshotView().bucket.rate)}/s · còn ${fmt(s.R.snapshotView().quotaRemaining)}`} />
@@ -358,7 +366,7 @@ export function OpsVault() {
                   <td>{o.meta.version}</td>
                   <td>v{o.blob.kekVersion}</td>
                   <td>{memberName(o.meta.owner)}</td>
-                  <td>{o.meta.viewers.map((v) => memberName(v)).join(', ') || '—'}</td>
+                  <td>{o.meta.viewers.map((v) => memberName(v)).join(', ') || '-'}</td>
                   <td>{o.meta.purposes.join(', ')}</td>
                   <td className="mono muted">{o.ciphertext.slice(0, 22)}…</td>
                 </tr>
@@ -367,7 +375,7 @@ export function OpsVault() {
           </table>
         </div>
       </div>
-      <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav('/ops/recovery')}>Xem quy trình phục hồi</button>
+      <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav(base + '/recovery')}>Xem quy trình phục hồi</button>
     </>
   );
 }
@@ -398,7 +406,7 @@ export function OpsRecovery() {
     <>
       <OpsHead crumb="VẬN HÀNH / PHỤC HỒI" badge="SENTINEL" title="Kiểm tra trước phục hồi" sub="Màn hình rà soát của vai trò được cấp quyền" right={<button className="btn xs secondary" onClick={() => void s.checkpoint(me.id).then((c) => { setSel(c.id); toast(`Đã niêm phong ${c.id}.`); })}>Niêm phong điểm mới</button>} />
       <div className="ops-grid">
-        <Metric tint label="Điểm phục hồi" value={cp?.id ?? '—'} sub={cp ? `Manifest ${cp.status === 'verified' || cp.status === 'restored' ? 'đã kiểm' : cp.status} · ${cp.manifest.length} đối tượng` : ''} />
+        <Metric tint label="Điểm phục hồi" value={cp?.id ?? '-'} sub={cp ? `Manifest ${cp.status === 'verified' || cp.status === 'restored' ? 'đã kiểm' : cp.status} · ${cp.manifest.length} đối tượng` : ''} />
         <Metric label="Thế hệ quyền hiện hành" value={s.epoch()} sub={cp ? `Checkpoint mang epoch ${cp.epochAtCheckpoint}` : ''} />
         <Metric label="Đưa vào vận hành" value={runForCp?.finishedAt ? 'Đã duyệt' : 'Chờ duyệt'} sub="Cần người có quyền" />
       </div>
@@ -426,7 +434,7 @@ export function OpsRecovery() {
               <span className="hstack">
                 <button className="btn xs secondary" onClick={() => setSel(c.id)}>Chọn</button>
                 <button className="btn xs ghost" title="Thử xóa bằng quyền vận hành (I6)" onClick={() => { const r = s.recovery.requestDelete(c.id, 'ops'); setMsg(r.reason); void s.log({ kind: 'recovery.denied', actor: 'Human', severity: 'warning', summary: `Yêu cầu xóa ${c.id}: ${r.reason}`, decision: r.ok ? 'allow' : 'deny' }); }}>Xóa?</button>
-                <button className="btn xs ghost" title="Mô phỏng sửa manifest" onClick={() => { s.recovery.tamper(c.id); setMsg(`Đã sửa trái phép manifest ${c.id} — chạy bước 1 để thấy phát hiện.`); }}>Sửa?</button>
+                <button className="btn xs ghost" title="Mô phỏng sửa manifest" onClick={() => { s.recovery.tamper(c.id); setMsg(`Đã sửa trái phép manifest ${c.id}, chạy bước 1 để thấy phát hiện.`); }}>Sửa?</button>
               </span>
             } />
           ))}
