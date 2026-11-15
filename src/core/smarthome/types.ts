@@ -161,7 +161,11 @@ export interface HomeIncident {
   };
   evidence: Evidence[];
   assignee?: string;
-  destination?: { facilityId: string; gate: string; etaMin: number; computedAt: number; confirmedAt: number; confirmedBy: string };
+  personId?: string;
+  personName?: string;
+  personPhone?: string;
+  location?: { lat: number; lng: number; accuracy: number; at: number };
+  destination?: { facilityId: string; gate: string; etaMin: number; computedAt: number; confirmedAt: number; confirmedBy: string; name?: string; address?: string };
   timeline: { at: number; text: string; by: string }[];
   closedReason?: string;
 }

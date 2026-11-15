@@ -397,11 +397,6 @@ export async function changeRole(memberId: string, role: Member['role'], by: str
   return { ok: true };
 }
 
-export function newInviteCode() {
-  const part = () => randomId('', 2).slice(1).toUpperCase();
-  return `HEART-${part()}${part()}`;
-}
-
 export async function assistantSend(text: string, by: string) {
   const at = Date.now();
   set((s) => {
@@ -438,13 +433,54 @@ export async function assistantSend(text: string, by: string) {
   });
 }
 
-export function sendSOS(byId: string, room: 'living' | 'bedroom' = 'living') {
-  const by = getApp().members.find((m) => m.id === byId)!;
-  return getHome().sos({ id: by.id, name: by.name, role: by.role }, room);
+export function currentLocation(timeoutMs = 8000): Promise<{ lat: number; lng: number; accuracy: number; at: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null);
+    const done = setTimeout(() => resolve(null), timeoutMs + 500);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        clearTimeout(done);
+        resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: p.timestamp || Date.now() });
+      },
+      () => {
+        clearTimeout(done);
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60_000 },
+    );
+  });
 }
 
-export async function readSupportLocation(subject: string) {
-  return getSentinel().read<{ place: string; lat: number; lng: number }>({ subject, objectId: 'loc-u-lan', purpose: 'support.location', fields: ['place', 'lat', 'lng'] });
+export function supportContacts(personId: string) {
+  return getApp().members.filter((m) => m.id !== personId && m.phone && (m.role === 'admin' || m.role === 'member' || m.role === 'carer'));
+}
+
+export async function sendSOS(byId: string, room: 'living' | 'bedroom' = 'living') {
+  const app = getApp();
+  const by = app.members.find((m) => m.id === byId)!;
+  const inc = getHome().sos({ id: by.id, name: by.name, role: by.role, phone: by.phone }, room);
+  if (app.household?.demo) return inc;
+  const loc = await currentLocation();
+  if (loc) {
+    getHome().setIncidentLocation(inc.id, loc);
+    const viewers = supportContacts(by.id).map((m) => m.id);
+    const version = (getSentinel().vault.meta(`loc-${by.id}`)?.version ?? 0) + 1;
+    await getSentinel().protect({ subject: by.id, objectId: `loc-${by.id}`, type: 'location', label: `Vị trí hỗ trợ của ${by.name}`, data: { place: 'Vị trí GPS khi gửi SOS', lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy }, viewers, purposes: ['support.location'], version });
+  }
+  return getHome().incident(inc.id) ?? inc;
+}
+
+export function sosMessage(inc: { personName?: string; location?: { lat: number; lng: number; accuracy: number } }) {
+  const where = inc.location ? ` Vị trí: https://maps.google.com/?q=${inc.location.lat.toFixed(6)},${inc.location.lng.toFixed(6)} (sai số khoảng ${Math.round(inc.location.accuracy)} m).` : '';
+  return `SOS từ ${inc.personName ?? 'người thân'}: cần giúp ngay.${where} Gửi từ HeartOS.`;
+}
+
+export function smsLink(phones: string[], body: string) {
+  return `sms:${phones.map((p) => p.replace(/[^\d+]/g, '')).join(',')}?body=${encodeURIComponent(body)}`;
+}
+
+export async function readSupportLocation(subject: string, personId = 'u-lan') {
+  return getSentinel().read<{ place: string; lat: number; lng: number }>({ subject, objectId: `loc-${personId}`, purpose: 'support.location', fields: ['place', 'lat', 'lng'] });
 }
 
 async function wipeRecordings() {
@@ -520,6 +556,14 @@ function makeMember(p: NewMember, index: number): Member {
   };
 }
 
+export async function leaveLocal() {
+  const prev = getApp();
+  const { claudeEnabled, claudeKey, claudeModel } = prev.prefs;
+  const data = emptyState({ ...prev.session, householdId: null, actingAs: '', mode: null, expo: false });
+  useApp.setState({ ...data, prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel } });
+  await rebuildServices(false);
+}
+
 export async function prepareJoin(household: { id: string; name: string; tz: string }, memberId: string) {
   const prev = getApp();
   const { claudeEnabled, claudeKey, claudeModel } = prev.prefs;
@@ -581,6 +625,14 @@ export async function removeMember(id: string, by: string) {
   getSentinel().R.bumpEpoch(getSentinel().tenant);
   await getSentinel().log({ kind: 'policy.revoke', actor: 'G', severity: 'notice', summary: `${memberName(by)} gỡ ${m.name} khỏi hộ, thu hồi mọi quyền` });
   return true;
+}
+
+export function createGoal(name: string, target: number, managerId: string) {
+  const g = { id: randomId('g', 4), name: name.trim(), target: Math.max(1, Math.round(target)), managerId };
+  set((s) => {
+    s.goals.push(g);
+  });
+  return g;
 }
 
 export function setHospitals(list: { id?: string; name: string; address: string; phone: string; note: string }[]) {

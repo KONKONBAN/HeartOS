@@ -243,3 +243,18 @@ export function namesOf(ids: string[], members?: Member[]) {
   if (names.length <= 1) return names[0] ?? 'Chưa có ai';
   return names.slice(0, -1).join(', ') + ' và ' + names[names.length - 1];
 }
+
+const TITLES = ['bà', 'ông', 'cô', 'chú', 'bác', 'dì', 'mẹ', 'bố', 'ba', 'má', 'cậu', 'mợ', 'thím', 'anh', 'chị'];
+
+export function honorific(m?: { name: string }) {
+  const first = m?.name.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+  return TITLES.includes(first) ? first : 'bạn';
+}
+
+export const capFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export function greetName(m?: { name: string }) {
+  if (!m) return 'bạn';
+  const parts = m.name.trim().split(/\s+/);
+  return TITLES.includes(parts[0]?.toLowerCase() ?? '') ? [parts[0].toLowerCase(), ...parts.slice(1)].join(' ') : m.name;
+}

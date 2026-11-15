@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { HubClient, type Transport } from '../core/hublink/client';
 import type { AdminCommand, DeviceSnapshot, RemoteJournalEntry } from '../core/hublink/protocol';
 import { runAll } from '../core/sentinel/threats';
-import { prepareJoin, revokePermission } from './actions';
+import { leaveLocal, prepareJoin, revokePermission } from './actions';
 import { applyOps, collectOps, commitOps, resetSyncState } from './householdSync';
 import { blobs, getHome, getSentinel, json } from './services';
 import { getApp, memberName } from './store';
@@ -239,4 +239,10 @@ export async function joinHousehold(hubUrl: string, code: string, displayName: s
   const me = getApp().members.find((m) => m.id === r.memberId);
   if (!me) throw new Error('Hub chưa có hồ sơ thành viên của bạn. Nhờ quản trị hộ đồng bộ điện thoại của họ với hub rồi thử lại.');
   return { household: r.household.name, sas: r.sas, member: me.name };
+}
+
+export async function leaveHousehold() {
+  client?.unpair();
+  resetSyncState();
+  await leaveLocal();
 }

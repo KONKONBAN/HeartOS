@@ -21,7 +21,7 @@ import {
   updateInvitationText,
   type RhythmResult,
 } from '../../state/actions';
-import { memberName, namesOf, useApp, useMe } from '../../state/store';
+import { adultIds, memberName, namesOf, useApp, useDemo, useMe } from '../../state/store';
 import type { Invitation } from '../../state/types';
 
 const statusBadge = (i: Invitation) =>
@@ -44,7 +44,7 @@ export function FRhythm() {
   const tasks = useApp((s) => s.tasks);
   const [open, setOpen] = useState(false);
   const [occasion, setOccasion] = useState('Bữa cơm cùng nhà');
-  const [recips, setRecips] = useState<string[]>(['u-lan', 'u-linh'].filter((x) => x !== me.id));
+  const [recips, setRecips] = useState<string[]>(() => members.filter((m) => m.id !== me.id && (m.role === 'admin' || m.role === 'member')).map((m) => m.id));
   const [tone, setTone] = useState<InviteFacts['tone']>('warm');
   const [busy, setBusy] = useState(false);
   const call = tasks.find((t) => t.kind === 'call' && t.assignee === me.id && t.status !== 'done');
@@ -59,9 +59,28 @@ export function FRhythm() {
     <Phone tabs>
       <TopBar />
       <Header title="Nhịp Nhà" sub="Lịch, lời mời và khoảng rảnh của gia đình." />
-      {invitations.map((i) => (
-        <Row key={i.id} icon={<CalendarDays size={18} />} tileTone="peach" title={i.occasion} meta={`Hôm nay, ${fmtSlot(i.slot)}`} badge={statusBadge(i)} to={linkFor(i)} />
+      {invitations.filter((i) => i.hostId === me.id).map((i) => (
+        <Row key={i.id} icon={<CalendarDays size={18} />} tileTone="peach" title={i.occasion} meta={`${dayLabel(i.createdAt)}, ${fmtSlot(i.slot)}`} badge={statusBadge(i)} to={linkFor(i)} />
       ))}
+      {invitations.filter((i) => i.hostId !== me.id && i.recipients.includes(me.id) && i.status === 'delivered').map((i) => {
+        const msg = i.draft.messages.find((m) => m.recipientId === me.id);
+        const r = i.receipts[me.id];
+        return (
+          <div key={i.id} className="card peach stack">
+            <div className="label">Lời mời từ {memberName(i.hostId)}</div>
+            <h3 style={{ margin: 0 }}>{i.occasion}, {dayLabel(i.createdAt).toLowerCase()} {fmtSlot(i.slot)}</h3>
+            {msg && <p style={{ margin: 0 }}>“{msg.text}”</p>}
+            {r === 'accepted' || r === 'declined' ? (
+              <Badge tone={r === 'accepted' ? undefined : 'warm'}>{r === 'accepted' ? 'Bạn sẽ tham gia' : 'Bạn không tham gia'}</Badge>
+            ) : (
+              <div className="btnrow">
+                <button className="btn sm secondary" onClick={() => respondInvitation(i.id, me.id, 'declined')}>Không tham gia</button>
+                <button className="btn sm" onClick={() => respondInvitation(i.id, me.id, 'accepted')}>Sẽ tham gia</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
       {call && <Row icon={<PhoneIcon size={18} />} tileTone="peach" title={call.title} meta={fmtDate(new Date(call.remindAt))} to={`/f/task/${call.id}`} />}
       <button className="btn soft" onClick={() => setOpen(true)}>
         <Sparkles size={18} /> Tạo lời mời mới
@@ -88,13 +107,14 @@ export function FRhythm() {
 
 export function FCalendar() {
   const me = useMe();
+  const members = useApp((s) => s.members);
   const cal = useApp((s) => s.calendars.find((c) => c.memberId === me.id));
   const prefs = useApp((s) => s.prefs);
   const set = useApp((s) => s.set);
   const [rhythm, setRhythm] = useState<RhythmResult | null>(null);
   const [windows, setWindows] = useState(cal?.windows ?? []);
   const [showTrace, setShowTrace] = useState(false);
-  const reload = () => void computeRhythm(me.id, ['u-an', 'u-linh', 'u-lan']).then(setRhythm);
+  const reload = () => void computeRhythm(me.id, [me.id, ...adultIds(members, me.id)]).then(setRhythm);
   useEffect(() => {
     reload();
   }, [me.id]);
@@ -285,6 +305,7 @@ export function FQueued() {
   const inv = useInv();
   const nav = useNavigate();
   const me = useMe();
+  const demo = useDemo();
   const [sending, setSending] = useState(false);
   useEffect(() => {
     if (inv?.status !== 'queued') return;
@@ -332,10 +353,10 @@ export function FQueued() {
         />
       </div>
       {inv.status === 'queued' && <button className="btn" disabled={sending} onClick={() => { setSending(true); void releaseInvitation(inv.id).finally(() => setSending(false)); }}>Gửi ngay</button>}
-      <Row icon={<ShieldAlert size={18} />} title="Trạng thái kiểm quyền" meta="Xem trường hợp quyền thay đổi: thu hồi lịch của Linh trước khi gửi" to="/f/revoke/p-cal" />
-      {inv.status === 'delivered' && inv.recipients.filter((r) => r !== 'u-lan' && inv.receipts[r] === 'pending').map((r) => (
+      {demo && <Row icon={<ShieldAlert size={18} />} title="Trạng thái kiểm quyền" meta="Xem trường hợp quyền thay đổi: thu hồi lịch của Linh trước khi gửi" to="/f/revoke/p-cal" />}
+      {demo && inv.status === 'delivered' && inv.recipients.filter((r) => r !== 'u-lan' && inv.receipts[r] === 'pending').map((r) => (
         <div key={r} className="card flat">
-          <p className="small">Mô phỏng phản hồi từ điện thoại của {memberName(r)}:</p>
+          <p className="small">Trả lời thay cho {memberName(r)} trong nhà mẫu:</p>
           <div className="btnrow" style={{ marginTop: 8 }}>
             <button className="btn sm secondary" onClick={() => respondInvitation(inv.id, r, 'declined')}>Không tham gia</button>
             <button className="btn sm" onClick={() => respondInvitation(inv.id, r, 'accepted')}>Sẽ tham gia</button>
@@ -353,4 +374,11 @@ export function FQueued() {
       <Link to="/f/rhythm" className="btn secondary">Về Nhịp Nhà</Link>
     </Phone>
   );
+}
+
+function dayLabel(at: number) {
+  const d = new Date(at);
+  const today = new Date();
+  const diff = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() - new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 86400_000);
+  return diff === 0 ? 'Hôm nay' : diff === 1 ? 'Hôm qua' : d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' });
 }

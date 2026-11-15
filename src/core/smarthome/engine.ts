@@ -173,8 +173,8 @@ export class HomeEngine {
   device(id: string) {
     return this.s.devices.find((d) => d.id === id);
   }
-  room(id: RoomId) {
-    return this.s.rooms.find((r) => r.id === id)!;
+  room(id: RoomId): Room {
+    return this.s.rooms.find((r) => r.id === id) ?? { id, name: 'Trong nhà', short: 'Nhà', rect: { x: 0, y: 0, w: 0, h: 0 }, sensing: [], lastSignal: 0 };
   }
   openIncidents() {
     return this.s.incidents.filter((i) => i.status !== 'closed');
@@ -382,15 +382,19 @@ export class HomeEngine {
       createdAt: t,
       status: kind === 'fall' ? 'verifying' : 'open',
       steps: {
-        local: isSos ? { state: 'done', at: t } : { state: 'todo' },
-        remote: isSos ? (this.s.net.internet ? { state: 'active', note: 'Đang chuyển tới nhà cung cấp' } : { state: 'unknown', note: 'Hub mất Internet, chưa rõ tình trạng gửi' }) : { state: 'todo' },
+        local: isSos ? (this.s.real && !this.s.devices.some((d) => d.kind === 'siren') ? { state: 'unknown' } : { state: 'done', at: t }) : { state: 'todo' },
+        remote: isSos ? (this.s.real ? { state: 'active', note: 'Chờ gửi tin nhắn SOS cho người thân' } : this.s.net.internet ? { state: 'active', note: 'Đang chuyển tới nhà cung cấp' } : { state: 'unknown', note: 'Hub mất Internet, chưa rõ tình trạng gửi' }) : { state: 'todo' },
         helper: { state: isSos ? 'active' : 'todo' },
         handover: { state: 'todo' },
       },
       evidence: evidence ? [evidence] : [],
       timeline: [{ at: t, text: `Mở ca ${id}, ${priority}`, by: 'Guardian' }],
     };
-    if (isSos) {
+    if (isSos && this.s.real) {
+      const siren = this.s.devices.find((d) => d.kind === 'siren');
+      if (siren) this.sendCommand(siren.id, 'set', { on: true }, SYSTEM, 'guardian');
+      this.notify(inc.title, kind === 'sos' ? (siren ? 'Đã bật còi tại nhà. Gửi tin nhắn SOS kèm vị trí cho người thân.' : 'Gửi tin nhắn SOS kèm vị trí cho người thân.') : 'Cảm biến khói/CO báo động.', 'critical', `/f/incident/${id}`);
+    } else if (isSos) {
       this.sendCommand('siren', 'set', { on: true }, SYSTEM, 'guardian');
       if (this.s.net.internet) this.s.timers.push({ at: t + 1200, kind: 'remote_ack', ref: id });
       if (this.s.simulateHelpers) this.s.timers.push({ at: t + 6000, kind: 'helper_ack', ref: id });
@@ -410,8 +414,12 @@ export class HomeEngine {
     return this.s.incidents.find((i) => i.id === id);
   }
 
-  sos(by: Actor, room: RoomId = 'living') {
+  sos(by: Actor & { phone?: string }, room: RoomId = 'living') {
     const inc = this.openIncident('sos', 'P1', room, { kind: 'button', at: this.now(), summary: `${by.name} gửi SOS trên ứng dụng`, ref: `sos-${this.now()}` });
+    inc.personId = by.id;
+    inc.personName = by.name;
+    inc.personPhone = by.phone;
+    if (this.s.real) inc.title = `SOS từ ${by.name}`;
     inc.timeline.push({ at: this.now(), text: `${by.name} nhấn SOS`, by: by.name });
     this.emit();
     return inc;
@@ -458,6 +466,15 @@ export class HomeEngine {
     inc.timeline.push({ at: this.now(), text: `Chốt đích bàn giao: ${f.name}, ${f.gate} (ETA ${r.minutes} phút)`, by: by.name });
     this.audit('guardian.event', `${inc.id}: chốt ${f.name} ${f.gate}`, 'notice');
     this.emit();
+  }
+
+  setDestination(id: string, h: { id: string; name: string; address: string; note: string }, by: Actor) {
+    const inc = this.incident(id);
+    if (!inc) return;
+    inc.destination = { facilityId: h.id, gate: h.note, etaMin: 0, computedAt: this.now(), confirmedAt: this.now(), confirmedBy: by.name, name: h.name, address: h.address };
+    inc.timeline.push({ at: this.now(), text: `Chốt nơi bàn giao: ${h.name}${h.note ? ', ' + h.note : ''}`, by: by.name });
+    this.audit('guardian.event', `${inc.id}: chốt nơi bàn giao ${h.name}`, 'notice');
+    this.emit(true);
   }
 
   markHandover(id: string, by: Actor) {
@@ -790,6 +807,22 @@ export class HomeEngine {
     if (ups) ups.state.battery = Math.round(p.ups.battery);
     const gen = this.device('generator');
     if (gen) gen.state.state = p.generator;
+  }
+
+  setIncidentLocation(id: string, loc: { lat: number; lng: number; accuracy: number; at: number }) {
+    const inc = this.incident(id);
+    if (!inc) return;
+    inc.location = loc;
+    inc.timeline.push({ at: this.now(), text: `Vị trí GPS, sai số khoảng ${Math.round(loc.accuracy)} m`, by: inc.personName ?? 'Ứng dụng' });
+    this.emit(true);
+  }
+
+  markFamilyNotified(id: string, by: string) {
+    const inc = this.incident(id);
+    if (!inc || inc.steps.remote.state === 'done') return;
+    inc.steps.remote = { state: 'done', at: this.now(), note: 'Đã soạn tin nhắn SOS cho người thân' };
+    inc.timeline.push({ at: this.now(), text: 'Gửi tin nhắn SOS kèm vị trí cho người thân', by });
+    this.emit(true);
   }
 
   mergeIncident(id: string, inc: HomeIncident | null) {

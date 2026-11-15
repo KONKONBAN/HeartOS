@@ -158,8 +158,8 @@ export function FMemoryNew() {
   const [title, setTitle] = useState('Bữa cơm tháng 11');
   const [caption, setCaption] = useState('');
   const [transcript, setTranscript] = useState('');
-  const [ritualId, setRitualId] = useState(params.get('ritual') ?? 'r-sunday');
-  const [viewers, setViewers] = useState<string[]>(['u-lan', 'u-an', 'u-linh'].filter((x) => x !== me.id));
+  const [ritualId, setRitualId] = useState(params.get('ritual') ?? '');
+  const [viewers, setViewers] = useState<string[]>(() => members.filter((m) => m.id !== me.id && m.role !== 'carer').map((m) => m.id));
   const [derived, setDerived] = useState(true);
   const [retention, setRetention] = useState('Theo lựa chọn của người kể');
   const [busy, setBusy] = useState(false);

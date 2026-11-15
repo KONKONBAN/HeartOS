@@ -125,8 +125,8 @@ export function FTaskNew() {
   const [title, setTitle] = useState(params.get('title') ?? 'Chuẩn bị bữa cơm');
   const [kind, setKind] = useState<'chore' | 'call'>('chore');
   const [assignee, setAssignee] = useState(me.id);
-  const [target, setTarget] = useState('u-lan');
-  const [visibleTo, setVisibleTo] = useState<string[]>([me.id, 'u-linh'].filter((v, i, a) => a.indexOf(v) === i));
+  const [target, setTarget] = useState(() => members.find((m) => m.id !== me.id)?.id ?? me.id);
+  const [visibleTo, setVisibleTo] = useState<string[]>([me.id]);
   const [time, setTime] = useState('17:30');
   const [day, setDay] = useState<'today' | 'tomorrow'>('today');
   const save = () => {
@@ -268,7 +268,7 @@ export function FRitualNew() {
   const [freq, setFreq] = useState<'weekly' | 'monthly-last' | 'daily'>('weekly');
   const [weekday, setWeekday] = useState(6);
   const [time, setTime] = useState('17:30');
-  const [people, setPeople] = useState<string[]>(['u-lan', 'u-an', 'u-linh']);
+  const [people, setPeople] = useState<string[]>(() => members.map((m) => m.id));
   const save = () => {
     const id = 'r-' + Date.now().toString(36);
     const recurrence: Recurrence = freq === 'daily' ? { freq, time } : { freq, weekday, time };

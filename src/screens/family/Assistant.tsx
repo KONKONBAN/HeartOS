@@ -69,7 +69,6 @@ export function FLanguage() {
   const members = useApp((s) => s.members);
   const set = useApp((s) => s.set);
   const v = useVoiceSupport(prefs.voiceLang);
-  const linh = members.find((m) => m.id === 'u-linh');
   return (
     <Phone tabs>
       <TopBar back backTo="/f/more" />
@@ -78,9 +77,11 @@ export function FLanguage() {
       <Field label="Trợ lý trả lời">
         <Seg value={prefs.assistantLang} onChange={(x) => set((s) => void (s.prefs.assistantLang = x))} options={[{ value: 'vi-VN', label: 'Tiếng Việt, vi-VN' }, { value: 'en-US', label: 'English, en-US' }]} />
       </Field>
-      <Field label={`Người nhận ${linh?.name ?? 'Linh'}`}>
-        <Seg value={linh?.lang ?? 'en'} onChange={(x) => set((s) => void (s.members.find((m) => m.id === 'u-linh')!.lang = x))} options={[{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English, en-US' }]} />
-      </Field>
+      {members.filter((m) => m.role !== 'carer').map((m) => (
+        <Field key={m.id} label={`Lời mời gửi ${m.name}`}>
+          <Seg value={m.lang} onChange={(x) => set((s) => void (s.members.find((y) => y.id === m.id)!.lang = x))} options={[{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English, en-US' }]} />
+        </Field>
+      ))}
       <Field label="Nhận và đọc giọng nói">
         <Seg value={prefs.voiceLang} onChange={(x) => set((s) => void (s.prefs.voiceLang = x))} options={[{ value: 'vi-VN', label: 'vi-VN' }, { value: 'en-US', label: 'en-US' }]} />
       </Field>

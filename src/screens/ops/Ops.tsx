@@ -9,7 +9,7 @@ import { hhmm, hhmmss } from '../../lib/format';
 import { requestApproval, toast } from '../../lib/ui-store';
 import { useHome, useSentinel } from '../../state/services';
 import { DEFAULT_FACTS, runReplay, useReplay } from '../../state/replay';
-import { memberName, useApp, useMe } from '../../state/store';
+import { memberName, useApp, useHouseholdName, useMe } from '../../state/store';
 
 const NAV: { to: string; label: string; icon: ReactNode; grp?: string }[] = [
   { to: 'live', label: 'Live, Tổng quan', icon: <LayoutDashboard size={16} />, grp: 'BÀN VẬN HÀNH' },
@@ -105,6 +105,7 @@ export function Item({ t, m, right, icon }: { t: ReactNode; m?: ReactNode; right
 }
 
 export function OpsLive() {
+  const homeName = useHouseholdName();
   const home = useHome();
   const s = useSentinel();
   const invitations = useApp((st) => st.invitations);
@@ -117,7 +118,7 @@ export function OpsLive() {
   const hub = home.device('hub')!;
   return (
     <>
-      <OpsHead crumb="VẬN HÀNH / LIVE" badge="LIVE, MÔ PHỎNG" title="Tổng quan tại nhà" sub={`Nhà An, Dữ liệu tại hub, ${new Date().toLocaleDateString('vi-VN')}, ${hhmm(Date.now())}`} />
+      <OpsHead crumb="VẬN HÀNH / LIVE" badge="LIVE" title="Tổng quan tại nhà" sub={`${homeName}, dữ liệu tại hub, ${new Date().toLocaleDateString('vi-VN')}, ${hhmm(Date.now())}`} />
       <div className="ops-grid">
         <Metric tint label="Ca đang mở" value={String(open.length).padStart(2, '0')} sub="Guardian" />
         <Metric label="Vùng có dữ liệu" value={`${String(fresh.length).padStart(2, '0')}/${String(home.s.rooms.length).padStart(2, '0')}`} sub={stale.length ? `${stale.map((r) => r.name).join(', ')} chờ tín hiệu` : 'Đủ vùng'} />
@@ -127,7 +128,7 @@ export function OpsLive() {
       <div className="ops-cols">
         <div className="panel">
           <h2>Ca đang xử lý</h2>
-          {open.length === 0 && <Item t="Không có ca đang mở" m="Thử ở ứng dụng: An toàn > Mô phỏng tình huống" />}
+          {open.length === 0 && <Item t="Không có ca đang mở" m="Ca mới hiện ở đây khi có SOS hoặc cảm biến báo động" />}
           {open.map((i) => (
             <Item key={i.id} t={`${i.id}, ${i.title}`} m={`${i.priority}, ${i.status === 'verifying' ? 'Đang xác minh' : i.assignee ? `${i.assignee} đã nhận việc` : 'Chờ người hỗ trợ'}`} right={<span className="badge line">{hhmm(i.createdAt)}</span>} />
           ))}
@@ -177,7 +178,7 @@ export function OpsReplay() {
         </div>
       </div>
       <button className="btn" style={{ maxWidth: 260 }} disabled={running} onClick={() => void runReplay().then(() => nav(base + '/trace'))}>
-        <Beaker size={18} /> {running ? 'Đang chạy...' : 'Chạy mô phỏng'}
+        <Beaker size={18} /> {running ? 'Đang chạy...' : 'Chạy kiểm thử'}
       </button>
     </>
   );
@@ -191,14 +192,14 @@ export function OpsTrace() {
   if (!r)
     return (
       <>
-        <OpsHead crumb="VẬN HÀNH / REPLAY" badge="REPLAY, SANDBOX" title="Đối chiếu kết quả mô phỏng" sub="Chưa có lần chạy nào." />
+        <OpsHead crumb="VẬN HÀNH / REPLAY" badge="REPLAY, SANDBOX" title="Đối chiếu kết quả kiểm thử" sub="Chưa có lần chạy nào." />
         <button className="btn" style={{ maxWidth: 260 }} onClick={() => nav(base + '/replay')}>Về dữ liệu thử</button>
       </>
     );
   const ok = r.rows.filter((x) => x.match).length;
   return (
     <>
-      <OpsHead crumb="VẬN HÀNH / REPLAY" badge="REPLAY, SANDBOX" title="Đối chiếu kết quả mô phỏng" sub={`${r.id}, ${r.factsVersion}, ${r.rule}, ${r.ms} ms`} />
+      <OpsHead crumb="VẬN HÀNH / REPLAY" badge="REPLAY, SANDBOX" title="Đối chiếu kết quả kiểm thử" sub={`${r.id}, ${r.factsVersion}, ${r.rule}, ${r.ms} ms`} />
       <div className="ops-grid">
         <Metric tint={r.rows[0].match} label="Khung giờ quan sát" value={r.slot} sub={r.rows[0].match ? 'Khớp kỳ vọng' : 'Lệch kỳ vọng ' + r.rows[0].expected} />
         <Metric label="Người nhận giả lập" value="02" sub="A và B" />
@@ -228,6 +229,7 @@ export function OpsTrace() {
 }
 
 export function OpsAudit() {
+  const homeName = useHouseholdName();
   const s = useSentinel();
   const home = useHome();
   const perms = useApp((st) => st.permissions);
@@ -249,7 +251,7 @@ export function OpsAudit() {
   };
   return (
     <>
-      <OpsHead crumb="VẬN HÀNH / NHẬT KÝ" badge="SENTINEL" title="Nhật ký và bằng chứng" sub="Nhà An, Phạm vi của người được cấp quyền" />
+      <OpsHead crumb="VẬN HÀNH / NHẬT KÝ" badge="SENTINEL" title="Nhật ký và bằng chứng" sub={`${homeName}, phạm vi của người được cấp quyền`} />
       <div className="ops-grid">
         <Metric tint label="Mã ca" value={lastInc?.id ?? '-'} sub="Guardian" />
         <Metric label="Sự kiện trong chuỗi" value={s.journal.all().length} sub={verify || 'Chưa kiểm'} />
@@ -433,7 +435,7 @@ export function OpsRecovery() {
               <span className="hstack">
                 <button className="btn xs secondary" onClick={() => setSel(c.id)}>Chọn</button>
                 <button className="btn xs ghost" title="Thử xóa bằng quyền vận hành (I6)" onClick={() => { const r = s.recovery.requestDelete(c.id, 'ops'); setMsg(r.reason); void s.log({ kind: 'recovery.denied', actor: 'Human', severity: 'warning', summary: `Yêu cầu xóa ${c.id}: ${r.reason}`, decision: r.ok ? 'allow' : 'deny' }); }}>Xóa?</button>
-                <button className="btn xs ghost" title="Mô phỏng sửa manifest" onClick={() => { s.recovery.tamper(c.id); setMsg(`Đã sửa trái phép manifest ${c.id}, chạy bước 1 để thấy phát hiện.`); }}>Sửa?</button>
+                <button className="btn xs ghost" title="Thử sửa manifest" onClick={() => { s.recovery.tamper(c.id); setMsg(`Đã sửa trái phép manifest ${c.id}, chạy bước 1 để thấy phát hiện.`); }}>Sửa?</button>
               </span>
             } />
           ))}

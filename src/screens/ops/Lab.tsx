@@ -281,7 +281,7 @@ export function OpsIncident() {
         <p className="small" style={{ margin: 0 }}><b>{SECURITY_STATE_LABEL[st.state]}:</b> {SECURITY_STATE_HINT[st.state]}</p>
         <p className="small muted" style={{ margin: 0 }}>Xuất hàng loạt {st.exportBlocked ? 'đang bị chặn' : 'bình thường'}, phiên bị hạn chế: {st.restrictedSessions.join(', ') || 'không'}</p>
         <div className="hstack wrap">
-          <button className="btn xs secondary" onClick={() => { s.incident.signal({ kind: 'policy_anomaly', evidence: [], note: 'Thay đổi chính sách bất thường (mô phỏng)', source: 'rule' }); setMsg('Đã bơm tín hiệu policy_anomaly.'); }}>Bơm tín hiệu bất thường</button>
+          <button className="btn xs secondary" onClick={() => { s.incident.signal({ kind: 'policy_anomaly', evidence: [], note: 'Thay đổi chính sách bất thường (kiểm thử)', source: 'rule' }); setMsg('Đã bơm tín hiệu policy_anomaly.'); }}>Bơm tín hiệu bất thường</button>
           <button className="btn xs secondary" onClick={() => void s.read({ subject: 'u-linh', objectId: 'canary-ledger', purpose: 'none' }).then(() => setMsg('Đã thử đọc đối tượng mồi (nếu đã triển khai canary).'))}>Thử đọc canary</button>
           <button className="btn xs secondary" disabled={st.state !== 'suspected'} onClick={() => res(s.incident.markIsolationReady({ id: me.id, human: true }, 'Người trực xác nhận có căn cứ'), 'Đủ điều kiện cô lập (người trực).')}>Người trực: đủ điều kiện cô lập</button>
           <button className="btn xs danger" disabled={st.state !== 'isolation_ready'} onClick={() => void s.isolate({ id: me.id, human: true }).then((r) => res(r, 'Đã cô lập: tăng epoch và khóa đường đọc.'))}>Cô lập</button>

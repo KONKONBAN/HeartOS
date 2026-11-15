@@ -185,6 +185,7 @@ export default function App() {
         <Route path="/f/route/:id/:fac" element={g(<SF.FRoute />)} />
         <Route path="/f/sos" element={g(<SF.FSos />)} />
         <Route path="/f/simulate" element={g(<SF.FSimulate />)} />
+        <Route path="/f/hospitals" element={g(<SF.FHospitals />)} />
         <Route path="/f/map" element={g(<SG.FMap />)} />
         <Route path="/f/guardian" element={g(<SG.FGuardian />)} />
         <Route path="/f/camera/:id" element={g(<SG.FCamera />)} />
@@ -199,6 +200,7 @@ export default function App() {
 
         <Route path="/f/more" element={g(<AC.FMore />)} />
         <Route path="/f/members" element={g(<AC.FMembers />)} />
+        <Route path="/f/member-new" element={g(<AC.FMemberNew />)} />
         <Route path="/f/member/:id" element={g(<AC.FMember />)} />
         <Route path="/f/permissions" element={g(<AC.FPermissions />)} />
         <Route path="/f/revoke/:id" element={g(<AC.FRevoke />)} />

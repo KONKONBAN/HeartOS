@@ -1,15 +1,15 @@
 import { Bell, Check, Eye, Heart, Lightbulb, PiggyBank, Plus, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { Badge, Field, Header, ModePicker, Row, Seg, TopBar } from '../../components/ui';
 import { fmtSlot } from '../../core/family/calendar';
 import { fmtDate, nextOccurrence } from '../../core/family/recurrence';
 import { ago, dayLong, hhmm, vnd } from '../../lib/format';
 import { toast } from '../../lib/ui-store';
-import { addContribution, computeRhythm, createInvitation, readContribution, type RhythmResult } from '../../state/actions';
+import { addContribution, computeRhythm, createGoal, createInvitation, readContribution, type RhythmResult } from '../../state/actions';
 import { useHome } from '../../state/services';
-import { memberName, namesOf, useApp, useMe } from '../../state/store';
+import { adultIds, memberName, namesOf, useApp, useDemo, useHouseholdName, useMe } from '../../state/store';
 
 export function FHome() {
   const me = useMe();
@@ -18,13 +18,17 @@ export function FHome() {
   const invitations = useApp((s) => s.invitations);
   const rituals = useApp((s) => s.rituals);
   const goals = useApp((s) => s.goals);
+  const members = useApp((s) => s.members);
+  const demo = useDemo();
+  const homeName = useHouseholdName();
+  const others = adultIds(members, me.id);
   const [rhythm, setRhythm] = useState<RhythmResult | null>(null);
   const [busy, setBusy] = useState(false);
   const draft = invitations.find((i) => i.status === 'draft' && i.hostId === me.id);
   const queued = invitations.find((i) => (i.status === 'queued' || i.status === 'blocked') && i.hostId === me.id);
   useEffect(() => {
-    void computeRhythm(me.id, [me.id, 'u-lan', 'u-linh'].filter((v, i, a) => a.indexOf(v) === i)).then(setRhythm);
-  }, [me.id]);
+    if (others.length) void computeRhythm(me.id, [me.id, ...others]).then(setRhythm);
+  }, [me.id, others.join(',')]);
   const unread = home.s.notices.filter((n) => !n.read).length;
   const open = home.openIncidents();
   const staleRooms = home.s.rooms.filter((r) => r.stale || Date.now() - r.lastSignal > 5 * 60_000);
@@ -32,7 +36,7 @@ export function FHome() {
   const lightsOn = home.s.devices.filter((d) => d.kind === 'light' && d.state.on).length;
   const startDraft = async () => {
     setBusy(true);
-    const r = await createInvitation({ hostId: me.id, occasion: 'Bữa cơm cùng nhà', recipients: ['u-lan', 'u-linh'].filter((x) => x !== me.id) });
+    const r = await createInvitation({ hostId: me.id, occasion: 'Bữa cơm cùng nhà', recipients: others });
     setBusy(false);
     if (r.ok) nav(`/f/draft/${r.id}`);
     else toast(r.error ?? 'Không tạo được bản nháp', 'warning');
@@ -52,8 +56,8 @@ export function FHome() {
           <ModePicker mode="family" />
         </div>
       </div>
-      <Header date={dayLong()} title={`Chào nhà An!`} />
-      {me.id !== 'u-an' && <Row tone="peach" icon={<UserRound size={18} />} tileTone="white" title={`Đang dùng với tư cách ${me.name}`} meta={`Vai trò: ${me.relation}. Quyền hiển thị theo tài khoản này.`} to="/f/settings" />}
+      <Header date={dayLong()} title={`Chào ${homeName.replace(/^Nhà /, 'nhà ')}!`} />
+      {demo && me.id !== 'u-an' && <Row tone="peach" icon={<UserRound size={18} />} tileTone="white" title={`Đang dùng với tư cách ${me.name}`} meta={`Vai trò: ${me.relation}. Quyền hiển thị theo tài khoản này.`} to="/f/settings" />}
       {draft || queued ? (
         <Link to={draft ? `/f/draft/${draft.id}` : `/f/queued/${queued!.id}`} className="hero" style={{ textDecoration: 'none' }}>
           <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
@@ -63,6 +67,17 @@ export function FHome() {
             <h2>{(draft ?? queued)!.occasion}</h2>
             <p>{draft ? 'Bản nháp GenAI đang chờ bạn duyệt.' : queued!.status === 'blocked' ? 'Cần duyệt lại, quyền chia sẻ đã thay đổi.' : 'Đã duyệt, đang chờ gửi.'}</p>
             <div className="cta">{draft ? 'Xem bản nháp' : 'Xem trạng thái'} <span>›</span></div>
+          </div>
+        </Link>
+      ) : !others.length ? (
+        <Link to="/f/members" className="hero peach" style={{ textDecoration: 'none' }}>
+          <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
+            <span className="badge">BẮT ĐẦU</span>
+          </div>
+          <div className="body">
+            <h2>Thêm người thân vào nhà</h2>
+            <p>Thêm thành viên để Nhịp Nhà tìm giờ rảnh chung, gửi lời mời và cùng giữ ký ức.</p>
+            <div className="cta">Thêm thành viên <span>›</span></div>
           </div>
         </Link>
       ) : (
@@ -86,9 +101,9 @@ export function FHome() {
         </Link>
       </div>
       <Row icon={<ShieldCheck size={18} />} title="An toàn tại nhà" meta={open.length ? `${open.length} ca đang mở` : `${staleRooms.length} vùng cần kiểm tra`} badge={open.length || staleRooms.length ? <Badge tone={open.some((i) => i.priority === 'P1') ? 'danger' : undefined}>Có cập nhật</Badge> : undefined} to="/f/safe" />
-      <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Nhà thông minh" meta={`${lightsOn} đèn đang bật, ${home.s.mode === 'home' ? 'Ở nhà' : home.s.mode === 'away' ? 'Vắng nhà' : 'Ban đêm'}`} to="/f/smart" />
+      <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Nhà thông minh" meta={home.real && !home.s.devices.length ? 'Chưa kết nối thiết bị, kết nối Home Assistant' : `${lightsOn} đèn đang bật, ${home.s.mode === 'home' ? 'Ở nhà' : home.s.mode === 'away' ? 'Vắng nhà' : 'Ban đêm'}`} to="/f/smart" />
       {next && <Row icon={<Heart size={18} />} tileTone="peach" title="Nghi thức gia đình" meta={`${next.r.name}, ${fmtDate(next.at)}`} to="/f/rituals" />}
-      <Row icon={<PiggyBank size={18} />} tileTone="sand" title="Quỹ Nếp Nhà" meta={goals[0]?.name} to="/f/fund" />
+      <Row icon={<PiggyBank size={18} />} tileTone="sand" title="Quỹ Nếp Nhà" meta={goals[0]?.name ?? 'Tạo mục tiêu chung của gia đình'} to="/f/fund" />
     </Phone>
   );
 }
@@ -113,24 +128,65 @@ export function FFund() {
   const goals = useApp((s) => s.goals);
   const contributions = useApp((s) => s.contributions);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
-  const goal = goals[0];
-  const total = contributions.filter((c) => c.goalId === goal.id).reduce((n, c) => n + c.amount, 0);
-  const pct = Math.round((total / goal.target) * 100);
+  const [gid, setGid] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [target, setTarget] = useState(2_000_000);
+  const goal = goals.find((g) => g.id === gid) ?? goals[0];
   const reveal = async (id: string) => {
     const r = await readContribution(id, me.id);
     setRevealed((x) => ({ ...x, [id]: r.ok && r.data ? vnd((r.data as { amount: number }).amount) : 'Không có quyền xem chi tiết' }));
   };
+  const create = () => {
+    const g = createGoal(name, target, me.id);
+    setGid(g.id);
+    setCreating(false);
+    setName('');
+    toast(`Đã tạo mục tiêu ${g.name}.`);
+  };
+  const form = (
+    <div className="card stack">
+      <h3 style={{ margin: 0 }}>Mục tiêu chung mới</h3>
+      <Field label="Tên mục tiêu">
+        <input className="input" placeholder="Ví dụ: Chuyến đi cùng ông bà" value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Field label="Số tiền mục tiêu">
+        <input className="input" inputMode="numeric" value={target.toLocaleString('vi-VN')} onChange={(e) => setTarget(Number(e.target.value.replace(/\D/g, '')) || 0)} />
+      </Field>
+      <div className="btnrow">
+        {goals.length > 0 && <button className="btn secondary" onClick={() => setCreating(false)}>Hủy</button>}
+        <button className="btn" disabled={name.trim().length < 2 || target <= 0} onClick={create}>Tạo mục tiêu</button>
+      </div>
+    </div>
+  );
+  if (!goal)
+    return (
+      <Phone tabs>
+        <TopBar back backTo="/f" />
+        <Header title="Quỹ Nếp Nhà" sub="Mục tiêu chung và khoản do gia đình tự ghi." />
+        <div className="card flat"><p>Chưa có mục tiêu nào. Tạo một mục tiêu chung để cả nhà cùng ghi khoản đóng góp. Chi tiết từng khoản được Sentinel mã hóa, chỉ người ghi và người được chọn mở được.</p></div>
+        {form}
+      </Phone>
+    );
+  const total = contributions.filter((c) => c.goalId === goal.id).reduce((n, c) => n + c.amount, 0);
+  const pct = goal.target ? Math.round((total / goal.target) * 100) : 0;
   return (
     <Phone tabs>
       <TopBar back backTo="/f" />
       <Header title="Quỹ Nếp Nhà" sub="Mục tiêu chung và khoản do gia đình tự ghi." />
+      {goals.length > 1 && (
+        <div className="chips">
+          {goals.map((g) => <button key={g.id} className="chip" aria-pressed={g.id === goal.id} onClick={() => setGid(g.id)}>{g.name}</button>)}
+        </div>
+      )}
       <div className="card sand">
         <h3>{goal.name}</h3>
         <div style={{ fontSize: 22, fontWeight: 800, margin: '4px 0 8px' }}>{vnd(total)} / {vnd(goal.target)}</div>
         <div className="progress"><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
-        <p style={{ marginTop: 8, color: '#6E4E20' }}>Đã tự ghi {pct}% mục tiêu, Người quản quỹ: {memberName(goal.managerId)}</p>
+        <p style={{ marginTop: 8, color: '#6E4E20' }}>Đã tự ghi {pct}% mục tiêu, người quản quỹ: {memberName(goal.managerId)}</p>
       </div>
       <div className="section-title">Sổ theo dõi</div>
+      {!contributions.some((c) => c.goalId === goal.id) && <div className="empty">Chưa có khoản nào được ghi.</div>}
       {contributions
         .filter((c) => c.goalId === goal.id)
         .map((c) => (
@@ -138,7 +194,7 @@ export function FFund() {
             key={c.id}
             icon={<PiggyBank size={18} />}
             tileTone="sand"
-            title={`${memberName(c.by)}, Khoản tự ghi`}
+            title={`${memberName(c.by)}, khoản tự ghi`}
             meta={`${revealed[c.id] ?? 'Chi tiết được Sentinel bảo vệ'}, ${hhmm(c.at)} ${new Date(c.at).toLocaleDateString('vi-VN')}`}
             badge={<Badge tone="line">Xem: {namesOf(c.visibleTo)}</Badge>}
             right={!revealed[c.id] && <button className="btn xs soft" onClick={() => void reveal(c.id)}><Eye size={14} /> Mở</button>}
@@ -146,11 +202,12 @@ export function FFund() {
           />
         ))}
       <div className="card flat">
-        <p>Mỗi khoản có người ghi, thời điểm và phạm vi người xem. Chi tiết được mã hóa trong Core Vault; chỉ người ghi và người được chọn mở được. Đây là sổ tự ghi, không phải ví hay giao dịch ngân hàng.</p>
+        <p>Mỗi khoản có người ghi, thời điểm và phạm vi người xem. Chi tiết được mã hóa trong Core Vault; chỉ người ghi và người được chọn mở được. Đây là sổ tự ghi, không phải ví hay tài khoản ngân hàng.</p>
       </div>
-      <Link to="/f/fund-add" className="btn">
+      <Link to={`/f/fund-add?goal=${goal.id}`} className="btn">
         <Plus size={18} /> Ghi khoản đóng góp
       </Link>
+      {creating ? form : <button className="btn ghost" onClick={() => setCreating(true)}><Plus size={18} /> Tạo mục tiêu mới</button>}
     </Phone>
   );
 }
@@ -158,15 +215,19 @@ export function FFund() {
 export function FFundAdd() {
   const me = useMe();
   const goals = useApp((s) => s.goals);
+  const members = useApp((s) => s.members);
   const contributions = useApp((s) => s.contributions);
   const nav = useNavigate();
+  const [params] = useSearchParams();
   const [amount, setAmount] = useState(250_000);
   const [scope, setScope] = useState<'manager' | 'family'>('manager');
   const [saved, setSaved] = useState(false);
-  const goal = goals[0];
+  const [gid, setGid] = useState(params.get('goal') ?? goals[0]?.id ?? '');
+  const goal = goals.find((g) => g.id === gid) ?? goals[0];
+  if (!goal) return <Navigate to="/f/fund" replace />;
   const total = contributions.filter((c) => c.goalId === goal.id).reduce((n, c) => n + c.amount, 0);
   const save = async () => {
-    const visible = scope === 'manager' ? [me.id, goal.managerId] : ['u-an', 'u-lan', 'u-linh'];
+    const visible = scope === 'manager' ? [me.id, goal.managerId] : [me.id, ...adultIds(members, me.id)];
     const r = await addContribution(goal.id, amount, me.id, [...new Set(visible)]);
     if (r.ok) setSaved(true);
     else toast(r.error ?? 'Không lưu được', 'warning');
@@ -191,7 +252,7 @@ export function FFundAdd() {
       <TopBar back backTo="/f/fund" />
       <Header title="Ghi khoản đóng góp" sub="Lưu vào sổ mục tiêu đã chọn." />
       <Field label="Mục tiêu">
-        <select className="input" value={goal.id} onChange={() => undefined}>
+        <select className="input" value={goal.id} onChange={(e) => setGid(e.target.value)}>
           {goals.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
       </Field>

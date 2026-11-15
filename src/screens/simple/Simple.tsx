@@ -10,7 +10,7 @@ import { speak, useRecorder } from '../../lib/media';
 import { toast } from '../../lib/ui-store';
 import { addMemory, openMemory, respondInvitation } from '../../state/actions';
 import { useHome } from '../../state/services';
-import { memberName, namesOf, useApp, useMe } from '../../state/store';
+import { capFirst, honorific, memberName, namesOf, useApp, useMe } from '../../state/store';
 
 function useLanInvite() {
   const me = useMe();
@@ -20,6 +20,8 @@ function useLanInvite() {
 
 export function SHome() {
   const me = useMe();
+  const hon = honorific(me);
+  const Hon = capFirst(hon);
   const inv = useLanInvite();
   const rituals = useApp((s) => s.rituals);
   const members = useApp((s) => s.members);
@@ -34,7 +36,7 @@ export function SHome() {
   return (
     <Phone tabs simple>
       <TopBar right={<ModePicker mode="simple" />} brandTo="/s" />
-      <Header date={dayLong()} title={`Chào ${me.name.toLowerCase().startsWith('bà') ? 'bà ' + me.name.slice(3) : me.name}!`} read={`Chào ${me.name}. Hôm nay là ${dayLong()}.`} />
+      <Header date={dayLong()} title={`Chào ${me.name.toLowerCase().startsWith(`${hon}`) ? `${hon} ` + me.name.slice(3) : me.name}!`} read={`Chào ${me.name}. Hôm nay là ${dayLong()}.`} />
       {sosOpen && <Row tone="rose" icon={<Siren size={20} />} tileTone="white" title="SOS đang mở" meta={sosOpen.steps.helper.by ? `${sosOpen.steps.helper.by} đã nhận hỗ trợ` : 'Đang chờ người thân nhận việc'} to={`/s/sos/${sosOpen.id}`} />}
       <Row tone="tint" icon={<PhoneIcon size={22} />} tileTone="white" title="Gọi người thân" meta={namesOf(callees.map((c) => c.id))} to="/s/call" />
       {inv ? (
@@ -44,7 +46,7 @@ export function SHome() {
           </div>
           <div className="body">
             <h2>{inv.occasion}</h2>
-            <p>{accepted ? 'Bà đã xác nhận tham gia.' : `${memberName(inv.hostId)} mời bà ăn cơm tối.`}</p>
+            <p>{accepted ? `${Hon} đã xác nhận tham gia.` : `${memberName(inv.hostId)} mời ${hon} ăn cơm tối.`}</p>
             <div className="cta">Xem lời mời <span>›</span></div>
           </div>
         </Link>
@@ -69,21 +71,24 @@ export function SHome() {
 
 export function SCall() {
   const me = useMe();
+  const hon = honorific(me);
   const members = useApp((s) => s.members);
   const list = members.filter((m) => m.id !== me.id && m.phone && m.role !== 'carer' && m.role !== 'child');
   return (
     <Phone tabs simple>
       <TopBar back backTo="/s" />
-      <Header title="Gọi người thân" sub="Chọn người bà muốn gọi." />
+      <Header title="Gọi người thân" sub={`Chọn người ${hon} muốn gọi.`} />
       {list.map((m) => (
         <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.name} meta={m.relation.split(', ')[0]} to={`/s/call/${m.id}`} right={<PhoneIcon size={20} color="#244C3E" />} />
       ))}
-      <Row tone="tint" icon={<Check size={20} />} tileTone="white" title="Xem lại trước khi gọi" meta="Ở bước tiếp theo, bà kiểm tra tên rồi mở ứng dụng Điện thoại." />
+      <Row tone="tint" icon={<Check size={20} />} tileTone="white" title="Xem lại trước khi gọi" meta={`Ở bước tiếp theo, ${hon} kiểm tra tên rồi mở ứng dụng Điện thoại.`} />
     </Phone>
   );
 }
 
 export function SCallPerson() {
+  const me = useMe();
+  const hon = honorific(me);
   const { id } = useParams();
   const m = useApp((s) => s.members.find((x) => x.id === id));
   const [opened, setOpened] = useState(false);
@@ -101,7 +106,7 @@ export function SCallPerson() {
         <div className="muted" style={{ fontSize: 16 }}>{m.relation.split(', ')[0]}</div>
         <div style={{ marginTop: 8 }}><Badge>Đã lưu trong danh bạ</Badge></div>
       </div>
-      {opened && <Row tone="tint" icon={<Check size={20} />} tileTone="white" title={`Đã chọn ${m.name}`} meta="Điện thoại hiển thị tên người nhận trước khi bà bấm gọi." />}
+      {opened && <Row tone="tint" icon={<Check size={20} />} tileTone="white" title={`Đã chọn ${m.name}`} meta={`Điện thoại hiển thị tên người nhận trước khi ${hon} bấm gọi.`} />}
       {!opened ? (
         <>
           <a className="btn" href={`tel:${m.phone}`} onClick={() => setOpened(true)}>
@@ -118,6 +123,7 @@ export function SCallPerson() {
 
 export function SToday() {
   const me = useMe();
+  const hon = honorific(me);
   const tasks = useApp((s) => s.tasks);
   const invs = useApp((s) => s.invitations);
   const rituals = useApp((s) => s.rituals);
@@ -150,7 +156,7 @@ export function SToday() {
       {mine
         .filter((t) => t.kind === 'chore')
         .map((t) => (
-          <Row key={t.id} icon={<Check size={20} />} tileTone={t.status === 'done' ? undefined : 'sand'} title={t.title} meta={t.status === 'done' ? 'Việc bà đã nhận' : `Trước ${hhmm(t.remindAt + 30 * 60_000)}`} badge={t.status === 'done' ? <Badge>Đã hoàn thành</Badge> : undefined} to={`/s/task/${t.id}`} />
+          <Row key={t.id} icon={<Check size={20} />} tileTone={t.status === 'done' ? undefined : 'sand'} title={t.title} meta={t.status === 'done' ? `Việc ${hon} đã nhận` : `Trước ${hhmm(t.remindAt + 30 * 60_000)}`} badge={t.status === 'done' ? <Badge>Đã hoàn thành</Badge> : undefined} to={`/s/task/${t.id}`} />
         ))}
       {mine.length === 0 && !inv && <div className="empty">Hôm nay chưa có việc nào.</div>}
     </Phone>
@@ -158,6 +164,9 @@ export function SToday() {
 }
 
 export function STask() {
+  const me = useMe();
+  const hon = honorific(me);
+  const Hon = capFirst(hon);
   const { id } = useParams();
   const t = useApp((s) => s.tasks.find((x) => x.id === id));
   const set = useApp((s) => s.set);
@@ -167,15 +176,15 @@ export function STask() {
     return (
       <Phone simple>
         <TopBar back backTo="/s/today" />
-        <Header title="Bà đã làm xong" sub={`Việc ${t.title.toLowerCase()} đã được đánh dấu hoàn thành.`} />
-        <Row tone="tint" icon={<Check size={22} />} tileTone="white" title="Đã lưu" meta="Bà có thể xem lại trong lịch hôm nay." />
+        <Header title={`${Hon} đã làm xong`} sub={`Việc ${t.title.toLowerCase()} đã được đánh dấu hoàn thành.`} />
+        <Row tone="tint" icon={<Check size={22} />} tileTone="white" title="Đã lưu" meta={`${Hon} có thể xem lại trong lịch hôm nay.`} />
         <button className="btn" onClick={() => nav('/s/today')}>Về lịch hôm nay</button>
       </Phone>
     );
   return (
     <Phone simple>
       <TopBar back backTo="/s/today" />
-      <Header title={t.title.replace(' ngoài ban công', '')} sub="Việc bà đã nhận, Hôm nay" />
+      <Header title={t.title.replace(' ngoài ban công', '')} sub={`Việc ${hon} đã nhận, Hôm nay`} />
       <div className="card peach" style={{ padding: 20 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>{t.place || 'Trong nhà'}</div>
         <p style={{ fontSize: 16, color: '#753F30', marginTop: 4 }}>{t.note}</p>
@@ -209,8 +218,10 @@ export function STask() {
 }
 
 export function SInvite() {
-  const { id } = useParams();
   const me = useMe();
+  const hon = honorific(me);
+  const Hon = capFirst(hon);
+  const { id } = useParams();
   const inv = useApp((s) => s.invitations.find((x) => x.id === id));
   const nav = useNavigate();
   if (!inv) return null;
@@ -220,7 +231,7 @@ export function SInvite() {
     return (
       <Phone simple>
         <TopBar back backTo="/s" />
-        <Header title={`Hẹn bà lúc ${viTime(inv.slot.start).replace(/ (sáng|trưa|chiều|tối)$/, '')}!`} sub="Phản hồi tham gia đã được lưu." />
+        <Header title={`Hẹn ${hon} lúc ${viTime(inv.slot.start).replace(/ (sáng|trưa|chiều|tối)$/, '')}!`} sub="Phản hồi tham gia đã được lưu." />
         <Row tone="tint" icon={<CalendarDays size={22} />} tileTone="white" title="Đã thêm vào lịch" meta={`${inv.occasion}, ${fmtSlot(inv.slot).split('-')[0]} hôm nay.`} />
         <button className="btn" onClick={() => nav('/s/today')}>Xem lịch hôm nay</button>
         <button className="btn secondary" onClick={() => nav('/s')}>Về trang nhà</button>
@@ -247,7 +258,7 @@ export function SInvite() {
         </button>
       </div>
       <button className="btn" onClick={() => respondInvitation(inv.id, me.id, 'accepted')}>
-        <Check size={20} /> Bà sẽ tham gia
+        <Check size={20} /> {Hon} sẽ tham gia
       </button>
       <button
         className="btn secondary"
@@ -346,11 +357,13 @@ export function SStory() {
 
 export function SRecord() {
   const me = useMe();
+  const hon = honorific(me);
+  const Hon = capFirst(hon);
   const members = useApp((s) => s.members);
   const rec = useRecorder();
   const nav = useNavigate();
   const [title, setTitle] = useState('Lời kể mới');
-  const [listeners, setListeners] = useState<string[]>(['u-an', 'u-linh']);
+  const [listeners, setListeners] = useState<string[]>(() => members.filter((m) => m.id !== me.id && m.role !== 'carer').map((m) => m.id));
   const [saving, setSaving] = useState(false);
   const options = members.filter((m) => m.id !== me.id && m.role !== 'carer').map((m) => ({ value: m.id, label: m.name }));
   const save = async (share: boolean) => {
@@ -358,14 +371,14 @@ export function SRecord() {
     const r = await addMemory({ by: me.id, title, kind: 'story', transcript: '', caption: title, audio: rec.blob ?? undefined, durationSec: rec.seconds, viewers: listeners, derivedAllowed: false, retention: 'Theo lựa chọn của người kể', share });
     setSaving(false);
     if (r.ok) {
-      toast(share ? `Đã chia sẻ với ${namesOf(listeners)}.` : 'Đã lưu riêng cho bà.');
+      toast(share ? `Đã chia sẻ với ${namesOf(listeners)}.` : `Đã lưu riêng cho ${hon}.`);
       nav('/s/memory');
     } else toast('Chưa lưu được: ' + r.error, 'warning');
   };
   return (
     <Phone simple>
       <TopBar back backTo="/s/memory" />
-      <Header title={rec.state === 'done' ? 'Ai được nghe?' : 'Thu âm lời kể'} sub={rec.state === 'done' ? `Chọn người nghe bản thu ${title}.` : 'Bà có thể nghe lại trước khi chia sẻ.'} />
+      <Header title={rec.state === 'done' ? 'Ai được nghe?' : 'Thu âm lời kể'} sub={rec.state === 'done' ? `Chọn người nghe bản thu ${title}.` : `${Hon} có thể nghe lại trước khi chia sẻ.`} />
       {rec.state !== 'done' && (
         <div className="card peach center" style={{ padding: 24 }}>
           <div style={{ fontSize: 40, fontWeight: 800 }}>{String(Math.floor(rec.seconds / 60)).padStart(2, '0')}:{String(rec.seconds % 60).padStart(2, '0')}</div>
@@ -382,7 +395,7 @@ export function SRecord() {
         </div>
       )}
       {rec.error && <div className="card rose"><p className="danger-text">{rec.error}</p></div>}
-      {rec.state !== 'done' && <Row tone="tint" icon={<Mic size={20} />} tileTone="white" title="Chọn quyền mic" meta="Điện thoại hỏi quyền dùng mic khi bà bắt đầu ghi." />}
+      {rec.state !== 'done' && <Row tone="tint" icon={<Mic size={20} />} tileTone="white" title="Chọn quyền mic" meta={`Điện thoại hỏi quyền dùng mic khi ${hon} bắt đầu ghi.`} />}
       {rec.state === 'done' && (
         <>
           <div className="card tint">
@@ -394,7 +407,7 @@ export function SRecord() {
           </Field>
           <div className="label">Người được nghe</div>
           <Chips options={options} value={listeners} onChange={setListeners} />
-          <Row tone="tint" icon={<Check size={20} />} tileTone="white" title="Bà chọn trước khi gửi" meta="Bản gốc và lời chép có phạm vi riêng. Bản ghi được mã hóa trên thiết bị." />
+          <Row tone="tint" icon={<Check size={20} />} tileTone="white" title={`${Hon} chọn trước khi gửi`} meta="Bản gốc và lời chép có phạm vi riêng. Bản ghi được mã hóa trên thiết bị." />
           <div className="btnrow">
             <button className="btn secondary" disabled={saving} onClick={() => void save(false)}>Lưu riêng</button>
             <button className="btn" disabled={saving || listeners.length === 0} onClick={() => void save(true)}>Duyệt chia sẻ</button>

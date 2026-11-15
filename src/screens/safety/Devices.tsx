@@ -9,7 +9,7 @@ import { randomId } from '../../core/sentinel/encoding';
 import { ago, hhmm, mmss, useNow } from '../../lib/format';
 import { requestApproval, toast } from '../../lib/ui-store';
 import { useHome } from '../../state/services';
-import { useMe } from '../../state/store';
+import { useHouseholdName, useMe } from '../../state/store';
 
 const ICON: Partial<Record<DeviceKind, ReactNode>> = {
   hub: <Cpu size={18} />, light: <Lightbulb size={18} />, plug: <Plug size={18} />, door: <DoorOpen size={18} />, smoke: <Flame size={18} />, leak: <Droplets size={18} />, radar: <Radar size={18} />, thermal: <Activity size={18} />, camera: <Activity size={18} />, sos: <Siren size={18} />, siren: <Siren size={18} />, valve: <Droplets size={18} />, lock: <Lock size={18} />, ac: <AirVent size={18} />, curtain: <Blinds size={18} />, ups: <BatteryCharging size={18} />, generator: <Zap size={18} />, router: <Network size={18} />,
@@ -51,6 +51,7 @@ export function stateText(d: Device) {
 const pendingBadge = (c?: Command) => (c ? <Badge tone="warm">Chờ</Badge> : undefined);
 
 export function FDevices() {
+  const homeName = useHouseholdName();
   const home = useHome();
   const now = useNow(5000);
   const hub = home.device('hub')!;
@@ -60,7 +61,7 @@ export function FDevices() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/safe" />
-      <Header title="Thiết bị tại nhà" sub="Nhà An, Hub và thiết bị ghép nối" />
+      <Header title="Thiết bị tại nhà" sub={`${homeName}, hub và thiết bị ghép nối`} />
       <Row icon={<Cpu size={18} />} title="HeartOS Hub" meta={`LAN, Cập nhật lúc ${hhmm(hub.lastSeen)}, firmware ${hub.firmware}`} badge={<Badge>Trực tuyến</Badge>} chevron={false} />
       <Row icon={<Radar size={18} />} tileTone="sand" title="Radar, nhiệt và cảm biến" meta={`${home.s.rooms.length} vùng, ${stale} vùng chưa rõ, ${sensors.length} cảm biến`} to="/f/map" />
       <Row icon={<Power size={18} />} title="Nguồn và mạng" meta={`UPS ${home.s.power.ats === 'battery' ? 'đang dự phòng' : home.s.power.ups.charging ? 'đang sạc' : 'sẵn sàng'}, ${Math.round(home.s.power.ups.battery)}%`} to="/f/power" />
@@ -210,12 +211,13 @@ export function FPower() {
 }
 
 export function FOffline() {
+  const homeName = useHouseholdName();
   const home = useHome();
   const n = home.s.net;
   return (
     <Phone tabs>
       <TopBar back backTo="/f/power" />
-      <Header title={n.internet ? 'Kết nối ổn định' : 'Kết nối đang gián đoạn'} sub={n.internet ? 'Nhà An, Hub có Internet' : `Nhà An, Hub mất Internet lúc ${hhmm(n.changedAt)}`} />
+      <Header title={n.internet ? 'Kết nối ổn định' : 'Kết nối đang gián đoạn'} sub={n.internet ? `${homeName}, hub có Internet` : `${homeName}, hub mất Internet lúc ${hhmm(n.changedAt)}`} />
       <Row tone="tint" icon={<Network size={18} />} tileTone="white" title="Vẫn đọc được từ hub" meta={`LAN đang hoạt động. Bản đọc thiết bị lấy lúc ${hhmm(Date.now())}. Lệnh trong nhà vẫn chạy qua LAN.`} />
       <Row icon={<Siren size={18} />} tileTone="rose" title="Đường báo tại nhà" meta={`Cấu hình tối thiểu tại nhà vẫn có nguồn.${n.internet ? '' : ' Trạng thái gửi từ xa chưa rõ.'}`} />
       <KV items={[['Ca chờ gửi từ xa', String(home.openIncidents().filter((i) => i.steps.remote.state === 'unknown').length)], ['Nguồn', home.s.power.ats === 'mains' ? 'Điện lưới' : home.s.power.ats === 'battery' ? 'UPS' : 'Máy phát']]} />

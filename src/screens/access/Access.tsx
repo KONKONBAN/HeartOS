@@ -1,6 +1,6 @@
-import { Bell, Camera, Monitor, Check, ClipboardCopy, Cpu, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
+import { Bell, Camera, Monitor, Check, Cpu, LogOut, Phone as PhoneIcon, UserPlus, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { SignOutButton } from '../../components/SignOut';
 import { Avatar, Badge, Field, Header, KV, Row, Seg, Sheet, Switch, TopBar } from '../../components/ui';
@@ -9,10 +9,11 @@ import { SECURITY_STATE_LABEL } from '../../core/sentinel/incident';
 import { roleName } from '../../core/smarthome/engine';
 import { ago, hhmm } from '../../lib/format';
 import { requestApproval, toast } from '../../lib/ui-store';
-import { changeRole, newInviteCode, regrantPermission, resetEverything, revokePermission, setSyncDeviceOnline } from '../../state/actions';
+import { addMember, changeRole, regrantPermission, removeMember, resetEverything, revokePermission, setSyncDeviceOnline, updateMember } from '../../state/actions';
+import { leaveHousehold } from '../../state/hublink';
 import { approvalPub, useSentinel } from '../../state/services';
-import { memberName, namesOf, useApp, useMe } from '../../state/store';
-import type { PermScope } from '../../state/types';
+import { memberName, namesOf, useApp, useDemo, useHouseholdName, useMe } from '../../state/store';
+import type { Member, PermScope } from '../../state/types';
 
 const SCOPE_ICON: Record<PermScope, React.ReactNode> = { calendar: <Users size={18} />, memory: <Image size={18} />, camera: <Camera size={18} />, location: <MapPin size={18} /> };
 
@@ -39,19 +40,79 @@ export function FMore() {
 export function FMembers() {
   const me = useMe();
   const members = useApp((s) => s.members);
-  const [code, setCode] = useState<string | null>(null);
+  const demo = useDemo();
+  const homeName = useHouseholdName();
   return (
     <Phone tabs>
       <TopBar back backTo="/f/more" />
-      <Header title="Thành viên nhà An" sub="Quyền theo hộ và mục đích sử dụng." />
+      <Header title={`Thành viên ${homeName.replace(/^Nhà /, 'nhà ')}`} sub="Quyền theo hộ và mục đích sử dụng." />
       {members.map((m) => (
-        <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.name} meta={m.role === 'child' ? `Hồ sơ trẻ, Theo cấu hình người giám hộ ${memberName(m.guardian ?? '')}` : m.role === 'carer' ? `Quyền có thời hạn theo ca${m.expiresAt ? ', hết hạn ' + hhmm(m.expiresAt) : ''}` : `${roleName(m.role)}, ${m.mode === 'simple' ? 'Thân Quen' : 'Gia Đình'}`} to={`/f/member/${m.id}`} />
+        <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.id === me.id ? `${m.name} (bạn)` : m.name} meta={m.role === 'child' ? `Hồ sơ trẻ, theo cấu hình người giám hộ ${memberName(m.guardian ?? '')}` : m.role === 'carer' ? `Người hỗ trợ theo ca${m.expiresAt ? `, hết hạn ${hhmm(m.expiresAt)}` : ''}` : `${m.relation || roleName(m.role)}, ${m.mode === 'simple' ? 'Thân Quen' : 'Gia Đình'}`} to={`/f/member/${m.id}`} />
       ))}
-      {me.role === 'admin' && <button className="btn" onClick={() => setCode(newInviteCode())}><Users size={18} /> Tạo lời mời</button>}
-      <Sheet open={!!code} onClose={() => setCode(null)} title="Lời mời vào Nhà An">
-        <div className="card tint center"><div className="mono" style={{ fontSize: 22, fontWeight: 800 }}>{code}</div><p>Mã dùng một lần, hết hạn sau 24 giờ, vai trò Thành viên</p></div>
-        <button className="btn" onClick={() => { void navigator.clipboard?.writeText(code ?? ''); toast('Đã sao chép mã mời.'); }}><ClipboardCopy size={18} /> Sao chép mã</button>
-      </Sheet>
+      {me.role === 'admin' && <Link to="/f/member-new" className="btn"><UserPlus size={18} /> Thêm thành viên</Link>}
+      {!demo && (
+        <Row tone="tint" icon={<Monitor size={18} />} tileTone="white" title="Người thân dùng HeartOS trên điện thoại riêng" meta="Trên HeartOS Sentinel Admin: Ghép thiết bị mới, chọn đúng thành viên, rồi người đó mở ứng dụng và chọn Tham gia bằng mã. Lời mời, việc và ký ức sẽ đồng bộ qua hub trong nhà." chevron={false} />
+      )}
+    </Phone>
+  );
+}
+
+const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Quản trị' },
+  { value: 'member', label: 'Thành viên' },
+  { value: 'child', label: 'Trẻ' },
+  { value: 'carer', label: 'Hỗ trợ' },
+] as const;
+
+export function FMemberNew() {
+  const me = useMe();
+  const nav = useNavigate();
+  const [name, setName] = useState('');
+  const [relation, setRelation] = useState('');
+  const [role, setRole] = useState<Member['role']>('member');
+  const [phone, setPhone] = useState('');
+  const [lang, setLang] = useState<Member['lang']>('vi');
+  const [mode, setMode] = useState<Member['mode']>('family');
+  const [address, setAddress] = useState('');
+  const [selfRef, setSelfRef] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (me.role !== 'admin') return <Navigate to="/f/members" replace />;
+  const save = async () => {
+    setBusy(true);
+    const m = await addMember({ name, relation, role, phone, lang, mode, address, selfRef }, me.id);
+    setBusy(false);
+    toast(`Đã thêm ${m.name} vào nhà.`);
+    nav(`/f/member/${m.id}`, { replace: true });
+  };
+  return (
+    <Phone tabs>
+      <TopBar back backTo="/f/members" />
+      <Header title="Thêm thành viên" sub="Hồ sơ dùng cho lời mời, SOS, quyền chia sẻ và cách xưng hô của GenAI." />
+      <Field label="Họ tên">
+        <input className="input" placeholder="Ví dụ: Bà Lan" value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Field label="Quan hệ trong nhà">
+        <input className="input" placeholder="Ví dụ: Bà nội, Con gái" value={relation} onChange={(e) => setRelation(e.target.value)} />
+      </Field>
+      <Field label="Số điện thoại">
+        <input className="input" type="tel" placeholder="Để gọi và nhận tin SOS" value={phone} onChange={(e) => setPhone(e.target.value)} />
+      </Field>
+      <Field label="Vai trò">
+        <Seg value={role} onChange={setRole} options={[...ROLE_OPTIONS]} />
+      </Field>
+      <Field label="Cách dùng ứng dụng">
+        <Seg value={mode} onChange={setMode} options={[{ value: 'family', label: 'Gia Đình' }, { value: 'simple', label: 'Thân Quen (chữ lớn)' }]} />
+      </Field>
+      <Field label="Ngôn ngữ nhận lời mời">
+        <Seg value={lang} onChange={setLang} options={[{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English' }]} />
+      </Field>
+      <Field label="Bạn gọi người này là">
+        <input className="input" placeholder="Ví dụ: mẹ, bà, em" value={address} onChange={(e) => setAddress(e.target.value)} />
+      </Field>
+      <Field label="Bạn xưng với người này là">
+        <input className="input" placeholder="Ví dụ: con, cháu, anh" value={selfRef} onChange={(e) => setSelfRef(e.target.value)} />
+      </Field>
+      <button className="btn" disabled={busy || name.trim().length < 2} onClick={() => void save()}>{busy ? 'Đang thêm...' : 'Thêm thành viên'}</button>
     </Phone>
   );
 }
@@ -59,29 +120,56 @@ export function FMembers() {
 export function FMember() {
   const { id } = useParams();
   const me = useMe();
+  const nav = useNavigate();
   const m = useApp((s) => s.members.find((x) => x.id === id));
-  if (!m) return null;
+  const [confirm, setConfirm] = useState(false);
+  if (!m) return <Navigate to="/f/members" replace />;
   const scope = {
     admin: 'Quản lý thành viên và thiết bị theo phạm vi được cấp.',
     member: 'Tự chọn quyền lịch, lời kể và người hỗ trợ.',
     child: 'Xem lịch chung và ký ức được chia sẻ. Camera, vận hành và dữ liệu riêng dùng quyền riêng.',
     carer: 'Xem thông tin tối thiểu của ca đang được giao.',
   }[m.role];
+  const canEdit = me.role === 'admin' || me.id === m.id;
   return (
     <Phone tabs>
       <TopBar back backTo="/f/members" />
       <Header title="Vai trò và phạm vi" sub={`Hồ sơ, ${m.name}`} />
-      <div className="card center"><div style={{ display: 'grid', placeItems: 'center' }}><Avatar name={m.name} color={m.color} size="lg" /></div><div style={{ fontWeight: 800, fontSize: 20, marginTop: 8 }}>{m.name}</div><div className="muted">{m.relation}</div></div>
+      <div className="card center"><div style={{ display: 'grid', placeItems: 'center' }}><Avatar name={m.name} color={m.color} size="lg" /></div><div style={{ fontWeight: 800, fontSize: 20, marginTop: 8 }}>{m.name}</div><div className="muted">{m.relation || roleName(m.role)}</div></div>
       <Row icon={<UserCog size={18} />} title="Vai trò" meta={m.role === 'child' ? 'Thành viên trẻ' : m.role === 'carer' ? 'Người hỗ trợ có thời hạn' : roleName(m.role)} chevron={false} />
-      {m.guardian && <Row icon={<Shield size={18} />} title="Người giám hộ" meta={`${memberName(m.guardian)}, Liên kết đang hiệu lực`} chevron={false} />}
+      {m.guardian && <Row icon={<Shield size={18} />} title="Người giám hộ" meta={`${memberName(m.guardian)}, liên kết đang hiệu lực`} chevron={false} />}
       {m.expiresAt && <Row icon={<Shield size={18} />} title="Hạn quyền" meta={`Hết hạn lúc ${hhmm(m.expiresAt)} ${new Date(m.expiresAt).toLocaleDateString('vi-VN')}`} chevron={false} />}
       <div className="card tint"><h3>Phạm vi mặc định</h3><p>{scope}</p></div>
+      {canEdit && (
+        <div className="card stack">
+          <div className="label">Thông tin liên hệ</div>
+          <Field label="Số điện thoại">
+            <input className="input" type="tel" value={m.phone} onChange={(e) => updateMember(m.id, { phone: e.target.value })} />
+          </Field>
+          <Field label="Quan hệ trong nhà">
+            <input className="input" value={m.relation} onChange={(e) => updateMember(m.id, { relation: e.target.value })} />
+          </Field>
+          <Field label="Ngôn ngữ nhận lời mời">
+            <Seg value={m.lang} onChange={(v) => updateMember(m.id, { lang: v })} options={[{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English' }]} />
+          </Field>
+        </div>
+      )}
       {me.role === 'admin' && m.id !== me.id && (
         <div className="card stack">
           <div className="label">Đổi vai trò (tăng thế hệ quyền, ghi bằng chứng)</div>
-          <Seg value={m.role} onChange={(r) => void changeRole(m.id, r, me.id).then((x) => toast(x.ok ? 'Đã đổi vai trò.' : x.reason ?? '', x.ok ? 'info' : 'warning'))} options={[{ value: 'admin', label: 'Quản trị' }, { value: 'member', label: 'Thành viên' }, { value: 'child', label: 'Trẻ' }, { value: 'carer', label: 'Hỗ trợ' }]} />
+          <Seg value={m.role} onChange={(r) => void changeRole(m.id, r, me.id).then((x) => toast(x.ok ? 'Đã đổi vai trò.' : x.reason ?? '', x.ok ? 'info' : 'warning'))} options={[...ROLE_OPTIONS]} />
         </div>
       )}
+      {m.phone && m.id !== me.id && <a className="btn secondary" href={`tel:${m.phone}`}><PhoneIcon size={18} /> Gọi {m.name}</a>}
+      {me.role === 'admin' && m.id !== me.id && (confirm ? (
+        <div className="card rose stack">
+          <p style={{ margin: 0 }}>Gỡ {m.name} khỏi nhà sẽ thu hồi mọi quyền xem lịch, ký ức và vị trí của người này (tăng thế hệ quyền).</p>
+          <div className="btnrow">
+            <button className="btn secondary" onClick={() => setConfirm(false)}>Hủy</button>
+            <button className="btn danger" onClick={() => void removeMember(m.id, me.id).then((ok) => { toast(ok ? `Đã gỡ ${m.name}.` : 'Không gỡ được quản trị duy nhất.', ok ? 'info' : 'warning'); if (ok) nav('/f/members', { replace: true }); })}>Gỡ khỏi nhà</button>
+          </div>
+        </div>
+      ) : <button className="btn ghost" onClick={() => setConfirm(true)}><Trash2 size={18} /> Gỡ khỏi nhà</button>)}
       <Link to="/f/members" className="btn secondary">Về danh sách thành viên</Link>
     </Phone>
   );
@@ -189,6 +277,7 @@ export function FSync() {
 }
 
 export function FSentinel() {
+  const homeName = useHouseholdName();
   const s = useSentinel();
   const session = useApp((st) => st.session);
   const jobs = useApp((st) => st.syncJobs);
@@ -199,7 +288,7 @@ export function FSentinel() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/more" />
-      <Header title="Bảo mật Sentinel" sub="Nhà An, Trạng thái phạm vi của bạn" />
+      <Header title="Bảo mật Sentinel" sub={`${homeName}, trạng thái phạm vi của bạn`} />
       <Row icon={<Fingerprint size={18} />} title="Phiên và thiết bị tin cậy" meta={`1 phiên trên máy này, ${session.passkey?.kind === 'webauthn' ? 'passkey' : 'khóa thiết bị'}, từ ${hhmm(session.startedAt)}`} chevron={false} />
       <Row icon={<ShieldCheck size={18} />} title="Quyền và thu hồi" meta={`Thế hệ quyền ${s.epoch()}, ${pending ? pending + ' thiết bị chờ áp dụng' : 'trạng thái áp dụng theo thiết bị'}`} to="/f/sync" />
       <Row icon={<FileText size={18} />} tileTone="sand" title="Sự kiện bảo mật" meta={last ? `${last.summary}, ${hhmm(last.ts)}` : 'Chưa có'} to="/f/security-log" />
@@ -220,13 +309,14 @@ export function FSentinel() {
 }
 
 export function FSecurityLog() {
+  const homeName = useHouseholdName();
   const s = useSentinel();
   const kinds = ['session', 'approval', 'policy.revoke', 'policy.change', 'device.sync', 'gate.deny', 'grant.denied', 'incident.signal', 'incident.state', 'budget.deny', 'recovery.step'];
   const list = [...s.journal.all()].reverse().filter((e) => kinds.includes(e.kind)).slice(0, 50);
   return (
     <Phone tabs>
       <TopBar back backTo="/f/sentinel" />
-      <Header title="Sự kiện bảo mật" sub="Nhà An, Nhật ký nối chuỗi băm" />
+      <Header title="Sự kiện bảo mật" sub={`${homeName}, nhật ký nối chuỗi băm`} />
       {list.length === 0 && <div className="empty">Chưa có sự kiện.</div>}
       {list.map((e) => (
         <Row key={e.id} icon={e.decision === 'deny' ? <Shield size={18} /> : <Check size={18} />} tileTone={e.severity === 'critical' ? 'rose' : e.severity === 'warning' ? 'sand' : undefined} title={e.summary} meta={`${hhmm(e.ts)}, ${e.id}, ${e.kind}${e.epoch ? ', epoch ' + e.epoch : ''}`} chevron={false} />
@@ -246,6 +336,10 @@ export function FSettings() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const demo = useDemo();
+  const homeName = useHouseholdName();
+  const nav = useNavigate();
   useEffect(() => {
     setKey(prefs.claudeKey);
   }, [prefs.claudeKey]);
@@ -263,13 +357,13 @@ export function FSettings() {
     <Phone tabs>
       <TopBar back backTo="/f/more" />
       <Header title="Cài đặt ứng dụng" sub="Tùy chọn trên thiết bị này." />
-      <div className="card stack">
+      {demo && <div className="card stack">
         <h3>Dùng với tư cách</h3>
         <p>Đổi tài khoản thành viên để thấy quyền khác nhau (thiết bị dùng chung trong nhà).</p>
         <select className="input" value={me.id} onChange={(e) => { actAs(e.target.value); toast(`Đang dùng với tư cách ${memberName(e.target.value)}.`); }}>
           {members.filter((m) => m.mode === 'family').map((m) => <option key={m.id} value={m.id}>{m.name}, {roleName(m.role)}</option>)}
         </select>
-      </div>
+      </div>}
       <div className="card stack">
         <div className="hstack"><Sparkles size={18} color="#244C3E" /><h3 style={{ margin: 0, flex: 1 }}>GenAI bằng Claude (tùy chọn)</h3><Switch label="Bật Claude" checked={prefs.claudeEnabled} onChange={(v) => set((s) => void (s.prefs.claudeEnabled = v))} /></div>
         <p>Mặc định HeartOS soạn lời mời bằng mẫu trên thiết bị. Bật mục này để dùng Claude với khóa API của chính bạn. Khóa chỉ lưu trên thiết bị và được gửi thẳng tới api.anthropic.com; chỉ dữ kiện tối thiểu (dịp, khung giờ, cách xưng hô, ngôn ngữ) được gửi, không gửi lịch hay ký ức.</p>
@@ -314,7 +408,14 @@ export function FSettings() {
       <div className="card flat">
         <KV items={[['Phiên bản', 'HeartOS 1.0.0'], ['Dữ liệu', 'Mã hóa AES-256-GCM trên thiết bị, khóa không xuất được'], ['Font', 'Inter, SIL OFL 1.1'], ['Đăng nhập', ago(useApp.getState().session.startedAt)]]} />
       </div>
-      <button className="btn ghost" onClick={() => setConfirmReset(true)}><RefreshCw size={16} /> Đặt lại dữ liệu mẫu</button>
+      {demo ? <button className="btn ghost" onClick={() => setConfirmReset(true)}><RefreshCw size={16} /> Đặt lại dữ liệu mẫu</button> : <button className="btn ghost" onClick={() => setConfirmLeave(true)}><LogOut size={16} /> Rời hộ trên máy này</button>}
+      <Sheet open={confirmLeave} onClose={() => setConfirmLeave(false)} title="Rời hộ trên máy này?">
+        <p className="small muted" style={{ margin: 0 }}>Xóa dữ liệu của {homeName} khỏi điện thoại này và gỡ ghép với hub. Tài khoản và khóa truy cập vẫn giữ để bạn tạo hoặc tham gia hộ khác. Dữ liệu trên máy của người khác và trên hub không bị xóa.</p>
+        <div className="btnrow">
+          <button className="btn secondary" onClick={() => setConfirmLeave(false)}>Hủy</button>
+          <button className="btn danger" onClick={() => void leaveHousehold().then(() => nav('/choose-home', { replace: true }))}>Rời hộ</button>
+        </div>
+      </Sheet>
       <Sheet open={confirmReset} onClose={() => setConfirmReset(false)} title="Đặt lại dữ liệu mẫu?">
         <p className="small muted" style={{ margin: 0 }}>Xóa lời mời, việc, ký ức mới, nhật ký Sentinel, két và trạng thái hub trên thiết bị này rồi gieo lại dữ liệu mẫu. KEK được luân chuyển sang phiên bản mới.</p>
         <div className="btnrow">
