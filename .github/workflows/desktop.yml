@@ -1,0 +1,65 @@
+# Đóng gói phần mềm quản trị HeartOS Sentinel Admin (Electron) cho Windows và macOS.
+# Bộ cài NSIS cần Windows, dmg cần macOS, nên phải build trên máy ảo tương ứng.
+# Chưa có chứng chỉ ký số: bản build không được ký. Không dùng secret nào.
+name: Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Đóng gói (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            targets: --win nsis portable
+          - os: macos-latest
+            name: macos
+            targets: --mac dmg
+    defaults:
+      run:
+        # Dùng bash cả trên Windows để tham số sau "--" được truyền giống nhau trên hai hệ.
+        shell: bash
+    env:
+      # Không tìm chứng chỉ trong keychain của máy ảo macOS; build không ký.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Cài Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cài phụ thuộc
+        run: npm ci
+
+      # --publish never: chỉ tạo tệp. Không có cờ này, electron-builder bật publish ngầm khi
+      # chạy theo tag và sẽ đẩy lên GitHub Releases nếu môi trường có GH_TOKEN/GITHUB_TOKEN.
+      - name: Build và đóng gói
+        run: npm run desktop:dist -- ${{ matrix.targets }} --publish never
+
+      - name: Tải lên bản đóng gói
+        uses: actions/upload-artifact@v7
+        with:
+          name: heartos-sentinel-admin-${{ matrix.name }}
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.dmg
+            desktop/release/*.zip
+          if-no-files-found: error

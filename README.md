@@ -129,7 +129,20 @@ APK nằm ở `android/app/build/outputs/apk/release/app-release.apk`. Cần JDK
 
 ### Đóng gói cho Windows và macOS
 
-Trên Linux chỉ build được bản portable và zip cho Windows. Bộ cài NSIS cần chạy `npm run desktop:dist` trên Windows (hoặc có Wine), bản dmg cần chạy trên macOS.
+Trên Linux chỉ build được AppImage, deb và bản portable, zip cho Windows (`npm run desktop:dist -- --win portable zip`). Bộ cài NSIS cần chạy `npm run desktop:dist` trên Windows (hoặc có Wine), bản dmg cần chạy trên macOS.
+
+Workflow [`.github/workflows/desktop.yml`](.github/workflows/desktop.yml) build hai bản này trên máy ảo GitHub Actions (Node 22):
+
+- Chạy tay ở **Actions → Desktop → Run workflow**, hoặc tự chạy khi đẩy tag `v*`, ví dụ `git tag v1.0.0 && git push origin v1.0.0`.
+- `windows-latest` tạo bộ cài NSIS và bản portable, `macos-latest` tạo dmg.
+- Tệp nằm trong mục **Artifacts** của lượt chạy: `heartos-sentinel-admin-windows` và `heartos-sentinel-admin-macos`. Workflow không đăng lên GitHub Releases.
+- Số phiên bản trong tên tệp lấy từ `version` trong `package.json`, không lấy từ tag. Sửa `version` trước khi gắn tag.
+
+Repo không có chứng chỉ ký số nên các bản này chưa được ký:
+
+- Windows SmartScreen cảnh báo khi mở lần đầu. Bấm **More info → Run anyway**.
+- macOS có thể báo ứng dụng bị hỏng hoặc không xác minh được nhà phát triển. Sau khi chép vào Applications, chạy `xattr -cr "/Applications/HeartOS Sentinel Admin.app"` rồi mở lại.
+- `macos-latest` dùng chip Apple Silicon nên dmg chỉ chạy trên máy arm64. Cần thêm bản cho máy Intel thì đổi tham số macOS trong workflow thành `--mac dmg --arm64 --x64`.
 
 ## GenAI (tùy chọn)
 
