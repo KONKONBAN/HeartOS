@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Building2, Camera, Check, MessageSquare, Navigation, Plus, Trash2, CloudOff, Droplets, ExternalLink, Flame, FlaskConical, Lightbulb, Map as MapIcon, MapPin, Phone as PhoneIcon, Plug, Power, Radar, Siren, UserCheck, Users, Wifi, WifiOff } from 'lucide-react';
+import { Activity, AlertTriangle, Building2, Camera, Server, Check, MessageSquare, Navigation, Plus, Trash2, CloudOff, Droplets, ExternalLink, Flame, FlaskConical, Lightbulb, Map as MapIcon, MapPin, Phone as PhoneIcon, Plug, Power, Radar, Siren, UserCheck, Users, Wifi, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
@@ -10,6 +10,8 @@ import type { SimEvent } from '../../core/smarthome/engine';
 import { ago, hhmm } from '../../lib/format';
 import { toast } from '../../lib/ui-store';
 import { readSupportLocation, sendSOS, setHospitals, smsLink, sosMessage, supportContacts } from '../../state/actions';
+import { useOnline } from '../../lib/net';
+import { useHa } from '../../state/ha';
 import { useHome } from '../../state/services';
 import { namesOf, useApp, useHouseholdName, useMe } from '../../state/store';
 
@@ -24,6 +26,8 @@ export function FSafe() {
   const lastAt = home.s.rooms.length ? Math.max(...home.s.rooms.map((r) => r.lastSignal)) : 0;
   const hospitals = useApp((s) => s.hospitals);
   const camera = home.s.devices.find((d) => d.kind === 'camera');
+  const online = useOnline();
+  const ha = useHa();
   return (
     <Phone tabs>
       <TopBar />
@@ -38,12 +42,19 @@ export function FSafe() {
           <span>Vùng có tín hiệu</span>
         </div>
       </div>
-      {!home.s.net.internet && <Row tone="rose" icon={<WifiOff size={18} />} tileTone="white" title="Kết nối đang gián đoạn" meta="Hub mất Internet, LAN vẫn hoạt động" to="/f/offline" />}
+      {home.s.real ? (
+        <>
+          {!online && <Row tone="rose" icon={<WifiOff size={18} />} tileTone="white" title="Điện thoại mất Internet" meta="Thiết bị trong nhà vẫn chạy qua Wi-Fi nội bộ, SMS SOS vẫn gửi được" to="/f/offline" />}
+          {ha.state !== 'ok' && <Row tone="sand" icon={<Server size={18} />} tileTone="white" title={ha.state === 'error' ? 'Home Assistant không phản hồi' : 'Kết nối thiết bị trong nhà'} meta={ha.state === 'error' ? ha.error : 'Dùng Home Assistant để đọc cảm biến, điều khiển đèn, khóa và camera'} to="/f/ha" />}
+        </>
+      ) : (
+        !home.s.net.internet && <Row tone="rose" icon={<WifiOff size={18} />} tileTone="white" title="Kết nối đang gián đoạn" meta="Hub mất Internet, LAN vẫn hoạt động" to="/f/offline" />
+      )}
       <Row icon={<Siren size={18} />} tileTone="rose" title="Sự cố đang theo dõi" meta="SOS và tín hiệu nghi ngã" badge={<Badge tone={open.length ? 'danger' : undefined}>{open.length} ca</Badge>} to="/f/incidents" />
-      <Row icon={<MapIcon size={18} />} tileTone="sand" title="Bản đồ vùng quan sát" meta={stale.length ? `${stale.map((r) => r.name).join(', ')} chưa có dữ liệu mới` : 'Mọi vùng có tín hiệu gần đây'} to="/f/map" />
+      <Row icon={<MapIcon size={18} />} tileTone="sand" title="Bản đồ vùng quan sát" meta={!home.s.rooms.length ? 'Chưa có phòng nào, thêm thiết bị để hiện sơ đồ' : stale.length ? `${stale.map((r) => r.name).join(', ')} chưa có dữ liệu mới` : 'Mọi vùng có tín hiệu gần đây'} to="/f/map" />
       <Row icon={<Radar size={18} />} title="Guardian radar-nhiệt trực tiếp" meta={home.s.devices.some((d) => d.kind === 'radar') ? 'LD2450 2D, MLX90640 32×24, điểm ghép' : 'Chưa có cảm biến radar, kết nối qua Home Assistant'} to="/f/guardian" />
-      {camera && <Row icon={<Camera size={18} />} title="Camera được cấp quyền" meta="Xem theo vùng và thời hạn" to={`/f/camera/${camera.id}`} />}
-      <Row icon={<Power size={18} />} title="Thiết bị và điện dự phòng" meta="Hub, cảm biến, UPS và mạng" to="/f/devices" />
+      {camera && <Row icon={<Camera size={18} />} title="Camera được cấp quyền" meta="Xem theo vùng và thời hạn" to={`/f/camera/${encodeURIComponent(camera.id)}`} />}
+      <Row icon={<Power size={18} />} title="Thiết bị và điện dự phòng" meta={home.s.real ? 'Home Assistant, cảm biến, UPS và mạng' : 'Hub, cảm biến, UPS và mạng'} to="/f/devices" />
       <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Thiết bị thông minh" meta="Đèn, ổ cắm, cảnh và luật tự động" to="/f/smart" />
       <Row icon={<Building2 size={18} />} title="Bệnh viện gần nhà" meta={hospitals.length ? hospitals.map((h) => h.name).join(', ') : 'Thêm nơi đưa người thân tới khi cần'} to="/f/hospitals" />
       {home.s.real ? null : <Row icon={<FlaskConical size={18} />} tileTone="peach" title="Thử tình huống trong nhà mẫu" meta="Ngã, khói, rò nước, mất điện, mất Internet" to="/f/simulate" />}
@@ -89,7 +100,14 @@ export function FIncident() {
     if (inc.location) return setLoc(`${inc.location.lat.toFixed(5)}, ${inc.location.lng.toFixed(5)}, sai số khoảng ${Math.round(inc.location.accuracy)} m`);
     void readSupportLocation(me.id, inc.personId).then((r) => setLoc(r.ok && r.data ? `${r.data.place}, ${r.data.lat.toFixed(4)}, ${r.data.lng.toFixed(4)}` : 'Không mở được vị trí: ' + (r.error ?? 'Không có quyền vị trí')));
   }, [inc?.id, inc?.kind, me.id, inc]);
-  if (!inc) return <Phone tabs><TopBar back backTo="/f/incidents" /><div className="empty">Không tìm thấy ca.</div></Phone>;
+  if (!inc)
+    return (
+      <Phone tabs>
+        <TopBar back backTo="/f/incidents" />
+        <Header title="Không tìm thấy ca" sub="Ca có thể đã đóng và được dọn khỏi máy này." />
+        <Link to="/f/incidents" className="btn">Về các ca đang mở</Link>
+      </Phone>
+    );
   const actor = { id: me.id, name: me.name, role: me.role };
   const person = members.find((m) => m.id === inc.personId);
   const contacts = supportContacts(inc.personId ?? '');
@@ -130,15 +148,17 @@ export function FIncident() {
           ]}
         />
       </div>
-      {inc.kind === 'sos' && <Row icon={<MapPin size={18} />} title={inc.location ? 'Vị trí khi gửi SOS' : 'Vị trí hỗ trợ (qua Sentinel)'} meta={loc || 'Đang mở...'} chevron={false} right={inc.location ? <a className="btn xs secondary" href={`https://maps.google.com/?q=${inc.location.lat},${inc.location.lng}`} target="_blank" rel="noreferrer">Bản đồ</a> : undefined} />}
+      {inc.kind === 'sos' && <Row icon={<MapPin size={18} />} title={inc.location ? 'Vị trí khi gửi SOS' : 'Vị trí hỗ trợ (qua Sentinel)'} meta={loc || 'Đang mở'} chevron={false} right={inc.location ? <a className="btn xs secondary" href={`https://maps.google.com/?q=${inc.location.lat},${inc.location.lng}`} target="_blank" rel="noreferrer">Bản đồ</a> : undefined} />}
       {home.s.real && inc.status !== 'closed' && inc.kind === 'sos' && (
         <div className="card rose stack">
           <h3 style={{ margin: 0 }}>Báo cho người thân</h3>
           {contacts.length === 0 && <p style={{ margin: 0 }}>Chưa có người thân nào có số điện thoại. Thêm số trong Thành viên để gửi tin nhắn SOS.</p>}
           {contacts.length > 0 && <a className="btn danger" href={smsLink(contacts.map((m) => m.phone), sosMessage(inc))} onClick={() => home.markFamilyNotified(inc.id, me.name)}><MessageSquare size={18} /> Gửi tin nhắn SOS kèm vị trí</a>}
-          <div className="grid2">
-            {contacts.slice(0, 4).map((m) => <a key={m.id} className="btn secondary" href={`tel:${m.phone}`}><PhoneIcon size={16} /> {m.name}</a>)}
-          </div>
+          {contacts.length > 0 && (
+            <div className={contacts.length > 1 ? 'grid2' : 'stack'}>
+              {contacts.slice(0, 4).map((m) => <a key={m.id} className="btn secondary" href={`tel:${m.phone}`}><PhoneIcon size={16} /> {contacts.length > 1 ? m.name : `Gọi ${m.name}`}</a>)}
+            </div>
+          )}
           {me.id !== inc.personId && inc.steps.helper.state !== 'done' && <button className="btn" onClick={() => home.acceptHelp(inc.id, { id: me.id, name: me.name })}><UserCheck size={18} /> Tôi đang tới</button>}
           <a className="btn secondary" href="tel:115"><PhoneIcon size={16} /> Gọi cấp cứu 115</a>
         </div>
@@ -280,7 +300,7 @@ export function FSos() {
         <Link to={`/f/incident/${open.id}`} className="btn danger"><Siren size={18} /> Xem SOS đang mở, {open.id}</Link>
       ) : (
         <button className="btn danger" style={{ minHeight: 72, fontSize: 18 }} disabled={busy} onClick={() => void send()}>
-          <Siren size={22} /> {busy ? 'Đang lấy vị trí...' : 'Gửi SOS'}
+          <Siren size={22} /> {busy ? 'Đang lấy vị trí' : 'Gửi SOS'}
         </button>
       )}
       <div className="card sand">
@@ -401,13 +421,13 @@ export function FSimulate() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/safe" />
-      <Header title="Mô phỏng tình huống" sub="Bơm sự kiện vào hub để thử Guardian, luật tự động và luồng SOS." />
+      <Header title="Thử tình huống" sub="Nhà mẫu: bơm sự kiện vào hub để thử Guardian, luật tự động và luồng SOS." />
       <div className="card flat"><p>Trạng thái: {home.s.net.internet ? 'Internet ổn định' : 'mất Internet'}, điện {home.s.power.mains === 'on' ? 'lưới' : 'UPS/máy phát'}, chế độ {home.s.mode}. Sự kiện gần nhất: {home.s.notices[0] ? `${home.s.notices[0].title} (${ago(home.s.notices[0].at)})` : 'chưa có'}.</p></div>
       {SIMS.map((s) => (
         <Row key={s.ev} icon={s.icon} tileTone={s.tone} title={s.label} onClick={() => { home.simulate(s.ev); toast(`Đã bơm sự kiện: ${s.label}`); }} />
       ))}
       <Row icon={<Plug size={18} />} title="Ổ cắm hành lang trực tuyến" meta="Lệnh đang chờ sẽ được áp dụng khi thiết bị trở lại" chevron={false} right={<Switch label="Ổ cắm trực tuyến" checked={!!plug?.online} onChange={(v) => home.setDeviceOnline('plug-hall', v)} />} />
-      <Row icon={<UserCheck size={18} />} title="Mô phỏng người thân nhận việc" meta="An tự nhận SOS sau 6 giây (từ điện thoại của An)" chevron={false} right={<Switch label="Mô phỏng nhận việc" checked={home.s.simulateHelpers} onChange={(v) => home.setSimulateHelpers(v)} />} />
+      <Row icon={<UserCheck size={18} />} title="Người thân tự nhận việc" meta="An tự nhận SOS sau 6 giây (từ điện thoại của An)" chevron={false} right={<Switch label="Người thân tự nhận việc" checked={home.s.simulateHelpers} onChange={(v) => home.setSimulateHelpers(v)} />} />
       <KV items={[['Ca đang mở', String(home.openIncidents().length)], ['Lệnh đang chờ', String(home.s.commands.filter((c) => ['queued', 'sent', 'awaiting'].includes(c.status)).length)]]} />
     </Phone>
   );

@@ -1,7 +1,8 @@
-import { Bell, Camera, Monitor, Check, Cpu, LogOut, Phone as PhoneIcon, UserPlus, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
+import { Bell, Camera, Monitor, Server, Check, Cpu, LogOut, Phone as PhoneIcon, UserPlus, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { Missing } from '../../components/Missing';
 import { SignOutButton } from '../../components/SignOut';
 import { Avatar, Badge, Field, Header, KV, Row, Seg, Sheet, Switch, TopBar } from '../../components/ui';
 import { draftInvitation } from '../../core/family/genai';
@@ -10,7 +11,7 @@ import { roleName } from '../../core/smarthome/engine';
 import { ago, hhmm } from '../../lib/format';
 import { requestApproval, toast } from '../../lib/ui-store';
 import { addMember, changeRole, regrantPermission, removeMember, resetEverything, revokePermission, setSyncDeviceOnline, updateMember } from '../../state/actions';
-import { leaveHousehold } from '../../state/hublink';
+import { leaveHousehold, useHubLink } from '../../state/hublink';
 import { approvalPub, useSentinel } from '../../state/services';
 import { memberName, namesOf, useApp, useDemo, useHouseholdName, useMe } from '../../state/store';
 import type { Member, PermScope } from '../../state/types';
@@ -20,14 +21,17 @@ const SCOPE_ICON: Record<PermScope, React.ReactNode> = { calendar: <Users size={
 export function FMore() {
   const me = useMe();
   const s = useSentinel();
+  const homeName = useHouseholdName();
+  const demo = useDemo();
   return (
     <Phone tabs>
       <TopBar />
-      <Header title="Cài đặt nhà An" sub={`Tài khoản, ${me.name}`} />
+      <Header title="Cài đặt" sub={`${homeName}, tài khoản ${me.name}`} />
       <Row icon={<Users size={18} />} title="Thành viên và vai trò" meta="Quản lý hộ theo quyền của bạn" to="/f/members" />
       <Row icon={<KeyRound size={18} />} title="Quyền chia sẻ" meta="Lịch, ký ức, camera và hỗ trợ" to="/f/permissions" />
       <Row icon={<ShieldCheck size={18} />} title="Bảo mật Sentinel" meta={`Phiên, thiết bị tin cậy, sự kiện, ${SECURITY_STATE_LABEL[s.incident.view().state]}`} to="/f/sentinel" />
       <Row icon={<Monitor size={18} />} title="Máy quản trị Sentinel" meta="Ghép với phần mềm quản trị trên máy tính" to="/f/hub" />
+      {!demo && <Row icon={<Server size={18} />} title="Home Assistant" meta="Kết nối thiết bị, cảm biến và camera trong nhà" to="/f/ha" />}
       <Row icon={<Languages size={18} />} title="Ngôn ngữ và giọng đọc" meta="Giao diện, trợ lý và người nhận" to="/f/language" />
       <Row icon={<Sun size={18} />} title="Đổi cách hiển thị" meta="Gia Đình / Thân Quen" to="/mode" />
       <Row icon={<Sparkles size={18} />} tileTone="sand" title="Cài đặt ứng dụng" meta="GenAI, thông báo, dùng với tư cách, dữ liệu mẫu" to="/f/settings" />
@@ -50,7 +54,7 @@ export function FMembers() {
         <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.id === me.id ? `${m.name} (bạn)` : m.name} meta={m.role === 'child' ? `Hồ sơ trẻ, theo cấu hình người giám hộ ${memberName(m.guardian ?? '')}` : m.role === 'carer' ? `Người hỗ trợ theo ca${m.expiresAt ? `, hết hạn ${hhmm(m.expiresAt)}` : ''}` : `${m.relation || roleName(m.role)}, ${m.mode === 'simple' ? 'Thân Quen' : 'Gia Đình'}`} to={`/f/member/${m.id}`} />
       ))}
       {me.role === 'admin' && <Link to="/f/member-new" className="btn"><UserPlus size={18} /> Thêm thành viên</Link>}
-      {!demo && (
+      {!demo && me.role === 'admin' && (
         <Row tone="tint" icon={<Monitor size={18} />} tileTone="white" title="Người thân dùng HeartOS trên điện thoại riêng" meta="Trên HeartOS Sentinel Admin: Ghép thiết bị mới, chọn đúng thành viên, rồi người đó mở ứng dụng và chọn Tham gia bằng mã. Lời mời, việc và ký ức sẽ đồng bộ qua hub trong nhà." chevron={false} />
       )}
     </Phone>
@@ -112,7 +116,7 @@ export function FMemberNew() {
       <Field label="Bạn xưng với người này là">
         <input className="input" placeholder="Ví dụ: con, cháu, anh" value={selfRef} onChange={(e) => setSelfRef(e.target.value)} />
       </Field>
-      <button className="btn" disabled={busy || name.trim().length < 2} onClick={() => void save()}>{busy ? 'Đang thêm...' : 'Thêm thành viên'}</button>
+      <button className="btn" disabled={busy || name.trim().length < 2} onClick={() => void save()}>{busy ? 'Đang thêm' : 'Thêm thành viên'}</button>
     </Phone>
   );
 }
@@ -184,6 +188,7 @@ export function FPermissions() {
     <Phone tabs>
       <TopBar back backTo="/f/more" />
       <Header title="Quyền chia sẻ" sub="Mỗi mục có người xem, mục đích và thời hạn." />
+      {perms.length === 0 && <div className="empty">Chưa có quyền chia sẻ nào. Quyền xuất hiện ở đây khi một người chia sẻ lịch rảnh, ký ức, vị trí, hoặc khi quản trị hộ cho phép xem camera.</div>}
       {perms.map((p) => (
         <Row
           key={p.id}
@@ -207,7 +212,7 @@ export function FRevoke() {
   const devices = useApp((s) => s.syncDevices);
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
-  if (!p) return null;
+  if (!p) return <Missing title="Không tìm thấy quyền" back="/f/permissions" label="Về quyền chia sẻ" />;
   const affected = devices.filter((d) => p.viewers.includes(d.ownerId) || d.id === 'dev-hub' || d.ownerId === p.ownerId);
   const revoke = async () => {
     const rec = await requestApproval(`Thu hồi quyền ${p.title.toLowerCase()}`, [`Phạm vi: ${p.title} của ${memberName(p.ownerId)}`, `Người xem bị thu hồi: ${namesOf(p.viewers)}`, `Mục đích: ${p.purpose}`, 'Grant cũ mất hiệu lực tại cổng theo epoch mới; thiết bị ngoại tuyến giữ hạn quyền cũ tới khi xác nhận.'], p.viewers.join(','), true);
@@ -234,7 +239,7 @@ export function FRevoke() {
       <KV items={[['Phạm vi', p.title], ['Người xem', namesOf(p.viewers)], ['Mục đích', p.purpose], ['Hạn', p.expiresAt ? hhmm(p.expiresAt) : 'Đến khi thu hồi']]} />
       <div className="card tint">
         <h3>Áp dụng theo thiết bị</h3>
-        <p>{affected.map((d) => `${d.name} (${d.online ? 'trực tuyến' : 'ngoại tuyến'})`).join(', ')}. Thiết bị ngoại tuyến sẽ hiển thị chờ áp dụng cùng hạn quyền cũ.</p>
+        <p>{affected.length ? `${affected.map((d) => `${d.name} (${d.online ? 'trực tuyến' : 'ngoại tuyến'})`).join(', ')}. Thiết bị ngoại tuyến sẽ hiển thị chờ áp dụng cùng hạn quyền cũ.` : 'Điện thoại này áp dụng ngay. Điện thoại khác trong nhà nhận bản thu hồi qua hub gia đình ở lần đồng bộ kế tiếp, hub ngừng gửi dữ liệu này tới người bị thu hồi.'}</p>
       </div>
       <button className="btn danger" disabled={busy} onClick={() => void revoke()}>Xác nhận thu hồi</button>
       <button className="btn secondary" onClick={() => nav(-1)}>Quay lại</button>
@@ -247,6 +252,8 @@ export function FSync() {
   const jobs = useApp((s) => s.syncJobs);
   const devices = useApp((s) => s.syncDevices);
   const job = jobs.find((j) => j.permissionId === params.get('perm')) ?? jobs[0];
+  const hub = useHubLink();
+  const link = hub?.link;
   return (
     <Phone tabs>
       <TopBar back backTo="/f/permissions" />
@@ -259,14 +266,24 @@ export function FSync() {
             icon={d.deviceId === 'dev-hub' ? <Cpu size={18} /> : <Smartphone size={18} />}
             tileTone={d.status === 'applied' ? undefined : 'sand'}
             title={dev.name}
-            meta={d.status === 'applied' ? `Đã áp dụng phiên bản ${job.version}${d.at ? ', ' + hhmm(d.at) : ''}` : dev.online ? 'Đang áp dụng...' : `Ngoại tuyến, Hạn quyền cũ ${d.oldExpiry ? hhmm(d.oldExpiry) : '-'}`}
+            meta={d.status === 'applied' ? `Đã áp dụng phiên bản ${job.version}${d.at ? ', ' + hhmm(d.at) : ''}` : dev.online ? 'Đang áp dụng' : `Ngoại tuyến, Hạn quyền cũ ${d.oldExpiry ? hhmm(d.oldExpiry) : '-'}`}
             badge={<Badge tone={d.status === 'applied' ? undefined : 'warm'}>{d.status === 'applied' ? 'Đã áp dụng' : 'Chờ xác nhận'}</Badge>}
             chevron={false}
             right={d.deviceId !== 'dev-hub' && d.status !== 'applied' ? <Switch label={`${dev.name} trực tuyến`} checked={dev.online} onChange={(v) => setSyncDeviceOnline(dev.id, v)} /> : undefined}
           />
         );
       })}
-      {job && <div className="card flat"><p>Trạng thái sẽ đổi khi có xác nhận từ thiết bị. Bật công tắc để mô phỏng thiết bị trực tuyến trở lại.</p></div>}
+      {job && job.devices.length === 0 && (
+        <Row
+          icon={<Cpu size={18} />}
+          tileTone={link && link.lastSync && link.lastSync >= job.at ? undefined : 'sand'}
+          title="Hub gia đình"
+          meta={!link ? 'Chưa ghép hub. Quyền đã thu hồi trên điện thoại này; ghép hub để áp dụng cho điện thoại khác.' : link.lastSync && link.lastSync >= job.at ? `Đã gửi bản thu hồi tới hub lúc ${hhmm(link.lastSync)}` : 'Chờ lần đồng bộ kế tiếp với hub'}
+          badge={<Badge tone={link && link.lastSync && link.lastSync >= job.at ? undefined : 'warm'}>{link && link.lastSync && link.lastSync >= job.at ? 'Đã gửi' : 'Chờ'}</Badge>}
+          to="/f/hub"
+        />
+      )}
+      {job && job.devices.length > 0 && <div className="card flat"><p>Trạng thái sẽ đổi khi có xác nhận từ thiết bị. Trong nhà mẫu, bật công tắc để đưa thiết bị trực tuyến trở lại.</p></div>}
       {jobs.length > 1 && <div className="section-title">Các bản cập nhật trước</div>}
       {jobs.slice(1, 6).map((j) => (
         <Row key={j.id} icon={<RefreshCw size={18} />} title={`${j.title}, phiên bản ${j.version}`} meta={`${hhmm(j.at)}, ${j.devices.filter((d) => d.status === 'applied').length}/${j.devices.length} đã áp dụng`} chevron={false} />
@@ -378,7 +395,7 @@ export function FSettings() {
           </select>
         </Field>
         <div className="hstack">
-          <button className="btn sm secondary" disabled={!key.trim() || testing} onClick={() => { set((s) => void (s.prefs.claudeKey = key.trim())); void test(); }}>{testing ? 'Đang thử...' : 'Thử soạn một lời mời'}</button>
+          <button className="btn sm secondary" disabled={!key.trim() || testing} onClick={() => { set((s) => void (s.prefs.claudeKey = key.trim())); void test(); }}>{testing ? 'Đang thử' : 'Thử soạn một lời mời'}</button>
           {prefs.claudeKey && <button className="btn sm ghost" onClick={() => { set((s) => { s.prefs.claudeKey = ''; s.prefs.claudeEnabled = false; }); setKey(''); }}><Trash2 size={14} /> Xóa khóa</button>}
         </div>
         {testResult && <p className="small" style={{ color: testResult.ok ? '#244C3E' : '#9E3830' }}>{testResult.ok ? 'Claude trả lời: ' : 'Chưa dùng được Claude: '}{testResult.text}</p>}
@@ -387,7 +404,7 @@ export function FSettings() {
       <Row
         icon={<Bell size={18} />}
         title="Thông báo hệ thống"
-        meta={typeof Notification === 'undefined' ? 'Trình duyệt không hỗ trợ' : `Quyền: ${Notification.permission}`}
+        meta={typeof Notification === 'undefined' ? 'Máy này không hỗ trợ thông báo hệ thống' : Notification.permission === 'granted' ? 'Đã cho phép hiện thông báo' : Notification.permission === 'denied' ? 'Đang bị chặn, mở Cài đặt của máy để cho phép' : 'Bật để HeartOS xin quyền hiện thông báo'}
         chevron={false}
         right={
           <Switch

@@ -22,7 +22,7 @@ export function FHub() {
     return (
       <Phone tabs>
         <TopBar back backTo="/f/more" />
-        <Header title="Máy quản trị Sentinel" sub="Đang khởi động kết nối..." />
+        <Header title="Máy quản trị Sentinel" sub="Đang khởi động kết nối" />
       </Phone>
     );
   const pair = async () => {
@@ -60,7 +60,7 @@ export function FHub() {
         </Field>
         {error && <Row tone="rose" icon={<X size={18} />} tileTone="white" title="Chưa ghép được" meta={error} />}
         <button className="btn" disabled={busy || !url.trim() || code.length !== 6} onClick={() => void pair()}>
-          <Link2 size={18} /> {busy ? 'Đang ghép...' : 'Ghép nối'}
+          <Link2 size={18} /> {busy ? 'Đang ghép' : 'Ghép nối'}
         </button>
         <div className="card flat">
           <p>Sau khi ghép, điện thoại gửi trạng thái Sentinel, nhật ký bằng chứng và ca Guardian tới máy quản trị mỗi 5 giây. Gói tin được ký và mã hóa riêng; bản rõ dữ liệu và khóa giải mã không rời điện thoại. Máy quản trị gửi lại lệnh đã ký, điện thoại kiểm chữ ký trước khi áp dụng.</p>

@@ -175,8 +175,7 @@ export const useApp = create<AppState>()(
       signOut: () =>
         set((s) => {
           s.session.signedIn = false;
-          s.session.householdId = null;
-          s.session.mode = null;
+          if (s.household && !s.session.householdId) s.session.householdId = s.household.id;
         }),
       resetAll: () => set((s) => ({ ...seed(), session: { ...s.session } })),
     })),

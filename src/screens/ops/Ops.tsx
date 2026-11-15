@@ -178,7 +178,7 @@ export function OpsReplay() {
         </div>
       </div>
       <button className="btn" style={{ maxWidth: 260 }} disabled={running} onClick={() => void runReplay().then(() => nav(base + '/trace'))}>
-        <Beaker size={18} /> {running ? 'Đang chạy...' : 'Chạy kiểm thử'}
+        <Beaker size={18} /> {running ? 'Đang chạy' : 'Chạy kiểm thử'}
       </button>
     </>
   );
@@ -274,7 +274,7 @@ export function OpsAudit() {
       <div className="panel">
         <div className="hstack wrap">
           <h2 style={{ flex: 1 }}>Nhật ký nối chuỗi băm</h2>
-          <input className="input" style={{ maxWidth: 220, minHeight: 36 }} placeholder="Tìm..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input" style={{ maxWidth: 220, minHeight: 36 }} placeholder="Tìm kiếm" value={q} onChange={(e) => setQ(e.target.value)} />
           <select className="input" style={{ maxWidth: 180, minHeight: 36 }} value={kind} onChange={(e) => setKind(e.target.value)}>
             <option value="">Mọi loại</option>
             {['grant', 'gate', 'vault', 'policy', 'incident', 'ai', 'recovery', 'smarthome', 'guardian', 'approval', 'session'].map((k) => <option key={k} value={k}>{k}</option>)}

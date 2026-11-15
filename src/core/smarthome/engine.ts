@@ -3,6 +3,7 @@ import { FACILITIES, compareRoutes, seedEdges, type FloodState, type RoadEdge } 
 import type { JsonStore } from '../storage';
 import { seedDevices, seedRooms, seedRules, seedScenes } from './seed';
 import { largestBlob, radarTargets, seedPeople, stepPeople, thermalFrame, type Person } from './sensors';
+import { satisfies, type HaAutomation, type HaScene, type HaSnapshot, type RadarTargetRaw } from '../ha/map';
 import type {
   AutomationRule,
   Command,
@@ -31,9 +32,24 @@ export interface Actor {
   role: HouseholdRole | 'system';
 }
 
+export interface HomeBridge {
+  execute(device: Device, desired: Device['state']): Promise<void>;
+  runScene(entity: string): Promise<void>;
+  setAutomation(entity: string, enabled: boolean): Promise<void>;
+  triggerAutomation(entity: string): Promise<void>;
+}
+
+export interface HaLink {
+  scenes: HaScene[];
+  automations: HaAutomation[];
+  radar: Record<string, RadarTargetRaw[]>;
+  syncedAt: number;
+}
+
 export interface HomeState {
   v: 2;
   real?: boolean;
+  ha?: HaLink;
   rooms: Room[];
   devices: Device[];
   commands: Command[];
@@ -92,6 +108,9 @@ export class HomeEngine {
   private lastSensor = 0;
   private lastPersist = 0;
   private cmdSeq = 0;
+  private bridge: HomeBridge | null = null;
+  private stillSince: Record<string, number | undefined> = {};
+  private lastPos: Record<string, { x: number; y: number } | undefined> = {};
 
   constructor(
     private store: JsonStore,
@@ -180,6 +199,7 @@ export class HomeEngine {
     return this.s.incidents.filter((i) => i.status !== 'closed');
   }
   freshRooms() {
+    if (this.s.real) return this.s.rooms.filter((r) => this.s.devices.some((d) => d.room === r.id && d.online));
     return this.s.rooms.filter((r) => !r.stale && this.now() - r.lastSignal < 5 * 60_000);
   }
   essentialW() {
@@ -221,10 +241,123 @@ export class HomeEngine {
     if (d.kind === 'lock' && desired.locked === false && actor.role !== 'system' && !approvalRef) {
       return this.pushCmd({ ...base, desired, status: 'rejected', reason: 'Mở khóa cửa cần xác nhận lại bằng khóa phê duyệt trên thiết bị.' });
     }
+    if (this.s.real) {
+      if (!this.bridge) return this.pushCmd({ ...base, desired, status: 'failed', reason: 'Chưa kết nối Home Assistant.' });
+      const cmd = this.pushCmd({ ...base, desired, status: 'sent', sentAt: this.now() });
+      this.audit('smarthome.command', `${actor.name} điều khiển ${d.name}: ${describeDesired(desired)} (${source})`);
+      this.bridge
+        .execute(d, desired)
+        .then(() => {
+          if (cmd.status === 'sent') cmd.status = 'awaiting';
+          this.emit();
+        })
+        .catch((e: Error) => {
+          cmd.status = 'failed';
+          cmd.reason = e.message;
+          this.emit();
+        });
+      return cmd;
+    }
     if (!this.s.net.lan) return this.pushCmd({ ...base, desired, status: 'failed', reason: 'Hub mất kết nối LAN.' });
     const cmd = this.pushCmd({ ...base, desired });
     this.audit('smarthome.command', `${actor.name} điều khiển ${d.name}: ${describeDesired(desired)} (${source})`);
     return cmd;
+  }
+
+  attachBridge(bridge: HomeBridge | null) {
+    this.bridge = bridge;
+    this.emit();
+  }
+
+  get connected() {
+    return !!this.bridge;
+  }
+
+  applyExternal(snap: HaSnapshot) {
+    if (!this.s.real) return;
+    const t = this.now();
+    const prev = new Map(this.s.devices.map((d) => [d.id, d]));
+    this.s.devices = snap.devices;
+    this.s.rooms = snap.rooms;
+    this.s.ha = { scenes: snap.scenes, automations: snap.automations, radar: snap.radar, syncedAt: t };
+    if (snap.devices.some((d) => d.kind === 'plug')) {
+      const last = this.s.energy[this.s.energy.length - 1];
+      if (!last || t - last.at >= 10_000) {
+        this.s.energy.push({ at: t, w: Math.round(snap.devices.reduce((n, d) => n + (d.kind === 'plug' ? Number(d.state.powerW ?? 0) : 0), 0)) });
+        if (this.s.energy.length > 120) this.s.energy.shift();
+      }
+    }
+    for (const room of Object.keys(snap.radar)) {
+      const targets = snap.radar[room].map((r, i) => ({ id: i + 1, x: r.x, y: r.y, speed: Math.abs(r.speed), room }));
+      this.radar[room] = targets;
+      const hist = (this.speedHist[room] ??= []);
+      hist.push(Math.max(0, ...targets.map((x) => x.speed)));
+      if (hist.length > 30) hist.shift();
+      const main = targets[0];
+      const prevPos = this.lastPos[room];
+      const moved = !main || !prevPos || Math.hypot(main.x - prevPos.x, main.y - prevPos.y) > 150;
+      if (main && main.speed < 8 && !moved) this.stillSince[room] ??= t;
+      else if (!main || main.speed >= 8 || moved) this.stillSince[room] = main && main.speed < 8 ? t : undefined;
+      this.lastPos[room] = main ? { x: main.x, y: main.y } : undefined;
+      const stillSeconds = this.stillSince[room] ? (t - this.stillSince[room]!) / 1000 : 0;
+      const res = fuse({ speedHistory: hist, stillSeconds, blob: null, frameHeight: 24 });
+      this.fusion[room] = res;
+      const radarDrop = res.cues[0]?.hit;
+      if (radarDrop && stillSeconds >= 30) {
+        const therm = snap.devices.find((d) => d.kind === 'thermal' && d.room === room);
+        const inc = this.openIncident('fall', 'P2', room, { kind: 'radar', at: t, summary: `Radar: tăng tốc đột ngột rồi bất động ${Math.round(stillSeconds)} giây`, ref: `radar-${room}` });
+        if (therm && Number(therm.state.maxC) >= 28 && !inc.evidence.some((e) => e.kind === 'thermal')) inc.evidence.push({ kind: 'thermal', at: t, summary: `Ảnh nhiệt thấy nguồn nhiệt cơ thể (${therm.state.maxC}°C)`, ref: therm.id });
+        hist.length = 0;
+      }
+    }
+    for (const d of snap.devices) {
+      const before = prev.get(d.id);
+      const rise = (k: string) => !!d.state[k] && (!before || !before.state[k]);
+      if (d.kind === 'smoke' && rise('smoke')) this.openIncident('smoke', 'P1', d.room, { kind: 'smoke', at: t, summary: `${d.name} báo khói/khí`, ref: d.id });
+      if (d.kind === 'leak' && rise('wet')) this.openIncident('leak', 'P2', d.room, { kind: 'leak', at: t, summary: `${d.name} phát hiện nước`, ref: d.id });
+      if (d.kind === 'sos' && rise('pressed')) this.openIncident('sos', 'P1', d.room, { kind: 'button', at: t, summary: `Nút SOS ${d.name} được nhấn`, ref: d.id });
+      if (d.kind === 'door' && rise('open') && this.s.mode === 'away') this.notify(`${d.name} mở khi vắng nhà`, `Phòng ${this.room(d.room).name}, lúc ${new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}.`, 'warning', '/f/devices');
+    }
+    for (const c of this.s.commands) {
+      if (c.status !== 'sent' && c.status !== 'awaiting') continue;
+      const d = this.device(c.deviceId);
+      if (d && satisfies(d, c.desired)) {
+        c.status = 'acked';
+        c.ackAt = t;
+        d.confirmedAt = t;
+      } else if (t - (c.sentAt ?? c.at) > 20_000) {
+        c.status = 'expired';
+        c.reason = d?.online === false ? 'Thiết bị đang ngoại tuyến trên Home Assistant, lệnh hết hạn.' : 'Thiết bị chưa xác nhận trạng thái mới trong 20 giây.';
+      }
+    }
+    this.emit(true);
+  }
+
+  fallWatch(room: string) {
+    const hist = this.speedHist[room] ?? [];
+    const since = this.stillSince[room];
+    return { peak: Math.round(Math.max(0, ...hist)), stillSec: since ? Math.round((this.now() - since) / 1000) : 0, drop: !!this.fusion[room]?.cues[0]?.hit };
+  }
+
+  async runHaScene(entity: string, actor: Actor) {
+    if (!this.bridge) throw new Error('Chưa kết nối Home Assistant.');
+    await this.bridge.runScene(entity);
+    this.audit('smarthome.command', `${actor.name} chạy cảnh ${entity}`);
+  }
+
+  async setHaAutomation(entity: string, enabled: boolean, actor: Actor) {
+    if (!this.bridge) throw new Error('Chưa kết nối Home Assistant.');
+    await this.bridge.setAutomation(entity, enabled);
+    const a = this.s.ha?.automations.find((x) => x.entity === entity);
+    if (a) a.enabled = enabled;
+    this.audit('smarthome.command', `${actor.name} ${enabled ? 'bật' : 'tắt'} luật ${entity}`);
+    this.emit();
+  }
+
+  async triggerHaAutomation(entity: string, actor: Actor) {
+    if (!this.bridge) throw new Error('Chưa kết nối Home Assistant.');
+    await this.bridge.triggerAutomation(entity);
+    this.audit('smarthome.command', `${actor.name} chạy luật ${entity}`);
   }
 
   private pushCmd(c: Command) {
@@ -371,7 +504,7 @@ export class HomeEngine {
       return existing;
     }
     const t = this.now();
-    const id = `HS-${String(this.s.nextIncident++).padStart(3, '0')}`;
+    const id = this.s.real ? `HS-${uniqueTag()}` : `HS-${String(this.s.nextIncident++).padStart(3, '0')}`;
     const isSos = kind === 'sos' || kind === 'smoke';
     const inc: HomeIncident = {
       id,
@@ -842,6 +975,13 @@ export class HomeEngine {
     this.fusion = {};
     this.emit();
   }
+}
+
+function uniqueTag() {
+  const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const b = new Uint8Array(6);
+  crypto.getRandomValues(b);
+  return Array.from(b, (x) => alphabet[x % alphabet.length]).join('');
 }
 
 function plugW(id: string) {

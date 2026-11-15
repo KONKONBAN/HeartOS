@@ -5,6 +5,7 @@ import { Phone } from '../../components/Layouts';
 import { Badge, Field, Header, Row, Steps, TopBar } from '../../components/ui';
 import { toast } from '../../lib/ui-store';
 import { createHousehold, startExpo } from '../../state/actions';
+import { roleName } from '../../core/smarthome/engine';
 import { joinHousehold } from '../../state/hublink';
 import { createPasskey, getSentinel, verifyPasskey } from '../../state/services';
 import { useApp } from '../../state/store';
@@ -45,7 +46,7 @@ export function Welcome() {
       {hasAccount ? <button className="btn secondary" onClick={() => nav('/register')}>Tạo tài khoản mới</button> : <button className="btn secondary" onClick={() => nav('/signin')}>Tôi đã có tài khoản</button>}
       {!realHome && (
         <button className="btn ghost" disabled={busy} onClick={() => void expo()}>
-          <Ticket size={18} /> {busy ? 'Đang chuẩn bị nhà mẫu...' : 'Trải nghiệm tài khoản Expo'}
+          <Ticket size={18} /> {busy ? 'Đang chuẩn bị nhà mẫu' : 'Trải nghiệm tài khoản Expo'}
         </button>
       )}
       <div className="card flat" style={{ marginTop: 6 }}>
@@ -91,7 +92,7 @@ export function SignIn() {
       <Header title="Đăng nhập" sub="Mở HeartOS bằng khóa truy cập đã tạo trên thiết bị." />
       <Row icon={<Users size={18} />} title={session.displayName || 'Tài khoản trên máy này'} meta={session.email || 'Không dùng email'} chevron={false} />
       <button className="btn" onClick={() => void signIn()} disabled={busy}>
-        <Fingerprint size={18} /> {busy ? 'Đang xác thực...' : 'Dùng khóa truy cập'}
+        <Fingerprint size={18} /> {busy ? 'Đang xác thực' : 'Dùng khóa truy cập'}
       </button>
       <Row icon={<KeyRound size={18} />} title="Xác thực trên thiết bị" meta="Hệ thống mở hộp thoại passkey hoặc dùng khóa thiết bị không xuất được của HeartOS." tone="tint" chevron={false} />
       <button className="btn ghost" onClick={() => nav('/recover')}>Mất khóa truy cập?</button>
@@ -145,7 +146,7 @@ export function Register() {
         />
       </div>
       <button className="btn" disabled={!valid || busy} onClick={() => void create()}>
-        <Fingerprint size={18} /> {busy ? 'Đang tạo khóa...' : 'Tạo khóa truy cập và tiếp tục'}
+        <Fingerprint size={18} /> {busy ? 'Đang tạo khóa' : 'Tạo khóa truy cập và tiếp tục'}
       </button>
     </Phone>
   );
@@ -166,6 +167,7 @@ export function Recover() {
 
 export function ChooseHome() {
   const nav = useNavigate();
+  const set = useApp((s) => s.set);
   const household = useApp((s) => s.household);
   const me = useApp((s) => s.members.find((m) => m.id === s.session.actingAs));
   const [confirm, setConfirm] = useState(false);
@@ -174,7 +176,7 @@ export function ChooseHome() {
       <TopBar back backTo="/welcome" />
       <Header title="Chọn nhà của bạn" sub={household ? 'Hộ gia đình trên điện thoại này.' : 'Tạo hộ cho gia đình bạn, hoặc tham gia hộ đã có bằng mã từ hub tại nhà.'} />
       {household && (
-        <Row icon={<Home size={18} />} title={household.name} meta={me ? `Vai trò của bạn: ${me.relation || me.role}` : 'Thành viên'} badge={<Badge>Đang tham gia</Badge>} to="/mode" tileTone="deep" />
+        <Row icon={<Home size={18} />} title={household.name} meta={me ? `Vai trò của bạn: ${me.relation || roleName(me.role)}` : 'Thành viên'} badge={<Badge>Đang tham gia</Badge>} onClick={() => { set((s) => { s.session.householdId = household.id; }); nav('/mode'); }} tileTone="deep" />
       )}
       {household && confirm && (
         <div className="card sand stack">
@@ -233,7 +235,7 @@ export function CreateHome() {
       </Field>
       <Row icon={<Lock size={18} />} title="Quyền riêng của từng người" meta="Thành viên tự chọn chia sẻ lịch, ký ức, vị trí và vùng quan sát." tone="tint" chevron={false} />
       <button className="btn" disabled={!valid || busy} onClick={() => void create()}>
-        {busy ? 'Đang tạo hộ...' : 'Tạo hộ và chọn cách dùng'}
+        {busy ? 'Đang tạo hộ' : 'Tạo hộ và chọn cách dùng'}
       </button>
     </Phone>
   );
@@ -272,7 +274,7 @@ export function JoinHome() {
       <Row icon={<Wifi size={18} />} title="Cùng mạng Wi-Fi với hub" meta="Điện thoại và hub phải ở cùng mạng trong nhà khi tham gia." tone="tint" chevron={false} />
       {err && <div className="card rose"><p className="danger-text" style={{ margin: 0 }}>{err}</p></div>}
       <button className="btn" disabled={busy || !hub.trim() || code.length !== 6} onClick={() => void join()}>
-        {busy ? 'Đang tham gia...' : 'Tham gia'}
+        {busy ? 'Đang tham gia' : 'Tham gia'}
       </button>
     </Phone>
   );

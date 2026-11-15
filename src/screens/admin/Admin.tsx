@@ -288,7 +288,7 @@ export function AdminDevice() {
         <div className="panel">
           <div className="hstack wrap">
             <h2 style={{ flex: 1 }}>Nhật ký bằng chứng từ thiết bị ({journal.length})</h2>
-            <input className="input" style={{ maxWidth: 240, minHeight: 36 }} placeholder="Tìm..." value={q} onChange={(e) => setQ(e.target.value)} />
+            <input className="input" style={{ maxWidth: 240, minHeight: 36 }} placeholder="Tìm kiếm" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <p className="small muted" style={{ margin: 0 }}>Máy quản trị tính lại băm SHA-256 của từng bản ghi và kiểm liên kết với bản ghi liền trước.</p>
           <div className="scroll-x">
@@ -454,7 +454,7 @@ export function AdminPair() {
         <div className="panel">
           <h2>So khớp mã đối chiếu</h2>
           <p className="small muted" style={{ margin: 0 }}>Sau khi ghép, điện thoại hiển thị một mã đối chiếu. Mã đó phải trùng với mã bên dưới; nếu khác, hãy gỡ ghép nối ngay vì có thể có thiết bị trung gian.</p>
-          {fresh.length === 0 && <Item t="Đang chờ thiết bị..." />}
+          {fresh.length === 0 && <Item t="Đang chờ thiết bị" />}
           {fresh.map((d) => <Item key={d.id} t={d.name} m={`${d.platform}, ${d.lastAddress}`} right={<span className="mono" style={{ fontSize: 20, fontWeight: 800 }}>{d.sas}</span>} />)}
           <h2 style={{ marginTop: 8 }}>Cổng LAN</h2>
           <PortForm current={info.port} />

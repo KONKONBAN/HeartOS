@@ -15,8 +15,11 @@ Bộ phần mềm gồm ba phần:
 - **Nhịp Nhà**: đọc khoảng rảnh/bận mà từng người đã chia sẻ (qua Sentinel), cắt theo giờ yên tĩnh và tìm khung giờ chung.
 - **GenAI**: soạn lời mời theo từng người nhận và ngôn ngữ, kiểm schema và dữ kiện, chờ người dùng duyệt, kiểm lại quyền khi phát hành.
 - **Việc chung, Nghi thức, Ký Ức Số, Quỹ Nếp Nhà**.
-- **Guardian**: ghép radar LD2450 với ảnh nhiệt MLX90640 theo vùng để phát hiện ca nghi ngã cần xác minh. Luồng SOS đi từ báo động tại nhà, kênh từ xa, người hỗ trợ, so tuyến tới bệnh viện rồi chốt điểm bàn giao.
-- **SmartHome**: hub tại nhà, lệnh theo quyền trong hộ, trạng thái chỉ đổi khi thiết bị xác nhận, cảnh, luật tự động, ghép thiết bị, UPS/máy phát/ATS, chế độ mất Internet.
+- **Hộ gia đình thật**: mỗi nhà tự tạo hộ, thêm người thân, người thân tham gia từ điện thoại riêng bằng mã của hub. Việc, lời mời, ký ức, quỹ, quyền chia sẻ và ca SOS đồng bộ qua hub trong mạng nhà.
+- **Thiết bị qua Home Assistant**: đèn, ổ cắm, rèm, điều hòa, khóa, van, còi, cảm biến cửa/khói/khí/nước, nút SOS, camera, UPS, radar LD2450 và cảm biến nhiệt MLX90640. Lệnh theo quyền trong hộ, trạng thái chỉ đổi khi thiết bị xác nhận.
+- **Guardian**: radar thấy tăng tốc đột ngột rồi bất động từ 30 giây thì mở ca nghi ngã cần xác minh, ảnh nhiệt thêm bằng chứng. Khói, rò nước, nút SOS tự mở ca.
+- **SOS thật**: lấy vị trí GPS, soạn sẵn tin nhắn SMS kèm bản đồ cho người thân, nút gọi từng người và gọi 115, người thân nhận ca và bấm "Tôi đang tới" từ điện thoại của họ.
+- **Tài khoản Expo**: nhà mẫu để trưng bày. Kết thúc trải nghiệm là xóa toàn bộ dữ liệu khách vừa tạo và đặt lại nhà mẫu cho khách sau.
 - **ARGOLET Sentinel**: hiện thực lớp bảo mật chính trong luận văn "Nghiên cứu phát triển hệ thống bảo mật ARGOLET Sentinel" bằng WebCrypto. Phần nguồn entropy đang nghiên cứu được chuẩn bị sẵn thành mô-đun riêng, chưa tích hợp.
 - Hai chế độ hiển thị: **Thân Quen** (chữ lớn, cho ông bà) và **Gia Đình**, cùng **Bàn vận hành** cho máy tính.
 
@@ -30,7 +33,7 @@ Giao diện theo bản thiết kế "Giao diện HeartOS" (Bản xem thử 03) v
 2. Mở tệp, cho phép "Cài ứng dụng không rõ nguồn gốc" khi được hỏi.
 3. Yêu cầu Android 7.0 trở lên.
 
-Ghi âm lời kể cần quyền micro, ứng dụng sẽ hỏi ở lần dùng đầu tiên.
+Ghi âm lời kể cần quyền micro, gửi SOS kèm vị trí cần quyền vị trí. Ứng dụng hỏi ở lần dùng đầu tiên.
 
 ### Máy tính quản trị Sentinel
 
@@ -43,11 +46,23 @@ sudo apt install ./HeartOS-Sentinel-Admin-1.0.0-amd64.deb
 
 Lần đầu mở, Windows Firewall có thể hỏi quyền mạng. Chọn cho phép trong mạng riêng (Private) để điện thoại trong nhà kết nối được tới cổng 7420.
 
+## Bắt đầu cho một gia đình
+
+1. Người quản trị mở ứng dụng, chọn **Bắt đầu sử dụng**, nhập họ tên và số điện thoại. Ứng dụng tạo khóa truy cập trên điện thoại (passkey của hệ thống hoặc khóa thiết bị không xuất được).
+2. Chọn **Tạo hộ mới**, đặt tên nhà. Người tạo là quản trị hộ.
+3. Vào **Thêm > Thành viên và vai trò > Thêm thành viên** để thêm ông bà, cha mẹ, con cháu: số điện thoại (dùng cho SOS và gọi), cách xưng hô, cách dùng ứng dụng (Gia Đình hoặc Thân Quen chữ lớn).
+4. Ghép điện thoại quản trị với máy quản trị Sentinel (mục dưới) để đưa hồ sơ hộ lên hub.
+5. Người thân dùng điện thoại riêng: trên máy quản trị chọn **Ghép thiết bị mới**, chọn đúng tên người đó, bấm **Tạo mã**. Người thân mở ứng dụng, tạo tài khoản, chọn **Tham gia bằng mã**, nhập địa chỉ hub và mã.
+
+Một người dùng điện thoại chung với người khác (ví dụ ông bà) thì không cần tham gia riêng: quản trị chỉ cần thêm hồ sơ và chọn cách dùng Thân Quen.
+
 ### Ghép điện thoại với máy quản trị
 
-1. Trên máy tính: **Ghép thiết bị mới** rồi **Tạo mã ghép nối**. Màn hình hiện địa chỉ LAN (ví dụ `192.168.1.10:7420`) và mã 6 chữ số, mã có hạn 2 phút và cho tối đa 5 lần thử.
+1. Trên máy tính: **Ghép thiết bị mới**, để mục chọn là **Điện thoại quản trị hộ**, bấm **Tạo mã**. Màn hình hiện địa chỉ LAN (ví dụ `192.168.1.10:7420`) và mã 6 chữ số, mã có hạn 2 phút và cho tối đa 5 lần thử.
 2. Trên điện thoại: **Thêm > Máy quản trị Sentinel**, nhập địa chỉ và mã, bấm **Ghép nối**.
 3. So **mã đối chiếu** trên hai màn hình. Nếu trùng nhau thì kênh đã an toàn, nếu khác thì gỡ ghép và làm lại.
+
+Mã tạo cho một thành viên cụ thể là **mã tham gia hộ**: điện thoại dùng mã này được gắn với đúng hồ sơ đó và chỉ nhận dữ liệu người đó được phép xem. Thu hồi quyền chia sẻ thì hub ngừng gửi và báo các máy xóa bản đã nhận.
 
 Sau khi ghép, điện thoại tự đồng bộ mỗi 5 giây khi ứng dụng đang mở. Máy quản trị xem được trạng thái Sentinel, nhật ký bằng chứng (đã kiểm lại chuỗi băm), thiết bị nhà, sự cố, và gửi lệnh có chữ ký: kiểm tra kết nối, thu hồi khẩn cấp (tăng thế hệ quyền), khóa hoặc mở đường đọc trong két, hạn chế phiên thành viên, gửi tín hiệu nghi vấn, niêm phong điểm phục hồi, kiểm chuỗi bằng chứng, thu hồi một quyền chia sẻ, cấu hình hạn mức giải mã (B, r), chạy 12 kịch bản T1 đến T7, đổi chế độ nhà, đóng ca Guardian, gỡ ghép. Lệnh hết hạn sau 15 phút nếu thiết bị chưa nhận.
 
@@ -57,7 +72,43 @@ Sau khi ghép, điện thoại tự đồng bộ mỗi 5 giây khi ứng dụng 
 node heartos-hub.cjs --pair
 ```
 
-Tùy chọn: `--port 7420`, `--data <thư mục>` (mặc định `~/.heartos-hub`). Lệnh `--pair` in mã ghép nối ra màn hình.
+Tùy chọn: `--port 7420`, `--data <thư mục>` (mặc định `~/.heartos-hub`). Lệnh `--pair` in mã ghép điện thoại quản trị ra màn hình. Khi đang chạy, gõ `members` để xem mã thành viên, `pair <mã thành viên>` để tạo mã tham gia hộ cho người đó, `devices` để xem điện thoại đã ghép.
+
+## Kết nối thiết bị qua Home Assistant
+
+HeartOS dùng [Home Assistant](https://www.home-assistant.io) làm cầu nối tới thiết bị Zigbee, Wi-Fi, Matter và ESPHome, nên dùng được với hầu hết thiết bị bán ở Việt Nam.
+
+1. Cài Home Assistant tại nhà (Home Assistant Green, Raspberry Pi hoặc mini PC) và thêm thiết bị vào đó như bình thường.
+2. Gán **Khu vực** cho từng thiết bị trong Home Assistant. HeartOS chia thiết bị theo phòng từ Khu vực này.
+3. Trong Home Assistant: **Hồ sơ > Bảo mật > Mã truy cập dài hạn > Tạo mã**.
+4. Trên điện thoại quản trị: **An toàn > Thiết bị và điện dự phòng > Home Assistant** (hoặc **Thêm > Home Assistant**), nhập địa chỉ (ví dụ `http://192.168.1.10:8123`) và mã, bấm **Kiểm tra** rồi **Lưu và kết nối**.
+
+Điện thoại đọc trạng thái mỗi 3 giây khi ứng dụng mở. Mã truy cập chỉ lưu trên điện thoại đó và được mã hóa khi lưu. Điện thoại khác muốn điều khiển thiết bị cần kết nối riêng, nên chỉ cấp mã cho người được phép.
+
+| Thiết bị trong Home Assistant | HeartOS hiểu là |
+|---|---|
+| `light.*` | Đèn (bật tắt, độ sáng, ánh sáng ấm/lạnh nếu đèn hỗ trợ) |
+| `switch.*` | Ổ cắm; tên có "còi" hoặc "siren" là còi, có "van" hoặc "valve" là van nước |
+| `cover.*`, `climate.*`, `lock.*`, `valve.*`, `siren.*`, `camera.*` | Rèm, điều hòa, khóa cửa, van, còi, camera |
+| `binary_sensor` loại smoke, gas, carbon_monoxide | Cảm biến khói/khí, bật lên là mở ca khẩn P1 |
+| `binary_sensor` loại moisture | Cảm biến nước, mở ca P2 |
+| `binary_sensor` loại door, window, opening | Cảm biến cửa, báo khi chế độ Vắng nhà |
+| `binary_sensor` có chữ "sos" trong tên | Nút SOS, mở ca khẩn P1 |
+| `binary_sensor` loại motion, occupancy, presence | Cảm biến hiện diện |
+| `sensor.<tên>_target_N_x`, `_y`, `_speed` (ESPHome LD2450) | Radar Guardian, vẽ mục tiêu và phát hiện nghi ngã |
+| `sensor` có "mlx90640" hoặc "thermal" trong tên, đơn vị °C | Nhiệt độ đỉnh của cảm biến nhiệt |
+| `sensor` có "ups" trong tên, loại battery | Pin UPS |
+| `scene.*`, `script.*`, `automation.*` | Cảnh, kịch bản, luật tự động (bật tắt và chạy ngay) |
+
+Mở khóa cửa luôn cần ký xác nhận bằng khóa phê duyệt trên điện thoại. Xem camera cần Sentinel cấp quyền cho từng phiên, tối đa 4 phút; quản trị hộ chọn ai được xem từng camera.
+
+Dùng HeartOS trên trình duyệt (không phải APK) thì cần cho phép địa chỉ trang trong `configuration.yaml` của Home Assistant:
+
+```yaml
+http:
+  cors_allowed_origins:
+    - http://192.168.1.20:5173
+```
 
 ## Giao thức HubLink
 
@@ -123,7 +174,7 @@ npm install
 | Lệnh | Việc làm |
 |---|---|
 | `npm run dev` | Chạy bản phát triển, mở được từ điện thoại cùng mạng LAN |
-| `npm test` | 50 bài kiểm thử đơn vị |
+| `npm test` | 63 bài kiểm thử đơn vị |
 | `npm run typecheck` | Kiểm kiểu cho ứng dụng và phần máy tính |
 | `npm run build` | Build web vào `dist/` |
 | `npm run desktop:dev` | Mở phần mềm quản trị từ mã nguồn |
@@ -161,9 +212,11 @@ Mặc định lời mời được soạn bằng mẫu trên thiết bị. Trong
 
 ## Giới hạn
 
-- Cảm biến, thiết bị nhà, kênh SOS từ xa và nhà cung cấp dịch vụ là **mô phỏng** (có nhãn MÔ PHỎNG). SOS **không** gọi dịch vụ cấp cứu, màn SOS có nút gọi 115.
+- Thiết bị trong nhà cần Home Assistant. Chưa kết nối thì các màn thiết bị, Guardian và camera hiện hướng dẫn kết nối, không hiện số liệu giả.
+- SOS tới điện thoại người thân qua hub chỉ đến được khi ứng dụng trên máy đó đang mở và cùng mạng nhà (chưa có thông báo đẩy khi ứng dụng tắt). Kênh luôn đến được là tin nhắn SMS soạn sẵn kèm vị trí và nút gọi điện. HeartOS **không** tự gọi cấp cứu, màn SOS có nút gọi 115.
+- Nhà mẫu chỉ có trong tài khoản Expo. Máy đã có hộ thật thì không hiện nút Expo để tránh xóa nhầm dữ liệu.
 - "Enclave" và "HSM" là ranh giới mô-đun trong ứng dụng với khóa không xuất được. Thuộc tính mật mã là thật nhưng không có cách ly phần cứng. Triển khai thật cần TEE/HSM theo hồ sơ cấu hình C (Phụ lục D).
-- Bản đồ tuyến là đồ thị minh họa. Nút "Mở bản đồ thật" mở Google Maps theo địa chỉ đã cấu hình.
+- Danh sách bệnh viện do từng nhà tự nhập. Nút chỉ đường mở Google Maps theo địa chỉ đã nhập.
 - Dữ liệu ứng dụng lưu trên thiết bị và được mã hóa khi lưu. Đồng bộ giữa các máy đi qua hub trong mạng LAN.
 - Khóa mã hóa khi lưu nằm trong kho của ứng dụng trên thiết bị. Người chiếm quyền root của máy vẫn có thể đọc được; muốn chống trường hợp này cần thêm khóa ứng dụng bằng PIN hoặc sinh trắc học.
 

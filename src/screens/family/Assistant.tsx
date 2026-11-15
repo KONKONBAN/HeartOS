@@ -8,8 +8,11 @@ import { toast } from '../../lib/ui-store';
 import { assistantSend } from '../../state/actions';
 import { useApp, useMe } from '../../state/store';
 
+const KIN = ['mẹ', 'má', 'ba', 'bố', 'cha', 'ông', 'bà', 'ngoại', 'nội', 'cô', 'dì', 'chú', 'bác'];
+
 export function FAi() {
   const me = useMe();
+  const members = useApp((s) => s.members);
   const chat = useApp((s) => s.chat);
   const prefs = useApp((s) => s.prefs);
   const [text, setText] = useState(() => new URLSearchParams(location.hash.split('?')[1]).get('text') ?? '');
@@ -26,6 +29,13 @@ export function FAi() {
     setBusy(false);
   };
   const shown = chat.length ? chat : [];
+  const others = members.filter((m) => m.id !== me.id && m.role !== 'carer');
+  const callName = (m: (typeof members)[number]) => (KIN.includes(m.address) ? m.address : m.name);
+  const suggestions = [
+    others.length ? `Soạn lời mời ăn cơm cho ${others.slice(0, 2).map(callName).join(' và ')}` : 'Soạn lời mời ăn cơm cả nhà',
+    'Nhắc tưới cây trước bữa cơm',
+    others.length ? `Giữ lại lời kể của ${callName(others.find((m) => m.mode === 'simple') ?? others[0])}` : 'Giữ lại một lời kể của gia đình',
+  ];
   return (
     <Phone tabs>
       <TopBar back backTo="/f" />
@@ -36,7 +46,7 @@ export function FAi() {
       </div>
       {shown.length === 0 && (
         <div className="stack">
-          {['Soạn lời mời ăn cơm cho mẹ và Linh.', 'Nhắc tưới cây trước bữa cơm', 'Giữ lại lời kể của bà'].map((s) => (
+          {suggestions.map((s) => (
             <button key={s} className="row" onClick={() => void send(s)}>
               <span className="tile"><Sparkles size={16} /></span>
               <span className="t" style={{ fontSize: 14 }}>{s}</span>
@@ -52,11 +62,11 @@ export function FAi() {
           {m.action && <Link to={m.action.to} className="btn sm" style={{ marginTop: 10 }}>{m.action.label}</Link>}
         </div>
       ))}
-      {busy && <div className="small muted pulse">Trợ lý đang soạn...</div>}
+      {busy && <div className="small muted pulse">Trợ lý đang soạn</div>}
       <div ref={end} />
       <div className="hstack" style={{ marginTop: 'auto' }}>
         <Link to="/f/voice" className="btn secondary sm" aria-label="Nhập giọng nói"><Mic size={18} /></Link>
-        <input className="input" placeholder="Nhắn cho trợ lý..." value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void send()} />
+        <input className="input" placeholder="Nhắn cho trợ lý" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void send()} />
         <button className="btn sm" onClick={() => void send()} disabled={busy || !text.trim()} aria-label="Gửi"><Send size={18} /></button>
       </div>
       <p className="small muted" style={{ margin: 0 }}>Trợ lý chỉ đề xuất; mọi lời mời, việc và lệnh thiết bị cần bạn duyệt. Trợ lý không giữ khóa và không cấp quyền.</p>
@@ -113,7 +123,7 @@ export function FVoice() {
         <button className={'btn' + (sp.listening ? ' danger' : '')} style={{ width: 'auto', margin: '0 auto' }} onClick={sp.listening ? sp.stop : sp.start}>
           {sp.listening ? <MicOff size={20} /> : <Mic size={20} />} {sp.listening ? 'Dừng nghe' : 'Bắt đầu nói'}
         </button>
-        <p className="small" style={{ marginTop: 10 }}>{sp.listening ? 'Đang nghe...' : prefs.voiceLang === 'vi-VN' ? 'Tiếng Việt' : 'English'}</p>
+        <p className="small" style={{ marginTop: 10 }}>{sp.listening ? 'Đang nghe' : prefs.voiceLang === 'vi-VN' ? 'Tiếng Việt' : 'English'}</p>
       </div>
       {sp.error && <div className="card rose"><p className="danger-text">{sp.error}</p></div>}
       <Field label="Lời đã nhận dạng">

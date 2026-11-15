@@ -3,6 +3,7 @@ import { draftInvitation, parseIntent, type InviteFacts } from '../core/family/g
 import { buf, fromB64, randomId, toB64 } from '../core/sentinel/encoding';
 import type { ReadResult, TraceStep } from '../core/sentinel/types';
 import { blobs, getHome, getSentinel, initServices, signApproval, syncDirectory } from './services';
+import { stopHa } from './ha';
 import { adultIds, emptyState, getApp, memberName, namesOf, seed, useApp } from './store';
 import type { Invitation, Member, Memory } from './types';
 
@@ -360,8 +361,50 @@ export async function readContribution(id: string, subject: string): Promise<Rea
   return getSentinel().read<{ amount: number; note: string; by: string }>({ subject, objectId: c.objectId, purpose: 'fund.view' });
 }
 
+export function cameraObjectId(deviceId: string) {
+  return getApp().household?.demo ? 'cam-living' : `cam-${deviceId.replace(/[^a-z0-9_-]/gi, '-')}`;
+}
+
+export async function ensureCameraPolicy(deviceId: string, name: string, ownerId: string) {
+  const s = getSentinel();
+  const objectId = cameraObjectId(deviceId);
+  if (s.vault.meta(objectId)) return objectId;
+  const app = getApp();
+  const admins = app.members.filter((m) => m.role === 'admin' && m.id !== ownerId).map((m) => m.id);
+  await s.protect({ subject: ownerId, objectId, type: 'camera.policy', label: `Chính sách xem ${name}`, data: { entity: deviceId, masks: 'theo cấu hình trên camera', maxSessionSec: 240 }, viewers: admins, purposes: ['camera.view'] });
+  set((st) => {
+    if (!st.permissions.some((p) => p.objectId === objectId))
+      st.permissions.push({ id: `p-${objectId}`, scope: 'camera', title: `Xem ${name}`, subtitle: 'Phiên xem tối đa 4 phút', ownerId, viewers: [ownerId, ...admins], purpose: 'camera.view', status: 'granted', objectId });
+  });
+  return objectId;
+}
+
+export function cameraViewers(deviceId: string) {
+  return getSentinel().vault.meta(cameraObjectId(deviceId))?.viewers ?? [];
+}
+
+export async function setCameraViewers(deviceId: string, by: string, viewers: string[]) {
+  const s = getSentinel();
+  const objectId = cameraObjectId(deviceId);
+  const meta = s.vault.meta(objectId);
+  if (!meta) return false;
+  const cur = meta.viewers;
+  for (const v of cur.filter((x) => !viewers.includes(x))) await s.revoke({ actor: by, objectId, viewer: v, reason: 'Quản trị hộ thu hồi quyền xem camera' });
+  for (const v of viewers.filter((x) => !cur.includes(x))) await s.addViewer({ actor: by, objectId, viewer: v });
+  set((st) => {
+    const p = st.permissions.find((x) => x.objectId === objectId);
+    if (p) {
+      p.viewers = [p.ownerId, ...viewers.filter((v) => v !== p.ownerId)];
+      p.status = 'granted';
+    }
+  });
+  return true;
+}
+
 export async function startCamera(deviceId: string, subject: string) {
-  const r = await getSentinel().read<{ maxSessionSec: number; masks: string }>({ subject, objectId: 'cam-living', purpose: 'camera.view', fields: ['maxSessionSec', 'masks'] });
+  const objectId = cameraObjectId(deviceId);
+  if (!getSentinel().vault.meta(objectId)) return { ok: false as const, error: 'Quản trị hộ chưa bật quyền xem camera này.', trace: [] as TraceStep[] };
+  const r = await getSentinel().read<{ maxSessionSec: number; masks: string }>({ subject, objectId, purpose: 'camera.view', fields: ['maxSessionSec', 'masks'] });
   if (!r.ok || !r.data) return { ok: false as const, error: r.error ?? 'Không có quyền xem camera', trace: r.trace };
   const id = randomId('cam', 4);
   const sec = Math.min(240, Number(r.data.maxSessionSec) || 240);
@@ -500,6 +543,7 @@ export const EXPO_EMAIL = 'expo@heartos.local';
 const COLORS = ['#244C3E', '#753F30', '#6E4E20', '#3B6A8A', '#574F47', '#7A4A6E', '#2F5D50'];
 
 async function rebuildServices(demo: boolean) {
+  stopHa();
   const app = getApp();
   syncDirectory(app.members);
   await getSentinel().resetAll();

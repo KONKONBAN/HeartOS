@@ -5,6 +5,7 @@ import { systemNotify } from './lib/media';
 import { toast } from './lib/ui-store';
 import { bootstrap, endCamera, tickSync } from './state/actions';
 import { getHome, servicesReady } from './state/services';
+import { initHa } from './state/ha';
 import { getApp, hydrateApp, useApp } from './state/store';
 import * as A from './screens/auth/Auth';
 import * as S from './screens/simple/Simple';
@@ -17,6 +18,7 @@ import * as FA from './screens/family/Assistant';
 import * as SF from './screens/safety/Safety';
 import * as SG from './screens/safety/Guardian';
 import * as SD from './screens/safety/Devices';
+import { FHa } from './screens/safety/HomeAssistant';
 import * as AC from './screens/access/Access';
 import { FHub } from './screens/access/HubLink';
 import { isDesktop } from './lib/hubApi';
@@ -55,7 +57,7 @@ function Splash({ error }: { error?: string }) {
       <div>
         <Logo size={96} />
         <div style={{ fontSize: 24, fontWeight: 800 }}>HeartOS</div>
-        <div className="muted small" style={{ marginTop: 6 }}>{error ?? 'Đang khởi động Sentinel và hub tại nhà...'}</div>
+        <div className="muted small" style={{ marginTop: 6 }}>{error ?? 'Đang khởi động Sentinel và hub tại nhà'}</div>
       </div>
     </div>
   );
@@ -111,6 +113,7 @@ export default function App() {
     hydrateApp()
       .then(bootstrap)
       .then(async () => {
+        initHa();
         if (!isDesktop()) {
           await initHubLink(() => {
             const app = getApp();
@@ -128,7 +131,7 @@ export default function App() {
       <Runtime />
       <Toasts />
       <ApprovalSheet />
-      <Suspense fallback={<Splash error="Đang tải bàn vận hành..." />}>
+      <Suspense fallback={<Splash error="Đang tải bàn vận hành" />}>
       <Routes>
         <Route path="/" element={<Root />} />
         <Route path="/welcome" element={<A.Welcome />} />
@@ -190,6 +193,7 @@ export default function App() {
         <Route path="/f/guardian" element={g(<SG.FGuardian />)} />
         <Route path="/f/camera/:id" element={g(<SG.FCamera />)} />
         <Route path="/f/devices" element={g(<SD.FDevices />)} />
+        <Route path="/f/ha" element={g(<FHa />)} />
         <Route path="/f/pair" element={g(<SD.FPair />)} />
         <Route path="/f/power" element={g(<SD.FPower />)} />
         <Route path="/f/offline" element={g(<SD.FOffline />)} />

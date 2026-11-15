@@ -2,13 +2,14 @@ import { CalendarDays, Check, Clock, Mic, Phone as PhoneIcon, PlayCircle, Siren,
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { Missing } from '../../components/Missing';
 import { Avatar, Badge, Chips, Field, Header, ModePicker, Row, TopBar } from '../../components/ui';
 import { fmtSlot, viTime } from '../../core/family/calendar';
 import { nextOccurrence } from '../../core/family/recurrence';
 import { dayLong, hhmm, isToday } from '../../lib/format';
 import { speak, useRecorder } from '../../lib/media';
 import { toast } from '../../lib/ui-store';
-import { addMemory, openMemory, respondInvitation } from '../../state/actions';
+import { addMemory, openMemory, respondInvitation, supportContacts } from '../../state/actions';
 import { useHome } from '../../state/services';
 import { capFirst, honorific, memberName, namesOf, useApp, useMe } from '../../state/store';
 
@@ -27,6 +28,7 @@ export function SHome() {
   const members = useApp((s) => s.members);
   const home = useHome();
   const sosOpen = home.openIncidents().find((i) => i.kind === 'sos');
+  const contacts = supportContacts(me.id);
   const callees = members.filter((m) => m.id !== me.id && m.phone && m.role !== 'carer' && m.role !== 'child');
   const nextRitual = rituals
     .filter((r) => r.participants.includes(me.id))
@@ -64,7 +66,7 @@ export function SHome() {
         )
       )}
       <Row icon={<CalendarDays size={22} />} tileTone="peach" title="Lịch hôm nay" meta="Một bữa cơm, một cuộc gọi" to="/s/today" />
-      <Row tone="rose" icon={<Siren size={22} />} tileTone="white" title="Cần giúp ngay" meta={`Gửi SOS cho ${namesOf(home.s.helpers.map((h) => h.id))}`} to="/s/help" />
+      <Row tone="rose" icon={<Siren size={22} />} tileTone="white" title="Cần giúp ngay" meta={home.s.real ? (contacts.length ? `Gửi SOS cho ${namesOf(contacts.map((m) => m.id))}` : 'Gửi SOS và gọi cấp cứu 115') : `Gửi SOS cho ${namesOf(home.s.helpers.map((h) => h.id))}`} to="/s/help" />
     </Phone>
   );
 }
@@ -93,7 +95,7 @@ export function SCallPerson() {
   const m = useApp((s) => s.members.find((x) => x.id === id));
   const [opened, setOpened] = useState(false);
   const nav = useNavigate();
-  if (!m) return null;
+  if (!m) return <Missing simple title="Không tìm thấy người này" back="/s/call" label="Về danh sách gọi" />;
   return (
     <Phone simple>
       <TopBar back backTo="/s/call" />
@@ -171,7 +173,7 @@ export function STask() {
   const t = useApp((s) => s.tasks.find((x) => x.id === id));
   const set = useApp((s) => s.set);
   const nav = useNavigate();
-  if (!t) return null;
+  if (!t) return <Missing simple title="Không tìm thấy việc" back="/s/today" label="Về việc hôm nay" />;
   if (t.status === 'done')
     return (
       <Phone simple>
@@ -224,7 +226,7 @@ export function SInvite() {
   const { id } = useParams();
   const inv = useApp((s) => s.invitations.find((x) => x.id === id));
   const nav = useNavigate();
-  if (!inv) return null;
+  if (!inv) return <Missing simple title="Không tìm thấy lời mời" back="/s" label="Về màn hình chính" />;
   const msg = inv.draft.messages.find((m) => m.recipientId === me.id);
   const accepted = inv.receipts[me.id] === 'accepted';
   if (accepted)
@@ -320,7 +322,7 @@ export function SStory() {
       } else setErr(r.error);
     });
   }, [mem, me.id]);
-  if (!mem) return null;
+  if (!mem) return <Missing simple title="Không tìm thấy lời kể" back="/s/memory" label="Về ký ức" />;
   return (
     <Phone simple>
       <TopBar back backTo="/s/memory" />

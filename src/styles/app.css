@@ -58,7 +58,7 @@ img { max-width: 100%; display: block; }
   .phone .tabbar { position: sticky; }
 }
 .screen { flex: 1; padding: 14px 20px 28px; display: flex; flex-direction: column; gap: 10px; }
-.screen.with-tabs { padding-bottom: 104px; }
+.screen.with-tabs { padding-bottom: 104px; padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 @media (min-width: 720px) { .screen.with-tabs { padding-bottom: 20px; } }
 
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; margin-bottom: 6px; }
@@ -186,6 +186,7 @@ textarea.input { min-height: 84px; resize: vertical; font-weight: 500; line-heig
 .chip[aria-pressed='true'] { background: var(--leaf); color: #fff; border-color: var(--leaf); }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--line2); border-radius: 12px; padding: 3px; gap: 3px; }
 .seg button { border: 0; background: transparent; min-height: 40px; border-radius: 9px; font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; padding: 0 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.seg.many { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
 .seg button[aria-pressed='true'] { background: var(--card); color: var(--leaf); box-shadow: 0 1px 3px #0001; }
 .switch { position: relative; width: 50px; height: 30px; border-radius: 999px; background: #d8cfc3; border: 0; flex: none; transition: background .15s; }
 .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px #0003; transition: transform .15s; }
@@ -252,6 +253,8 @@ input[type='range'] { width: 100%; accent-color: var(--leaf); }
 .thermal { width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; image-rendering: pixelated; background: #10161d; display: block; }
 .radar { width: 100%; aspect-ratio: 1 / .6; border-radius: 12px; background: #0f2a22; display: block; }
 .camview { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; background: #1d2622; }
+.camview > img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.camview .camwait { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; color: #d7e4dc; font-size: 14px; text-align: center; padding: 16px; }
 
 .splash { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; gap: 14px; text-align: center; color: var(--deep); }
 .splash img { width: 96px; height: 96px; margin: 0 auto 10px; }
@@ -297,7 +300,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 
 @supports not (aspect-ratio: 1) {
   .camview { height: 0; padding-top: 62.5%; }
-  .camview > canvas { position: absolute; top: 0; left: 0; }
+  .camview > canvas, .camview > img { position: absolute; top: 0; left: 0; }
 }
 
 .no-flex-gap .screen > * + *, .no-flex-gap .stack > * + *, .no-flex-gap .panel > * + * { margin-top: 10px; }

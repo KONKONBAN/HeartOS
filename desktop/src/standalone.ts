@@ -31,8 +31,8 @@ async function main() {
   };
   if (args.includes('--pair')) pair();
   hub.subscribe(() => undefined);
-  if (process.stdin.isTTY) {
-    log('Lệnh: pair [memberId] | members | devices | cmd <deviceId> <kind> | quit');
+  {
+    if (process.stdin.isTTY) log('Lệnh: pair [memberId] | members | devices | cmd <deviceId> <kind> | quit');
     const rl = readline.createInterface({ input: process.stdin });
     rl.on('line', (line) => {
       const [c, a, b] = line.trim().split(/\s+/);

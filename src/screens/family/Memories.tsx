@@ -2,6 +2,7 @@ import { Camera, FileText, Image as ImageIcon, Lock, Mic, Plus, ShieldCheck, Squ
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { Missing } from '../../components/Missing';
 import { Badge, Chips, Field, Header, KV, Row, Switch, TopBar, TraceView } from '../../components/ui';
 import { summarizeStory } from '../../core/family/genai';
 import type { TraceStep } from '../../core/sentinel/types';
@@ -19,6 +20,18 @@ export function FMemories() {
     <Phone tabs>
       <TopBar />
       <Header title="Ký Ức Số" sub="Ảnh và lời kể được gia đình chọn chia sẻ." />
+      {!first && (
+        <Link to="/f/memory-new?mode=audio" className="hero peach" style={{ textDecoration: 'none' }}>
+          <div className="img" style={{ backgroundImage: 'url(./media/grandma-album.jpg)', height: 150 }}>
+            <span className="badge">BẮT ĐẦU</span>
+          </div>
+          <div className="body">
+            <h2>Giữ lại lời kể đầu tiên</h2>
+            <p>Ghi âm ông bà kể chuyện hoặc chọn ảnh cũ. Người kể tự chọn ai được xem, nội dung được mã hóa trên máy.</p>
+            <div className="cta">Ghi âm lời kể <span>›</span></div>
+          </div>
+        </Link>
+      )}
       {first && (
         <Link to={`/f/memory/${first.id}`} className="hero peach" style={{ textDecoration: 'none' }}>
           <div className="img" style={{ backgroundImage: `url(${first.image ?? './media/grandma-album.jpg'})`, height: 150 }}>
@@ -76,7 +89,7 @@ export function FMemory() {
       }
     });
   }, [mem?.id, me.id, mem]);
-  if (!mem) return null;
+  if (!mem) return <Missing title="Không tìm thấy ký ức" back="/f/memories" label="Về Ký Ức Số" />;
   const isOwner = mem.narrator === me.id;
   return (
     <Phone tabs>
@@ -100,7 +113,7 @@ export function FMemory() {
             <div className="card tint">
               <h3>Bản thu gốc</h3>
               <p>{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}, ` : ''}Tiếng Việt</p>
-              {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 8 }} /> : <p className="small" style={{ marginTop: 6 }}>Đang giải mã bản thu...</p>}
+              {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 8 }} /> : <p className="small" style={{ marginTop: 6 }}>Đang giải mã bản thu</p>}
             </div>
           ) : mem.kind === 'story' && (data.transcript || data.caption) ? (
             <div className="card tint">
@@ -226,7 +239,7 @@ export function FMemoryNew() {
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
       </Field>
       <Field label="Lời kể / lời chép (tùy chọn)">
-        <textarea className="input" placeholder="Ví dụ: Ngày đó, cả nhà quây quần bên bếp..." value={transcript} onChange={(e) => setTranscript(e.target.value)} />
+        <textarea className="input" placeholder="Ví dụ: Ngày đó, cả nhà quây quần bên bếp" value={transcript} onChange={(e) => setTranscript(e.target.value)} />
       </Field>
       {transcript.length > 20 && (
         <button className="btn xs ghost" style={{ alignSelf: 'flex-start' }} onClick={() => { const s = summarizeStory(transcript); setCaption(s.summary); if (title === 'Bữa cơm tháng 11') setTitle(s.title); }}>

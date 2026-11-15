@@ -40,7 +40,7 @@ export function OpsLab() {
   const passed = Object.values(results).filter((r) => r.passed).length;
   return (
     <>
-      <OpsHead crumb="PHÒNG THÍ NGHIỆM / KỊCH BẢN" badge="SANDBOX, MÃ THẬT" title="Kịch bản đối phương T1-T7" sub="Mỗi kịch bản chạy trên Sentinel sandbox riêng bằng đúng mã mật mã của hệ thống Live." right={<button className="btn sm" disabled={!!running} onClick={() => void all()}><Play size={14} /> {running === 'all' ? 'Đang chạy...' : 'Chạy tất cả'}</button>} />
+      <OpsHead crumb="PHÒNG THÍ NGHIỆM / KỊCH BẢN" badge="SANDBOX, MÃ THẬT" title="Kịch bản đối phương T1-T7" sub="Mỗi kịch bản chạy trên Sentinel sandbox riêng bằng đúng mã mật mã của hệ thống Live." right={<button className="btn sm" disabled={!!running} onClick={() => void all()}><Play size={14} /> {running === 'all' ? 'Đang chạy' : 'Chạy tất cả'}</button>} />
       <div className="ops-grid">
         <Metric tint label="Kịch bản đạt" value={`${passed}/${SCENARIO_LIST.length}`} sub="Mọi bước đúng kỳ vọng của đặc tả" />
         <Metric label="Bất biến" value="I1-I11" sub="Bảng 3.2, liên kết điểm thực thi" />
@@ -58,7 +58,7 @@ export function OpsLab() {
                 right={
                   <span className="hstack">
                     {r && <span className={'badge' + (r.passed ? '' : ' danger')}>{r.passed ? 'Đạt' : 'Lệch'}</span>}
-                    <button className="btn xs secondary" disabled={!!running} onClick={async () => { setRunning(sc.id); save(await runScenario(sc.id)); setRunning(null); setOpen(sc.id); }}>{running === sc.id ? '...' : 'Chạy'}</button>
+                    <button className="btn xs secondary" disabled={!!running} onClick={async () => { setRunning(sc.id); save(await runScenario(sc.id)); setRunning(null); setOpen(sc.id); }}>{running === sc.id ? 'Đang chạy' : 'Chạy'}</button>
                     {r && <button className="btn xs ghost" onClick={() => setOpen(open === sc.id ? null : sc.id)}>{open === sc.id ? 'Ẩn' : 'Chi tiết'}</button>}
                   </span>
                 }

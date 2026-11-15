@@ -2,6 +2,7 @@ import { CalendarDays, Image, Languages, MapPin, MessageSquare, Phone as PhoneIc
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { Missing } from '../../components/Missing';
 import { SignOutButton } from '../../components/SignOut';
 import { RouteMap } from '../../components/RouteMap';
 import { Badge, Header, Row, Sim, Steps, Switch, TopBar } from '../../components/ui';
@@ -42,7 +43,7 @@ export function SHelp() {
         </button>
       ) : (
         <button className="btn danger" style={{ minHeight: 84, fontSize: 20 }} disabled={busy} onClick={() => void send()}>
-          <Siren size={26} /> {busy ? 'Đang gửi...' : 'Gửi SOS'}
+          <Siren size={26} /> {busy ? 'Đang gửi' : 'Gửi SOS'}
         </button>
       )}
       <button className="btn secondary" onClick={() => nav('/s/call')}>
@@ -67,7 +68,7 @@ export function SSos() {
   const home = useHome();
   const nav = useNavigate();
   const inc = home.incident(id!);
-  if (!inc) return null;
+  if (!inc) return <Missing simple title="Không tìm thấy ca" back="/s" label="Về màn hình chính" />;
   const acked = inc.steps.helper.state === 'done';
   const contacts = supportContacts(inc.personId ?? me.id);
   return (
@@ -128,7 +129,7 @@ export function SRoute() {
   const home = useHome();
   const inc = home.incident(id!);
   const nav = useNavigate();
-  if (!inc?.destination) return null;
+  if (!inc?.destination) return <Missing simple title="Chưa chốt nơi bàn giao" sub="Người nhà sẽ chọn bệnh viện trên điện thoại của họ." back="/s" label="Về màn hình chính" />;
   const d = inc.destination;
   if (d.name) {
     return (

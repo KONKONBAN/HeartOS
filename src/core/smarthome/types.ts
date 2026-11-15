@@ -1,4 +1,4 @@
-export type RoomId = 'living' | 'kitchen' | 'door' | 'hall' | 'bedroom' | 'laundry';
+export type RoomId = string;
 export type HouseholdRole = 'admin' | 'member' | 'child' | 'carer';
 export type HomeMode = 'home' | 'away' | 'night';
 
@@ -51,6 +51,7 @@ export interface Device {
   controlRoles: HouseholdRole[];
   zoneLocked: boolean;
   latencyMs: number;
+  ha?: { entity: string; domain: string; features: number; ct?: boolean };
 }
 
 export type CommandStatus = 'queued' | 'sent' | 'awaiting' | 'acked' | 'failed' | 'rejected' | 'expired' | 'cancelled';

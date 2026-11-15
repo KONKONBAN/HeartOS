@@ -175,9 +175,12 @@ export async function applyOps(ops: HouseholdOp[], household: HouseholdInfo | nu
       case 'goal':
         set((s) => upsert<FundGoal>(s.goals, (x) => x.id === op.id, data as FundGoal | null));
         break;
-      case 'permission':
-        set((s) => upsert<Permission>(s.permissions, (x) => x.id === op.id, data as Permission | null));
+      case 'permission': {
+        const p = data as Permission | null;
+        set((s) => upsert<Permission>(s.permissions, (x) => x.id === op.id, p));
+        if (p?.objectId && p.scope !== 'calendar' && sentinel.vault.meta(p.objectId)) sentinel.vault.updateAcl(p.objectId, { viewers: p.status === 'granted' ? p.viewers.filter((v) => v !== p.ownerId) : [] });
         break;
+      }
       case 'hospital':
         set((s) => upsert<Hospital>(s.hospitals, (x) => x.id === op.id, data as Hospital | null));
         break;

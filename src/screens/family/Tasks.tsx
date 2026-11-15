@@ -2,10 +2,12 @@ import { CalendarDays, Check, Clock, Heart, Image, Phone as PhoneIcon, Plus, Rep
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { Missing } from '../../components/Missing';
 import { Badge, Chips, Field, Header, KV, Row, Seg, TopBar } from '../../components/ui';
 import { describe, fmtDate, nextOccurrence, WEEKDAYS, type Recurrence } from '../../core/family/recurrence';
 import { hhmm, isToday } from '../../lib/format';
 import { toast } from '../../lib/ui-store';
+import { randomId } from '../../core/sentinel/encoding';
 import { getSentinel } from '../../state/services';
 import { memberName, namesOf, useApp, useMe } from '../../state/store';
 import type { Task } from '../../state/types';
@@ -52,7 +54,7 @@ export function FTask() {
   const [assignee, setAssignee] = useState(t?.assignee ?? '');
   const [remind, setRemind] = useState(t ? hhmm(t.remindAt) : '18:30');
   const [visibleTo, setVisibleTo] = useState<string[]>(t?.visibleTo ?? []);
-  if (!t) return null;
+  if (!t) return <Missing title="Không tìm thấy việc" back="/f/tasks" label="Về việc chung" />;
   const canEdit = me.role === 'admin' || t.createdBy === me.id;
   const save = () => {
     set((s) => {
@@ -92,7 +94,7 @@ export function FTask() {
           </Field>
           <div className="label">Ai thấy việc này</div>
           <Chips options={members.filter((m) => m.role !== 'carer').map((m) => ({ value: m.id, label: m.name }))} value={visibleTo} onChange={canEdit ? setVisibleTo : () => undefined} />
-          <div className="card flat"><p>{t.note || 'Không có ghi chú.'}, Trạng thái: {t.status === 'done' ? `đã xong lúc ${hhmm(t.doneAt ?? Date.now())}` : TASK_STATUS[t.status]}</p></div>
+          <div className="card flat"><p>{t.note ? `${t.note.replace(/[.\s]+$/, '')}. ` : ''}Trạng thái: {t.status === 'done' ? `đã xong lúc ${hhmm(t.doneAt ?? Date.now())}` : TASK_STATUS[t.status]}</p></div>
           {canEdit && <button className="btn" onClick={save}>Lưu việc chung</button>}
         </>
       )}
@@ -134,7 +136,7 @@ export function FTaskNew() {
     if (day === 'tomorrow') d.setDate(d.getDate() + 1);
     const [h, m] = time.split(':').map(Number);
     d.setHours(h, m, 0, 0);
-    const id = 't-' + Date.now().toString(36);
+    const id = randomId('t', 6);
     set((s) => {
       s.tasks.unshift({ id, title, place: '', note: '', kind, assignee, target: kind === 'call' ? target : undefined, visibleTo: [...new Set([...visibleTo, assignee])], remindAt: d.getTime(), status: assignee === me.id ? 'accepted' : 'open', createdBy: me.id, createdAt: Date.now() });
     });
@@ -187,6 +189,7 @@ export function FRituals() {
     <Phone tabs>
       <TopBar back backTo="/f/rhythm" />
       <Header title="Nghi thức gia đình" sub={added ? 'Đã thêm lịch lặp cho cả nhà.' : 'Duy trì những dịp gặp nhau.'} />
+      {list.length === 0 && <div className="empty">Chưa có nghi thức nào. Tạo lịch lặp như bữa cơm Chủ nhật hay giờ kể chuyện của ông bà, HeartOS nhắc cả nhà trước mỗi lần.</div>}
       {list.map(({ r, at }, i) =>
         i === 0 && !added ? (
           <Link key={r.id} to={`/f/ritual/${r.id}`} className="hero peach" style={{ textDecoration: 'none' }}>
@@ -218,7 +221,7 @@ export function FRitual() {
   const nav = useNavigate();
   const [scope, setScope] = useState<'once' | 'series'>('once');
   const [time, setTime] = useState(r?.recurrence.time ?? '19:00');
-  if (!r) return null;
+  if (!r) return <Missing title="Không tìm thấy nghi thức" back="/f/rituals" label="Về nghi thức gia đình" />;
   const next = nextOccurrence(r.recurrence, new Date(), r.skip);
   const save = () => {
     set((s) => {
@@ -270,7 +273,7 @@ export function FRitualNew() {
   const [time, setTime] = useState('17:30');
   const [people, setPeople] = useState<string[]>(() => members.map((m) => m.id));
   const save = () => {
-    const id = 'r-' + Date.now().toString(36);
+    const id = randomId('r', 6);
     const recurrence: Recurrence = freq === 'daily' ? { freq, time } : { freq, weekday, time };
     set((s) => {
       s.rituals.unshift({ id, name, recurrence, participants: people, skip: [], note: '', createdAt: Date.now(), memoryIds: [] });

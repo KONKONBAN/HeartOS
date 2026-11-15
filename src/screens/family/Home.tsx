@@ -87,8 +87,8 @@ export function FHome() {
           </div>
           <div className="body">
             <h2>Bữa cơm cùng nhà</h2>
-            <p>{!rhythm ? 'Đang đọc lịch rảnh được chia sẻ...' : rhythm.slot ? `Tìm thấy ${Math.round((rhythm.slot.end - rhythm.slot.start) / 60)} giờ rảnh chung${rhythm.denied.length ? `, thiếu lịch của ${namesOf(rhythm.denied.map((d) => d.memberId))}` : ''}.` : rhythm.reason}</p>
-            <div className="cta">{busy ? 'GenAI đang soạn...' : 'Xem bản nháp'} <span>›</span></div>
+            <p>{!rhythm ? 'Đang đọc lịch rảnh được chia sẻ' : rhythm.slot ? `Tìm thấy ${Math.round((rhythm.slot.end - rhythm.slot.start) / 60)} giờ rảnh chung${rhythm.denied.length ? `, thiếu lịch của ${namesOf(rhythm.denied.map((d) => d.memberId))}` : ''}.` : rhythm.reason}</p>
+            <div className="cta">{busy ? 'GenAI đang soạn' : 'Xem bản nháp'} <span>›</span></div>
           </div>
         </button>
       )}

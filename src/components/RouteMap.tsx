@@ -4,7 +4,7 @@ export function RouteMap({ edges, highlight, height = 210 }: { edges: RoadEdge[]
   const pos = (id: string) => NODES.find((n) => n.id === id)!;
   const on = new Set(highlight?.edges.map((e) => e.id));
   return (
-    <svg viewBox="0 0 100 90" style={{ width: '100%', height, background: '#EAF0E6', borderRadius: 16 }} role="img" aria-label="Bản đồ tuyến minh họa">
+    <svg viewBox="0 0 100 90" style={{ width: '100%', height, background: '#EAF0E6', borderRadius: 16 }} role="img" aria-label="Sơ đồ tuyến đường">
       <defs>
         <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
           <path d="M10 0H0V10" fill="none" stroke="#dbe5d6" strokeWidth=".4" />

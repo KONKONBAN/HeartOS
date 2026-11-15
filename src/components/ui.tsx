@@ -124,7 +124,7 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 
 export function Seg<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
   return (
-    <div className="seg" role="group">
+    <div className={'seg' + (options.length > 3 ? ' many' : '')} role="group">
       {options.map((o) => (
         <button key={o.value} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}

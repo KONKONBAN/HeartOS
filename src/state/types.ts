@@ -199,6 +199,8 @@ export interface Prefs {
   claudeModel: string;
   notifications: boolean;
   quietFrom: string;
+  haUrl?: string;
+  haToken?: string;
 }
 
 export interface ChatMsg {
