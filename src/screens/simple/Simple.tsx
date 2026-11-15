@@ -1,0 +1,404 @@
+import { CalendarDays, Check, Clock, Mic, Phone as PhoneIcon, PlayCircle, Siren, Square, Volume2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Phone } from '../../components/Layouts';
+import { Avatar, Badge, Chips, Field, Header, ModePicker, Row, TopBar } from '../../components/ui';
+import { fmtSlot, viTime } from '../../core/family/calendar';
+import { nextOccurrence } from '../../core/family/recurrence';
+import { dayLong, hhmm, isToday } from '../../lib/format';
+import { speak, useRecorder } from '../../lib/media';
+import { toast } from '../../lib/ui-store';
+import { addMemory, openMemory, respondInvitation } from '../../state/actions';
+import { useHome } from '../../state/services';
+import { memberName, namesOf, useApp, useMe } from '../../state/store';
+
+function useLanInvite() {
+  const me = useMe();
+  const invs = useApp((s) => s.invitations);
+  return invs.find((i) => i.status === 'delivered' && i.recipients.includes(me.id));
+}
+
+export function SHome() {
+  const me = useMe();
+  const inv = useLanInvite();
+  const rituals = useApp((s) => s.rituals);
+  const members = useApp((s) => s.members);
+  const home = useHome();
+  const sosOpen = home.openIncidents().find((i) => i.kind === 'sos');
+  const callees = members.filter((m) => m.id !== me.id && m.phone && m.role !== 'carer' && m.role !== 'child');
+  const nextRitual = rituals
+    .filter((r) => r.participants.includes(me.id))
+    .map((r) => ({ r, at: nextOccurrence(r.recurrence, new Date(), r.skip) }))
+    .sort((a, b) => a.at.getTime() - b.at.getTime())[0];
+  const accepted = inv && inv.receipts[me.id] === 'accepted';
+  return (
+    <Phone tabs simple>
+      <TopBar right={<ModePicker mode="simple" />} brandTo="/s" />
+      <Header date={dayLong()} title={`Chào ${me.name.toLowerCase().startsWith('bà') ? 'bà ' + me.name.slice(3) : me.name}!`} read={`Chào ${me.name}. Hôm nay là ${dayLong()}.`} />
+      {sosOpen && <Row tone="rose" icon={<Siren size={20} />} tileTone="white" title="SOS đang mở" meta={sosOpen.steps.helper.by ? `${sosOpen.steps.helper.by} đã nhận hỗ trợ` : 'Đang chờ người thân nhận việc'} to={`/s/sos/${sosOpen.id}`} />}
+      <Row tone="tint" icon={<PhoneIcon size={22} />} tileTone="white" title="Gọi người thân" meta={namesOf(callees.map((c) => c.id))} to="/s/call" />
+      {inv ? (
+        <Link to={`/s/invite/${inv.id}`} className="hero peach" style={{ textDecoration: 'none' }}>
+          <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
+            <span className="badge">HÔM NAY · {fmtSlot(inv.slot).split('–')[0]}</span>
+          </div>
+          <div className="body">
+            <h2 style={{ fontSize: 22 }}>{inv.occasion}</h2>
+            <p style={{ fontSize: 15 }}>{accepted ? 'Bà đã xác nhận tham gia.' : `${memberName(inv.hostId)} mời bà ăn cơm tối.`}</p>
+            <div className="cta" style={{ fontSize: 16 }}>Xem lời mời <span>›</span></div>
+          </div>
+        </Link>
+      ) : (
+        nextRitual && (
+          <div className="hero peach">
+            <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
+              <span className="badge">NGHI THỨC · {hhmm(nextRitual.at.getTime())}</span>
+            </div>
+            <div className="body">
+              <h2 style={{ fontSize: 22 }}>{nextRitual.r.name}</h2>
+              <p style={{ fontSize: 15 }}>{dayLong(nextRitual.at.getTime())}</p>
+            </div>
+          </div>
+        )
+      )}
+      <Row icon={<CalendarDays size={22} />} tileTone="peach" title="Lịch hôm nay" meta="Một bữa cơm, một cuộc gọi" to="/s/today" />
+      <Row tone="rose" icon={<Siren size={22} />} tileTone="white" title="Cần giúp ngay" meta={`Gửi SOS cho ${namesOf(home.s.helpers.map((h) => h.id))}`} to="/s/help" />
+    </Phone>
+  );
+}
+
+export function SCall() {
+  const me = useMe();
+  const members = useApp((s) => s.members);
+  const list = members.filter((m) => m.id !== me.id && m.phone && m.role !== 'carer' && m.role !== 'child');
+  return (
+    <Phone tabs simple>
+      <TopBar back backTo="/s" />
+      <Header title="Gọi người thân" sub="Chọn người bà muốn gọi." />
+      {list.map((m) => (
+        <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.name} meta={m.relation.split(' · ')[0]} to={`/s/call/${m.id}`} right={<PhoneIcon size={20} color="#244C3E" />} />
+      ))}
+      <Row tone="tint" icon={<Check size={20} />} tileTone="white" title="Xem lại trước khi gọi" meta="Ở bước tiếp theo, bà kiểm tra tên rồi mở ứng dụng Điện thoại." />
+    </Phone>
+  );
+}
+
+export function SCallPerson() {
+  const { id } = useParams();
+  const m = useApp((s) => s.members.find((x) => x.id === id));
+  const [opened, setOpened] = useState(false);
+  const nav = useNavigate();
+  if (!m) return null;
+  return (
+    <Phone simple>
+      <TopBar back backTo="/s/call" />
+      <Header title={opened ? 'Mở Điện thoại' : `Gọi cho ${m.name}`} sub={opened ? `Cuộc gọi tới ${m.name}.` : 'Kiểm tra tên trước khi mở Điện thoại.'} />
+      <div className="card center" style={{ padding: 24 }}>
+        <div style={{ display: 'grid', placeItems: 'center' }}>
+          <Avatar name={m.name} color={m.color} size="lg" />
+        </div>
+        <div style={{ fontSize: 26, fontWeight: 800, marginTop: 10 }}>{m.name}</div>
+        <div className="muted" style={{ fontSize: 16 }}>{m.relation.split(' · ')[0]}</div>
+        <div style={{ marginTop: 8 }}><Badge>Đã lưu trong danh bạ</Badge></div>
+      </div>
+      {opened && <Row tone="tint" icon={<Check size={20} />} tileTone="white" title={`Đã chọn ${m.name}`} meta="Điện thoại hiển thị tên người nhận trước khi bà bấm gọi." />}
+      {!opened ? (
+        <>
+          <a className="btn" href={`tel:${m.phone}`} onClick={() => setOpened(true)}>
+            <PhoneIcon size={20} /> Mở Điện thoại
+          </a>
+          <button className="btn secondary" onClick={() => nav('/s/call')}>Để sau</button>
+        </>
+      ) : (
+        <button className="btn secondary" onClick={() => setOpened(false)}>Về bước xác nhận</button>
+      )}
+    </Phone>
+  );
+}
+
+export function SToday() {
+  const me = useMe();
+  const tasks = useApp((s) => s.tasks);
+  const invs = useApp((s) => s.invitations);
+  const rituals = useApp((s) => s.rituals);
+  const mine = tasks.filter((t) => (t.assignee === me.id || t.target === me.id) && isToday(t.remindAt)).sort((a, b) => a.remindAt - b.remindAt);
+  const inv = invs.find((i) => i.status === 'delivered' && i.recipients.includes(me.id));
+  const ritualToday = rituals.filter((r) => r.participants.includes(me.id)).map((r) => ({ r, at: nextOccurrence(r.recurrence, new Date(new Date().setHours(0, 0, 0, 0)), r.skip) })).filter((x) => isToday(x.at.getTime()));
+  return (
+    <Phone tabs simple>
+      <TopBar back backTo="/s" />
+      <Header title="Lịch hôm nay" sub={dayLong()} />
+      {mine
+        .filter((t) => t.kind === 'call')
+        .map((t) => (
+          <Row key={t.id} icon={<PhoneIcon size={20} />} tileTone="peach" title={`${hhmm(t.remindAt)} · ${t.title}`} meta={t.note} to={t.target ? `/s/call/${t.target === me.id ? t.assignee : t.target}` : undefined} />
+        ))}
+      {inv && (
+        <Row
+          icon={<CalendarDays size={20} />}
+          tileTone="peach"
+          title={`${fmtSlot(inv.slot).split('–')[0]} · Bữa cơm`}
+          meta={inv.receipts[me.id] === 'accepted' ? inv.place : `${memberName(inv.hostId)} mời cả nhà cùng ăn tối`}
+          badge={inv.receipts[me.id] === 'accepted' ? <Badge>Đã xác nhận tham gia</Badge> : undefined}
+          to={`/s/invite/${inv.id}`}
+        />
+      )}
+      {ritualToday.map(({ r, at }) => (
+        <Row key={r.id} icon={<CalendarDays size={20} />} tileTone="sand" title={`${hhmm(at.getTime())} · ${r.name}`} meta={r.note} />
+      ))}
+      <div className="section-title">Việc đã nhận</div>
+      {mine
+        .filter((t) => t.kind === 'chore')
+        .map((t) => (
+          <Row key={t.id} icon={<Check size={20} />} tileTone={t.status === 'done' ? undefined : 'sand'} title={t.title} meta={t.status === 'done' ? 'Việc bà đã nhận' : `Trước ${hhmm(t.remindAt + 30 * 60_000)}`} badge={t.status === 'done' ? <Badge>Đã hoàn thành</Badge> : undefined} to={`/s/task/${t.id}`} />
+        ))}
+      {mine.length === 0 && !inv && <div className="empty">Hôm nay chưa có việc nào.</div>}
+    </Phone>
+  );
+}
+
+export function STask() {
+  const { id } = useParams();
+  const t = useApp((s) => s.tasks.find((x) => x.id === id));
+  const set = useApp((s) => s.set);
+  const nav = useNavigate();
+  if (!t) return null;
+  if (t.status === 'done')
+    return (
+      <Phone simple>
+        <TopBar back backTo="/s/today" />
+        <Header title="Bà đã làm xong" sub={`Việc ${t.title.toLowerCase()} đã được đánh dấu hoàn thành.`} />
+        <Row tone="tint" icon={<Check size={22} />} tileTone="white" title="Đã lưu" meta="Bà có thể xem lại trong lịch hôm nay." />
+        <button className="btn" onClick={() => nav('/s/today')}>Về lịch hôm nay</button>
+      </Phone>
+    );
+  return (
+    <Phone simple>
+      <TopBar back backTo="/s/today" />
+      <Header title={t.title.replace(' ngoài ban công', '')} sub="Việc bà đã nhận · Hôm nay" />
+      <div className="card peach" style={{ padding: 20 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>{t.place || 'Trong nhà'}</div>
+        <p style={{ fontSize: 16, color: '#753F30', marginTop: 4 }}>{t.note}</p>
+      </div>
+      <button
+        className="btn"
+        onClick={() =>
+          set((s) => {
+            const x = s.tasks.find((y) => y.id === id)!;
+            x.status = 'done';
+            x.doneAt = Date.now();
+          })
+        }
+      >
+        <Check size={20} /> Đánh dấu đã xong
+      </button>
+      <button
+        className="btn secondary"
+        onClick={() => {
+          set((s) => {
+            s.tasks.find((y) => y.id === id)!.remindAt += 30 * 60_000;
+          });
+          toast('Sẽ nhắc lại sau 30 phút.');
+          nav('/s/today');
+        }}
+      >
+        <Clock size={20} /> Nhắc lại sau
+      </button>
+    </Phone>
+  );
+}
+
+export function SInvite() {
+  const { id } = useParams();
+  const me = useMe();
+  const inv = useApp((s) => s.invitations.find((x) => x.id === id));
+  const nav = useNavigate();
+  if (!inv) return null;
+  const msg = inv.draft.messages.find((m) => m.recipientId === me.id);
+  const accepted = inv.receipts[me.id] === 'accepted';
+  if (accepted)
+    return (
+      <Phone simple>
+        <TopBar back backTo="/s" />
+        <Header title={`Hẹn bà lúc ${viTime(inv.slot.start).replace(/ (sáng|trưa|chiều|tối)$/, '')}!`} sub="Phản hồi tham gia đã được lưu." />
+        <Row tone="tint" icon={<CalendarDays size={22} />} tileTone="white" title="Đã thêm vào lịch" meta={`${inv.occasion} · ${fmtSlot(inv.slot).split('–')[0]} hôm nay.`} />
+        <button className="btn" onClick={() => nav('/s/today')}>Xem lịch hôm nay</button>
+        <button className="btn secondary" onClick={() => nav('/s')}>Về trang nhà</button>
+      </Phone>
+    );
+  return (
+    <Phone simple>
+      <TopBar back backTo="/s" />
+      <Header title={inv.occasion} sub={`Lời mời từ ${memberName(inv.hostId)}`} read={msg?.text} />
+      <div className="card peach" style={{ padding: 20 }}>
+        <div className="small" style={{ fontWeight: 800, letterSpacing: '.06em', color: '#753F30' }}>{dayLong().toUpperCase()}</div>
+        <div style={{ fontSize: 32, fontWeight: 800, margin: '4px 0' }}>{fmtSlot(inv.slot)}</div>
+        <div style={{ fontSize: 16, color: '#753F30' }}>Tại {inv.place}</div>
+      </div>
+      <div className="card">
+        <div className="label">Lời mời</div>
+        <p className="quote" style={{ fontSize: 18 }}>“{msg?.text}”</p>
+        <button className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => msg && speak(msg.text)}>
+          <Volume2 size={18} /> Đọc to
+        </button>
+      </div>
+      <button className="btn" onClick={() => respondInvitation(inv.id, me.id, 'accepted')}>
+        <Check size={20} /> Bà sẽ tham gia
+      </button>
+      <button
+        className="btn secondary"
+        onClick={() => {
+          respondInvitation(inv.id, me.id, 'later');
+          nav('/s/today');
+        }}
+      >
+        Trả lời sau
+      </button>
+    </Phone>
+  );
+}
+
+export function SMemory() {
+  const me = useMe();
+  const mems = useApp((s) => s.memories).filter((m) => m.narrator === me.id || m.viewers.includes(me.id));
+  const story = mems.find((m) => m.kind === 'story');
+  return (
+    <Phone tabs simple>
+      <TopBar back backTo="/s" />
+      <Header title="Ký ức nhà mình" sub="Nghe lại lời kể và xem ảnh người thân chia sẻ." />
+      {story && (
+        <Link to={`/s/story/${story.id}`} className="hero peach" style={{ textDecoration: 'none' }}>
+          <div className="img" style={{ backgroundImage: `url(${story.image ?? './media/grandma-album.jpg'})` }}>
+            <span className="badge">LỜI KỂ CỦA {memberName(story.narrator).toUpperCase()}</span>
+          </div>
+          <div className="body">
+            <h2 style={{ fontSize: 22 }}>{story.title}</h2>
+            <p style={{ fontSize: 15 }}>Đoạn ghi âm · {Math.floor((story.durationSec ?? 0) / 60)} phút {(story.durationSec ?? 0) % 60} giây</p>
+            <div className="cta" style={{ fontSize: 16 }}>Mở lời kể <span>›</span></div>
+          </div>
+        </Link>
+      )}
+      <Row icon={<Mic size={22} />} tileTone="peach" title="Thu âm lời kể" meta="Tự chọn người được nghe" to="/s/record" />
+      {mems
+        .filter((m) => m.id !== story?.id)
+        .map((m) => (
+          <Row key={m.id} icon={<PlayCircle size={22} />} tileTone="sand" title={m.title} meta={`${memberName(m.narrator)} · ${m.kind === 'story' ? 'Lời kể' : 'Ảnh'}`} to={`/s/story/${m.id}`} />
+        ))}
+    </Phone>
+  );
+}
+
+export function SStory() {
+  const { id } = useParams();
+  const me = useMe();
+  const mem = useApp((s) => s.memories.find((m) => m.id === id));
+  const [data, setData] = useState<{ transcript: string; caption: string } | null>(null);
+  const [audio, setAudio] = useState<string>();
+  const [err, setErr] = useState('');
+  const nav = useNavigate();
+  useEffect(() => {
+    if (!mem) return;
+    void openMemory(mem.id, me.id).then((r) => {
+      if (r.ok) {
+        setData(r.data);
+        setAudio(r.audioUrl);
+      } else setErr(r.error);
+    });
+  }, [mem, me.id]);
+  if (!mem) return null;
+  return (
+    <Phone simple>
+      <TopBar back backTo="/s/memory" />
+      <Header title={mem.title} sub={`${memberName(mem.narrator)} kể · Chia sẻ với ${namesOf(mem.viewers)}`} />
+      {mem.image && <img src={mem.image} alt="" style={{ borderRadius: 18, height: 180, objectFit: 'cover', width: '100%' }} />}
+      {err && <div className="card rose"><p className="danger-text">{err}</p></div>}
+      {data && (
+        <>
+          <div className="card tint">
+            <div className="hstack">
+              <PlayCircle size={26} color="#244C3E" />
+              <div style={{ flex: 1 }}>
+                <b style={{ fontSize: 17 }}>Lời kể đã lưu</b>
+                <div className="muted">{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}` : '—'} · Tiếng Việt</div>
+              </div>
+            </div>
+            {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 10 }} /> : (
+              <button className="btn soft sm" style={{ marginTop: 10 }} onClick={() => speak(data.transcript || data.caption)}>
+                <Volume2 size={18} /> Nghe lời kể (giọng đọc máy)
+              </button>
+            )}
+          </div>
+          <div className="card">
+            <div className="label">Chú thích</div>
+            <p className="quote" style={{ fontSize: 17 }}>{data.caption || data.transcript}</p>
+            {data.transcript && data.caption !== data.transcript && <p style={{ marginTop: 8 }}>{data.transcript}</p>}
+          </div>
+        </>
+      )}
+      <button className="btn secondary" onClick={() => nav('/s/memory')}>Về Ký ức</button>
+    </Phone>
+  );
+}
+
+export function SRecord() {
+  const me = useMe();
+  const members = useApp((s) => s.members);
+  const rec = useRecorder();
+  const nav = useNavigate();
+  const [title, setTitle] = useState('Lời kể mới');
+  const [listeners, setListeners] = useState<string[]>(['u-an', 'u-linh']);
+  const [saving, setSaving] = useState(false);
+  const options = members.filter((m) => m.id !== me.id && m.role !== 'carer').map((m) => ({ value: m.id, label: m.name }));
+  const save = async (share: boolean) => {
+    setSaving(true);
+    const r = await addMemory({ by: me.id, title, kind: 'story', transcript: '', caption: title, audio: rec.blob ?? undefined, durationSec: rec.seconds, viewers: listeners, derivedAllowed: false, retention: 'Theo lựa chọn của người kể', share });
+    setSaving(false);
+    if (r.ok) {
+      toast(share ? `Đã chia sẻ với ${namesOf(listeners)}.` : 'Đã lưu riêng cho bà.');
+      nav('/s/memory');
+    } else toast('Chưa lưu được: ' + r.error, 'warning');
+  };
+  return (
+    <Phone simple>
+      <TopBar back backTo="/s/memory" />
+      <Header title={rec.state === 'done' ? 'Ai được nghe?' : 'Thu âm lời kể'} sub={rec.state === 'done' ? `Chọn người nghe bản thu ${title}.` : 'Bà có thể nghe lại trước khi chia sẻ.'} />
+      {rec.state !== 'done' && (
+        <div className="card peach center" style={{ padding: 24 }}>
+          <div style={{ fontSize: 40, fontWeight: 800 }}>{String(Math.floor(rec.seconds / 60)).padStart(2, '0')}:{String(rec.seconds % 60).padStart(2, '0')}</div>
+          <div className="muted" style={{ marginBottom: 14 }}>Tiếng Việt</div>
+          {rec.state === 'recording' ? (
+            <button className="btn danger" onClick={rec.stop}>
+              <Square size={20} /> Dừng ghi
+            </button>
+          ) : (
+            <button className="btn" onClick={() => void rec.start()}>
+              <Mic size={20} /> Bắt đầu ghi
+            </button>
+          )}
+        </div>
+      )}
+      {rec.error && <div className="card rose"><p className="danger-text">{rec.error}</p></div>}
+      {rec.state !== 'done' && <Row tone="tint" icon={<Mic size={20} />} tileTone="white" title="Chọn quyền mic" meta="Điện thoại hỏi quyền dùng mic khi bà bắt đầu ghi." />}
+      {rec.state === 'done' && (
+        <>
+          <div className="card tint">
+            <b>Bản thu · {rec.seconds} giây</b>
+            <audio controls src={rec.url} style={{ width: '100%', marginTop: 8 }} />
+          </div>
+          <Field label="Tên lời kể">
+            <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </Field>
+          <div className="label">Người được nghe</div>
+          <Chips options={options} value={listeners} onChange={setListeners} />
+          <Row tone="tint" icon={<Check size={20} />} tileTone="white" title="Bà chọn trước khi gửi" meta="Bản gốc và lời chép có phạm vi riêng. Bản ghi được mã hóa trên thiết bị." />
+          <div className="btnrow">
+            <button className="btn secondary" disabled={saving} onClick={() => void save(false)}>Lưu riêng</button>
+            <button className="btn" disabled={saving || listeners.length === 0} onClick={() => void save(true)}>Duyệt chia sẻ</button>
+          </div>
+          <button className="btn ghost" onClick={rec.reset}>Ghi lại</button>
+        </>
+      )}
+      {rec.state !== 'done' && <button className="btn secondary" onClick={() => nav('/s/memory')}>Quay về Ký ức</button>}
+    </Phone>
+  );
+}
