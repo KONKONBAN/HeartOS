@@ -219,7 +219,7 @@ const SCENARIOS: { id: string; threat: string; title: string; invariants: string
       s.R.simulateRestart();
       step('Restart giữ epoch từ kho bền vững', s.epoch() === e0 + 1, `epoch ${s.epoch()}`);
       s.R.restoreSnapshot(snap);
-      step('Phục hồi snapshot cũ không hạ epoch', s.epoch() === e0 + 1, `snapshot epoch ${snap.epochs[TENANT] ?? e0} → hiện hành ${s.epoch()}`);
+      step('Phục hồi snapshot cũ không hạ epoch', s.epoch() === e0 + 1, `snapshot epoch ${snap.epochs[TENANT] ?? e0}, hiện hành ${s.epoch()}`);
       const v = s.R.snapshotView();
       step('Không hoàn ngân sách đã tiêu thụ', v.highWater.consumed >= used && v.quotaRemaining <= snap.quotaRemaining, `đã tiêu ${fmt(v.highWater.consumed)}`);
     },
@@ -293,7 +293,7 @@ const SCENARIOS: { id: string; threat: string; title: string; invariants: string
       const v1 = await s.journal.verify();
       step('Sửa một bản ghi bị phát hiện tại đúng vị trí', !v1.ok && v1.brokenAt === target.seq, `hỏng tại seq ${v1.brokenAt}`);
       const root = await s.journal.merkleRoot();
-      step('Root Merkle để neo không chứa bản rõ', root.length === 64, root.slice(0, 16) + '…');
+      step('Root Merkle để neo không chứa bản rõ', root.length === 64, root.slice(0, 16) + '...');
     },
   },
 ];

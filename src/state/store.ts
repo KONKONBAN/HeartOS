@@ -9,6 +9,8 @@ import type {
   ChatMsg,
   Contribution,
   FundGoal,
+  Hospital,
+  Household,
   Invitation,
   Member,
   Memory,
@@ -24,6 +26,8 @@ import type {
 
 export interface AppState {
   session: Session;
+  household: Household | null;
+  hospitals: Hospital[];
   members: Member[];
   calendars: CalendarShare[];
   invitations: Invitation[];
@@ -53,17 +57,50 @@ const today = (h: number, m = 0, addDays = 0) => {
   return d.getTime();
 };
 
-export function seed(): Omit<AppState, 'set' | 'setMode' | 'actAs' | 'signOut' | 'resetAll'> {
+export type AppData = Omit<AppState, 'set' | 'setMode' | 'actAs' | 'signOut' | 'resetAll'>;
+
+export const DEFAULT_PREFS: Prefs = { assistantLang: 'vi-VN', voiceLang: 'vi-VN', readAloud: false, largeText: false, claudeEnabled: false, claudeKey: '', claudeModel: 'claude-opus-5-5', notifications: false, quietFrom: '20:00' };
+
+export function emptyState(session?: Partial<Session>): AppData {
+  const now = Date.now();
+  return {
+    session: { signedIn: false, email: '', householdId: null, mode: null, actingAs: '', startedAt: now, ...session },
+    household: null,
+    hospitals: [],
+    members: [],
+    calendars: [],
+    invitations: [],
+    tasks: [],
+    rituals: [],
+    memories: [],
+    goals: [],
+    contributions: [],
+    permissions: [],
+    syncDevices: [],
+    syncJobs: [],
+    cameraSessions: [],
+    prefs: { ...DEFAULT_PREFS },
+    chat: [],
+    seededAt: now,
+  };
+}
+
+export function seed(): AppData {
   const now = Date.now();
   const members: Member[] = [
-    { id: 'u-an', name: 'An', short: 'A', relation: 'Con trai · Quản trị hộ', role: 'admin', mode: 'family', lang: 'vi', phone: '+84900000001', color: '#244C3E', address: 'anh', selfRef: 'con' },
+    { id: 'u-an', name: 'An', short: 'A', relation: 'Con trai, Quản trị hộ', role: 'admin', mode: 'family', lang: 'vi', phone: '+84900000001', color: '#244C3E', address: 'anh', selfRef: 'con' },
     { id: 'u-lan', name: 'Bà Lan', short: 'L', relation: 'Bà nội', role: 'member', mode: 'simple', lang: 'vi', phone: '+84900000002', color: '#753F30', address: 'mẹ', selfRef: 'mẹ' },
     { id: 'u-linh', name: 'Linh', short: 'L', relation: 'Con gái', role: 'member', mode: 'family', lang: 'en', phone: '+84900000003', color: '#6E4E20', address: 'em', selfRef: 'em' },
-    { id: 'u-minh', name: 'Minh', short: 'M', relation: 'Cháu · Hồ sơ trẻ', role: 'child', mode: 'family', lang: 'vi', phone: '', color: '#3B6A8A', address: 'con', selfRef: 'con', guardian: 'u-an' },
+    { id: 'u-minh', name: 'Minh', short: 'M', relation: 'Cháu, Hồ sơ trẻ', role: 'child', mode: 'family', lang: 'vi', phone: '', color: '#3B6A8A', address: 'con', selfRef: 'con', guardian: 'u-an' },
     { id: 'u-carer', name: 'Khách hỗ trợ', short: 'K', relation: 'Người hỗ trợ theo ca', role: 'carer', mode: 'family', lang: 'vi', phone: '+84900000009', color: '#574F47', address: 'bạn', selfRef: 'tôi', expiresAt: now + 8 * 3600_000 },
   ];
   return {
-    session: { signedIn: false, email: 'lan@vidu.example', householdId: null, mode: null, actingAs: 'u-an', startedAt: now },
+    session: { signedIn: false, email: 'expo@heartos.local', householdId: null, mode: null, actingAs: 'u-an', startedAt: now },
+    household: { id: 'nha-an', name: 'Nhà An', demo: true, createdAt: now - 90 * 86400_000, tz: 'Asia/Ho_Chi_Minh' },
+    hospitals: [
+      { id: 'h-a', name: 'Cơ sở A', address: 'Bệnh viện gần nhà, cổng cấp cứu số 2', phone: '115', note: 'Cổng 2' },
+      { id: 'h-b', name: 'Cơ sở B', address: 'Bệnh viện khu vực, cổng số 1', phone: '115', note: 'Cổng 1' },
+    ],
     members,
     calendars: [
       { memberId: 'u-an', windows: [{ start: '18:30', end: '20:00' }], viewers: ['u-lan', 'u-linh', 'svc-rhythm'], shared: true, quietFrom: '20:00', version: 1 },
@@ -91,7 +128,7 @@ export function seed(): Omit<AppState, 'set' | 'setMode' | 'actAs' | 'signOut' |
       { id: 'c-3', goalId: 'g-trip', amount: 300_000, by: 'u-lan', at: now - 86400_000, objectId: 'fund-c-3', visibleTo: ['u-lan', 'u-an'] },
     ],
     permissions: [
-      { id: 'p-cal', scope: 'calendar', title: 'Lịch rảnh/bận', subtitle: 'Nhịp Nhà · Thành viên đã chọn', ownerId: 'u-linh', viewers: ['u-an', 'u-lan', 'svc-rhythm'], purpose: 'rhythm.intersect', status: 'granted', objectId: 'cal-u-linh' },
+      { id: 'p-cal', scope: 'calendar', title: 'Lịch rảnh/bận', subtitle: 'Nhịp Nhà, Thành viên đã chọn', ownerId: 'u-linh', viewers: ['u-an', 'u-lan', 'svc-rhythm'], purpose: 'rhythm.intersect', status: 'granted', objectId: 'cal-u-linh' },
       { id: 'p-mem', scope: 'memory', title: 'Ảnh và lời kể', subtitle: 'Người xem theo từng ký ức', ownerId: 'u-lan', viewers: ['u-an', 'u-linh'], purpose: 'memory.view', status: 'granted', objectId: 'mem-m-kitchen' },
       { id: 'p-cam', scope: 'camera', title: 'Vùng camera', subtitle: 'Theo thiết bị, vùng và hạn phiên', ownerId: 'u-an', viewers: ['u-an', 'u-carer'], purpose: 'camera.view', status: 'granted', objectId: 'cam-living', expiresAt: now + 8 * 3600_000 },
       { id: 'p-loc', scope: 'location', title: 'Vị trí khi hỗ trợ', subtitle: 'Người hỗ trợ được chỉ định', ownerId: 'u-lan', viewers: ['u-an', 'u-carer'], purpose: 'support.location', status: 'granted', objectId: 'loc-u-lan' },
@@ -104,7 +141,7 @@ export function seed(): Omit<AppState, 'set' | 'setMode' | 'actAs' | 'signOut' |
     ],
     syncJobs: [],
     cameraSessions: [],
-    prefs: { assistantLang: 'vi-VN', voiceLang: 'vi-VN', readAloud: false, largeText: false, claudeEnabled: false, claudeKey: '', claudeModel: 'claude-opus-5-5', notifications: false, quietFrom: '20:00' },
+    prefs: { ...DEFAULT_PREFS },
     chat: [],
     seededAt: now,
   };
@@ -120,12 +157,16 @@ function nextSunday(h: number) {
 export const useApp = create<AppState>()(
   persist(
     immer((set) => ({
-      ...seed(),
+      ...emptyState(),
       set: (fn) => set((s) => void fn(s)),
       setMode: (m) =>
         set((s) => {
           s.session.mode = m;
-          s.session.actingAs = m === 'simple' ? 'u-lan' : s.session.actingAs === 'u-lan' ? 'u-an' : s.session.actingAs;
+          if (s.household?.demo) s.session.actingAs = m === 'simple' ? 'u-lan' : s.session.actingAs === 'u-lan' ? 'u-an' : s.session.actingAs;
+          else {
+            const me = s.members.find((x) => x.id === s.session.actingAs);
+            if (me) me.mode = m;
+          }
         }),
       actAs: (id) =>
         set((s) => {
@@ -141,7 +182,14 @@ export const useApp = create<AppState>()(
     })),
     {
       name: 'heartos-app',
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const old = persisted as Partial<AppData>;
+        if (version < 2 && old && Array.isArray(old.members) && old.members.length) {
+          return { ...old, household: { id: 'nha-an', name: 'Nhà An', demo: true, createdAt: Date.now(), tz: 'Asia/Ho_Chi_Minh' }, hospitals: seed().hospitals } as AppData;
+        }
+        return old as AppData;
+      },
       storage: createJSONStorage(() => encryptedStateStorage(atRest)),
       skipHydration: true,
       partialize: (s) => {
@@ -159,10 +207,30 @@ export async function hydrateApp() {
   if (!useApp.persist.hasHydrated()) await useApp.persist.rehydrate();
 }
 
+const NOBODY: Member = { id: '', name: 'Bạn', short: 'B', relation: '', role: 'member', mode: 'family', lang: 'vi', phone: '', color: '#244C3E', address: 'bạn', selfRef: 'tôi' };
+
 export function useMe(): Member {
   const id = useApp((s) => s.session.actingAs);
   const members = useApp((s) => s.members);
-  return members.find((m) => m.id === id) ?? members[0];
+  return members.find((m) => m.id === id) ?? members[0] ?? NOBODY;
+}
+
+export function useHouseholdName() {
+  return useApp((s) => s.household?.name ?? 'Nhà của bạn');
+}
+
+export const isDemo = () => !!getApp().household?.demo;
+
+export function useDemo() {
+  return useApp((s) => !!s.household?.demo);
+}
+
+export function adultIds(members: Member[], except?: string) {
+  return members.filter((m) => (m.role === 'admin' || m.role === 'member') && m.id !== except).map((m) => m.id);
+}
+
+export function otherIds(members: Member[], except?: string) {
+  return members.filter((m) => m.id !== except).map((m) => m.id);
 }
 
 export function memberName(id: string, members: Member[] = getApp().members) {

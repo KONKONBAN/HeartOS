@@ -130,7 +130,7 @@ export function Histogram({ values, labels, height = 120, color = SERIES[0], tit
       </svg>
       {hover !== null && (
         <div style={{ position: 'absolute', top: 0, left: `${(hover / values.length) * 100}%`, background: '#211F1B', color: '#fff', borderRadius: 8, padding: '4px 8px', fontSize: 11.5, pointerEvents: 'none' }}>
-          <b>{values[hover]}</b> mẫu · {labels[hover]}
+          <b>{values[hover]}</b> mẫu, {labels[hover]}
         </div>
       )}
     </div>

@@ -27,23 +27,23 @@ const ROOMS: { value: RoomId; label: string }[] = [
 export function stateText(d: Device) {
   const s = d.state;
   switch (d.kind) {
-    case 'light': return s.on ? `Đang bật · ${s.brightness}%` : 'Đang tắt';
-    case 'plug': return s.on ? `Đang bật · ${s.powerW} W` : 'Đang tắt';
-    case 'ac': return s.on ? `Đang chạy · ${s.target}°C` : 'Đang tắt';
+    case 'light': return s.on ? `Đang bật, ${s.brightness}%` : 'Đang tắt';
+    case 'plug': return s.on ? `Đang bật, ${s.powerW} W` : 'Đang tắt';
+    case 'ac': return s.on ? `Đang chạy, ${s.target}°C` : 'Đang tắt';
     case 'curtain': return `Mở ${s.position}%`;
     case 'lock': return s.locked ? 'Đã khóa' : 'Đang mở khóa';
     case 'valve': return s.open ? 'Van đang mở' : 'Van đã khóa';
     case 'siren': return s.on ? 'Đang kêu' : 'Im lặng';
-    case 'camera': return s.privacy ? 'Chế độ riêng tư' : `Đang quan sát · ${s.masks} vùng che`;
+    case 'camera': return s.privacy ? 'Chế độ riêng tư' : `Đang quan sát, ${s.masks} vùng che`;
     case 'door': return s.open ? 'Cửa đang mở' : 'Cửa đóng';
-    case 'smoke': return s.smoke ? `CÓ KHÓI · CO ${s.co} ppm` : `Bình thường · CO ${s.co} ppm`;
+    case 'smoke': return s.smoke ? `CÓ KHÓI, CO ${s.co} ppm` : `Bình thường, CO ${s.co} ppm`;
     case 'leak': return s.wet ? 'Phát hiện nước' : 'Khô ráo';
     case 'radar': return `${s.targets} mục tiêu`;
     case 'thermal': return `Đỉnh ${s.maxC}°C`;
     case 'sos': return s.pressed ? 'Đang nhấn' : 'Sẵn sàng';
     case 'ups': return `Pin ${s.battery}%`;
     case 'generator': return String(s.state);
-    case 'hub': return `CPU ${s.cpu}% · bộ nhớ ${s.storage}%`;
+    case 'hub': return `CPU ${s.cpu}%, bộ nhớ ${s.storage}%`;
     default: return '';
   }
 }
@@ -60,20 +60,20 @@ export function FDevices() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/safe" />
-      <Header title="Thiết bị tại nhà" sub="Nhà An · Hub và thiết bị ghép nối" />
-      <Row icon={<Cpu size={18} />} title="HeartOS Hub" meta={`LAN · Cập nhật lúc ${hhmm(hub.lastSeen)} · firmware ${hub.firmware}`} badge={<Badge>Trực tuyến</Badge>} chevron={false} />
-      <Row icon={<Radar size={18} />} tileTone="sand" title="Radar, nhiệt và cảm biến" meta={`${home.s.rooms.length} vùng · ${stale} vùng chưa rõ · ${sensors.length} cảm biến`} to="/f/map" />
-      <Row icon={<Power size={18} />} title="Nguồn và mạng" meta={`UPS ${home.s.power.ats === 'battery' ? 'đang dự phòng' : home.s.power.ups.charging ? 'đang sạc' : 'sẵn sàng'} · ${Math.round(home.s.power.ups.battery)}%`} to="/f/power" />
+      <Header title="Thiết bị tại nhà" sub="Nhà An, Hub và thiết bị ghép nối" />
+      <Row icon={<Cpu size={18} />} title="HeartOS Hub" meta={`LAN, Cập nhật lúc ${hhmm(hub.lastSeen)}, firmware ${hub.firmware}`} badge={<Badge>Trực tuyến</Badge>} chevron={false} />
+      <Row icon={<Radar size={18} />} tileTone="sand" title="Radar, nhiệt và cảm biến" meta={`${home.s.rooms.length} vùng, ${stale} vùng chưa rõ, ${sensors.length} cảm biến`} to="/f/map" />
+      <Row icon={<Power size={18} />} title="Nguồn và mạng" meta={`UPS ${home.s.power.ats === 'battery' ? 'đang dự phòng' : home.s.power.ups.charging ? 'đang sạc' : 'sẵn sàng'}, ${Math.round(home.s.power.ups.battery)}%`} to="/f/power" />
       <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Thiết bị thông minh" meta="Đèn, ổ cắm, rèm, điều hòa, khóa và van" to="/f/smart" />
       {offline.length > 0 && (
         <div className="card rose">
           <h3 className="danger-text">{offline.length} thiết bị ngoại tuyến</h3>
-          <p className="danger-text">{offline.map((d) => `${d.name} (${ago(d.lastSeen, now)})`).join(' · ')}</p>
+          <p className="danger-text">{offline.map((d) => `${d.name} (${ago(d.lastSeen, now)})`).join(', ')}</p>
         </div>
       )}
       <div className="section-title">Tất cả cảm biến</div>
       {sensors.map((d) => (
-        <Row key={d.id} icon={ICON[d.kind]} tileTone={d.online ? undefined : 'rose'} title={d.name} meta={`${stateText(d)}${d.battery !== undefined ? ` · pin ${d.battery}%` : ''} · ${d.model}`} badge={!d.online ? <Badge tone="danger">Ngoại tuyến</Badge> : d.battery !== undefined && d.battery < 20 ? <Badge tone="warm">Pin yếu</Badge> : undefined} chevron={false} />
+        <Row key={d.id} icon={ICON[d.kind]} tileTone={d.online ? undefined : 'rose'} title={d.name} meta={`${stateText(d)}${d.battery !== undefined ? `, pin ${d.battery}%` : ''}, ${d.model}`} badge={!d.online ? <Badge tone="danger">Ngoại tuyến</Badge> : d.battery !== undefined && d.battery < 20 ? <Badge tone="warm">Pin yếu</Badge> : undefined} chevron={false} />
       ))}
       <Link to="/f/pair" className="btn">
         <Plus size={18} /> Ghép thiết bị
@@ -89,7 +89,7 @@ export function FPair() {
   const nav = useNavigate();
   const p = home.s.pairing;
   const [kind, setKind] = useState<DeviceKind>('door');
-  const [name, setName] = useState('Cảm biến cửa · DR-02');
+  const [name, setName] = useState('Cảm biến cửa, DR-02');
   const [room, setRoom] = useState<RoomId>('door');
   const [roles, setRoles] = useState<string[]>(['admin']);
   const actor = { id: me.id, name: me.name, role: me.role };
@@ -103,7 +103,7 @@ export function FPair() {
     );
   const step = p?.step ?? 'idle';
   const kinds: { value: DeviceKind; label: string; model: string; name: string }[] = [
-    { value: 'door', label: 'Cảm biến cửa', model: 'Contact sensor', name: 'Cảm biến cửa · DR-02' },
+    { value: 'door', label: 'Cảm biến cửa', model: 'Contact sensor', name: 'Cảm biến cửa, DR-02' },
     { value: 'light', label: 'Đèn', model: 'Zigbee bulb', name: 'Đèn phòng ngủ phụ' },
     { value: 'plug', label: 'Ổ cắm', model: 'Smart plug 16A', name: 'Ổ cắm phòng khách' },
     { value: 'leak', label: 'Cảm biến nước', model: 'Leak sensor', name: 'Cảm biến nước nhà tắm' },
@@ -116,7 +116,7 @@ export function FPair() {
       <div className="card">
         <Steps
           items={[
-            { title: 'Quét mã ghép', meta: p ? `Mã ngắn hạn ${p.code} · còn ${mmss(p.expiresAt - now)}` : 'Dùng mã ngắn hạn của thiết bị', state: step === 'scan' ? 'active' : step === 'idle' || step === 'expired' ? 'todo' : 'done' },
+            { title: 'Quét mã ghép', meta: p ? `Mã ngắn hạn ${p.code}, còn ${mmss(p.expiresAt - now)}` : 'Dùng mã ngắn hạn của thiết bị', state: step === 'scan' ? 'active' : step === 'idle' || step === 'expired' ? 'todo' : 'done' },
             { title: 'Xác nhận tại thiết bị', meta: 'Bấm nút vật lý trên hub', state: step === 'button' ? 'active' : ['zone', 'done'].includes(step) ? 'done' : 'todo' },
             { title: 'Đặt vùng', meta: 'Chọn phòng và quyền quan sát', state: step === 'zone' ? 'active' : step === 'done' ? 'done' : 'todo' },
           ]}
@@ -163,7 +163,7 @@ export function FPair() {
 }
 
 function Spark({ data }: { data: { at: number; w: number }[] }) {
-  if (data.length < 2) return <div className="small muted">Đang thu dữ liệu…</div>;
+  if (data.length < 2) return <div className="small muted">Đang thu dữ liệu...</div>;
   const max = Math.max(...data.map((d) => d.w), 100);
   const pts = data.map((d, i) => `${(i / (data.length - 1)) * 100},${40 - (d.w / max) * 36}`).join(' ');
   return (
@@ -183,12 +183,12 @@ export function FPower() {
       <TopBar back backTo="/f/devices" />
       <Header title="Điện và kết nối" sub={`Trạng thái đọc từ hub lúc ${hhmm(Date.now())}.`} />
       <div className="stats">
-        <div className={'stat' + (p.ups.battery < 30 ? ' rose' : '')}><b>{Math.round(p.ups.battery)}%</b><span>Pin UPS {p.ups.charging ? '· đang sạc' : p.ats === 'battery' ? '· đang xả' : ''}</span></div>
+        <div className={'stat' + (p.ups.battery < 30 ? ' rose' : '')}><b>{Math.round(p.ups.battery)}%</b><span>Pin UPS {p.ups.charging ? ', đang sạc' : p.ats === 'battery' ? ', đang xả' : ''}</span></div>
         <div className="stat sand"><b>{p.ups.loadW} W</b><span>Tải thiết yếu</span></div>
       </div>
-      <Row icon={<Zap size={18} />} tileTone={p.mains === 'on' ? undefined : 'rose'} title="Nguồn chính" meta={p.mains === 'on' ? `Điện lưới · ${p.voltage} V · Đang cấp` : 'Mất điện lưới'} badge={<Badge tone={p.mains === 'on' ? undefined : 'danger'}>{p.mains === 'on' ? 'Ổn định' : 'Mất điện'}</Badge>} chevron={false} />
-      <Row icon={<Power size={18} />} tileTone="sand" title="Máy phát và ATS" meta={`Máy phát ${{ standby: 'chờ', cranking: 'đang khởi động', running: 'đang chạy', cooldown: 'đang làm mát' }[p.generator]} · ATS → ${{ mains: 'điện lưới', battery: 'UPS', generator: 'máy phát' }[p.ats]}`} chevron={false} />
-      <Row icon={n.internet ? <Wifi size={18} /> : <WifiOff size={18} />} tileTone={n.internet ? undefined : 'rose'} title="Mạng tại nhà" meta={`LAN ${n.lan ? 'hoạt động' : 'mất'} · Internet ${n.internet ? 'đang kết nối' : 'gián đoạn'}`} chevron={false} />
+      <Row icon={<Zap size={18} />} tileTone={p.mains === 'on' ? undefined : 'rose'} title="Nguồn chính" meta={p.mains === 'on' ? `Điện lưới, ${p.voltage} V, Đang cấp` : 'Mất điện lưới'} badge={<Badge tone={p.mains === 'on' ? undefined : 'danger'}>{p.mains === 'on' ? 'Ổn định' : 'Mất điện'}</Badge>} chevron={false} />
+      <Row icon={<Power size={18} />} tileTone="sand" title="Máy phát và ATS" meta={`Máy phát ${{ standby: 'chờ', cranking: 'đang khởi động', running: 'đang chạy', cooldown: 'đang làm mát' }[p.generator]}, ATS đang dùng ${{ mains: 'điện lưới', battery: 'UPS', generator: 'máy phát' }[p.ats]}`} chevron={false} />
+      <Row icon={n.internet ? <Wifi size={18} /> : <WifiOff size={18} />} tileTone={n.internet ? undefined : 'rose'} title="Mạng tại nhà" meta={`LAN ${n.lan ? 'hoạt động' : 'mất'}, Internet ${n.internet ? 'đang kết nối' : 'gián đoạn'}`} chevron={false} />
       <div className="card">
         <div className="hstack"><b className="small" style={{ flex: 1 }}>Công suất toàn nhà</b><span className="small muted">{home.totalW()} W</span></div>
         <Spark data={home.s.energy} />
@@ -215,7 +215,7 @@ export function FOffline() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/power" />
-      <Header title={n.internet ? 'Kết nối ổn định' : 'Kết nối đang gián đoạn'} sub={n.internet ? 'Nhà An · Hub có Internet' : `Nhà An · Hub mất Internet lúc ${hhmm(n.changedAt)}`} />
+      <Header title={n.internet ? 'Kết nối ổn định' : 'Kết nối đang gián đoạn'} sub={n.internet ? 'Nhà An, Hub có Internet' : `Nhà An, Hub mất Internet lúc ${hhmm(n.changedAt)}`} />
       <Row tone="tint" icon={<Network size={18} />} tileTone="white" title="Vẫn đọc được từ hub" meta={`LAN đang hoạt động. Bản đọc thiết bị lấy lúc ${hhmm(Date.now())}. Lệnh trong nhà vẫn chạy qua LAN.`} />
       <Row icon={<Siren size={18} />} tileTone="rose" title="Đường báo tại nhà" meta={`Cấu hình tối thiểu tại nhà vẫn có nguồn.${n.internet ? '' : ' Trạng thái gửi từ xa chưa rõ.'}`} />
       <KV items={[['Ca chờ gửi từ xa', String(home.openIncidents().filter((i) => i.steps.remote.state === 'unknown').length)], ['Nguồn', home.s.power.ats === 'mains' ? 'Điện lưới' : home.s.power.ats === 'battery' ? 'UPS' : 'Máy phát']]} />
@@ -256,7 +256,7 @@ export function FSmart() {
                   icon={ICON[d.kind]}
                   tileTone={isOn ? 'peach' : d.online ? undefined : 'rose'}
                   title={d.name}
-                  meta={pend ? (pend.reason ?? 'Chờ thiết bị phản hồi') : `${stateText(d)}${d.confirmedAt ? ' · Xác nhận ' + hhmm(d.confirmedAt) : ''}${d.online ? '' : ' · ngoại tuyến'}`}
+                  meta={pend ? (pend.reason ?? 'Chờ thiết bị phản hồi') : `${stateText(d)}${d.confirmedAt ? ', Xác nhận ' + hhmm(d.confirmedAt) : ''}${d.online ? '' : ', ngoại tuyến'}`}
                   badge={pendingBadge(pend) ?? (isOn && d.kind === 'light' ? <Badge tone="peach">Bật</Badge> : undefined)}
                   to={`/f/smart/${d.id}`}
                   right={!allowed ? <Lock size={16} color="#8a8076" /> : undefined}
@@ -274,7 +274,7 @@ export function FSmart() {
           {recent.map((c) => (
             <div key={c.id} className="li small">
               <span className="mono muted">{hhmm(c.at)}</span>
-              <span style={{ flex: 1 }}>{home.device(c.deviceId)?.name}: {describeDesired(c.desired)} <span className="muted">· {c.byName}</span></span>
+              <span style={{ flex: 1 }}>{home.device(c.deviceId)?.name}: {describeDesired(c.desired)} <span className="muted">({c.byName})</span></span>
               <Badge tone={c.status === 'acked' ? undefined : c.status === 'rejected' || c.status === 'failed' || c.status === 'expired' ? 'danger' : 'warm'}>{statusLabel(c.status)}</Badge>
             </div>
           ))}
@@ -313,12 +313,12 @@ export function FSmartDevice() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/smart" />
-      <Header title={pend ? 'Đang chờ thiết bị' : d.name} sub={pend ? d.name : `Thiết bị đã ghép · ${allowed.ok ? 'Có quyền điều khiển' : 'Chỉ xem'}`} />
+      <Header title={pend ? 'Đang chờ thiết bị' : d.name} sub={pend ? d.name : `Thiết bị đã ghép, ${allowed.ok ? 'Có quyền điều khiển' : 'Chỉ xem'}`} />
       {pend ? (
         <div className="card">
           <Steps
             items={[
-              { title: `Gửi lệnh: ${describeDesired(pend.desired)}`, meta: pend.sentAt ? `Đã xếp lệnh tới hub · ${hhmm(pend.sentAt)}` : 'Đang xếp hàng', state: pend.status === 'queued' ? 'active' : 'done' },
+              { title: `Gửi lệnh: ${describeDesired(pend.desired)}`, meta: pend.sentAt ? `Đã xếp lệnh tới hub, ${hhmm(pend.sentAt)}` : 'Đang xếp hàng', state: pend.status === 'queued' ? 'active' : 'done' },
               { title: 'Thiết bị phản hồi', meta: pend.reason ?? 'Chờ thiết bị xác nhận', state: d.online ? 'active' : 'unknown' },
             ]}
           />
@@ -356,7 +356,7 @@ export function FSmartDevice() {
         </div>
       )}
       <div className="card flat">
-        <KV items={[['Phòng', ROOMS.find((r) => r.value === d.room)?.label ?? d.room], ['Mẫu', d.model], ['Firmware', d.firmware], ['Kết nối', d.online ? `Trực tuyến · ${ago(d.lastSeen)}` : `Ngoại tuyến · ${ago(d.lastSeen)}`], ['Quyền điều khiển', d.controlRoles.map((r) => roleName(r)).join(', ') || 'Chỉ đọc'], ['Phạm vi vùng', d.zoneLocked ? 'Chỉ trong vùng được gán' : 'Không giới hạn']]} />
+        <KV items={[['Phòng', ROOMS.find((r) => r.value === d.room)?.label ?? d.room], ['Mẫu', d.model], ['Firmware', d.firmware], ['Kết nối', d.online ? `Trực tuyến, ${ago(d.lastSeen)}` : `Ngoại tuyến, ${ago(d.lastSeen)}`], ['Quyền điều khiển', d.controlRoles.map((r) => roleName(r)).join(', ') || 'Chỉ đọc'], ['Phạm vi vùng', d.zoneLocked ? 'Chỉ trong vùng được gán' : 'Không giới hạn']]} />
       </div>
       {me.role === 'admin' && d.kind !== 'hub' && (
         <button className="btn ghost" onClick={() => { home.unpair(d.id, actor); history.back(); }}><Trash2 size={16} /> Gỡ ghép thiết bị</button>
@@ -382,14 +382,14 @@ export function FScenes() {
             <span className="tile peach">{SCENE_ICON[s.icon] ?? <Lightbulb size={18} />}</span>
             <div style={{ flex: 1 }}><b>{s.name}</b><div className="small muted">{s.description}</div></div>
           </div>
-          <div className="small muted">{s.actions.map((a) => `${home.device(a.deviceId)?.name}: ${describeDesired(a.params ?? {})}`).join(' · ')}</div>
+          <div className="small muted">{s.actions.map((a) => `${home.device(a.deviceId)?.name}: ${describeDesired(a.params ?? {})}`).join(', ')}</div>
           {ran[s.id] && <div className="small ok-text">{ran[s.id]}</div>}
           <button
             className="btn sm"
             onClick={() => {
               const out = home.runScene(s.id, { id: me.id, name: me.name, role: me.role });
               const rej = out.filter((c) => c.status === 'rejected');
-              setRan((x) => ({ ...x, [s.id]: `${out.length - rej.length}/${out.length} lệnh đã gửi${rej.length ? ' · ' + rej.map((c) => c.reason).join('; ') : ''}` }));
+              setRan((x) => ({ ...x, [s.id]: `${out.length - rej.length}/${out.length} lệnh đã gửi${rej.length ? ', ' + rej.map((c) => c.reason).join('; ') : ''}` }));
             }}
           >
             Chạy cảnh
@@ -420,7 +420,7 @@ export function FAutomations() {
     const t = SENSOR_EVENTS.find((x) => x.value === ev)!;
     const d = home.device(dev)!;
     const params: Record<string, boolean> = d.kind === 'valve' ? { open: act === 'on' } : { on: act === 'on' };
-    home.addRule({ name: `${t.label} → ${act === 'on' ? 'bật' : 'tắt'} ${d.name}`, description: `Tạo bởi ${me.name}${night ? ' · chỉ 22:00–06:00' : ''}`, enabled: true, trigger: t.trigger, condition: night ? { timeBetween: ['22:00', '06:00'] } : undefined, actions: [{ type: 'device', deviceId: dev, action: 'set', params }] });
+    home.addRule({ name: `${t.label}: ${act === 'on' ? 'bật' : 'tắt'} ${d.name}`, description: `Tạo bởi ${me.name}${night ? ', chỉ 22:00-06:00' : ''}`, enabled: true, trigger: t.trigger, condition: night ? { timeBetween: ['22:00', '06:00'] } : undefined, actions: [{ type: 'device', deviceId: dev, action: 'set', params }] });
     toast('Đã thêm luật tự động.');
   };
   return (
@@ -433,7 +433,7 @@ export function FAutomations() {
           icon={<Zap size={18} />}
           tileTone={r.enabled ? 'sand' : undefined}
           title={r.name}
-          meta={`${r.description}${r.fireCount ? ` · đã chạy ${r.fireCount} lần, gần nhất ${hhmm(r.lastFired!)}` : ''}`}
+          meta={`${r.description}${r.fireCount ? `, đã chạy ${r.fireCount} lần, gần nhất ${hhmm(r.lastFired!)}` : ''}`}
           badge={r.builtin ? <Badge tone="line">Mặc định</Badge> : undefined}
           chevron={false}
           right={
@@ -453,7 +453,7 @@ export function FAutomations() {
           <select className="input" value={dev} onChange={(e) => setDev(e.target.value)}>{lights.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
         </Field>
         <Seg value={act} onChange={setAct} options={[{ value: 'on', label: 'Bật / mở' }, { value: 'off', label: 'Tắt / khóa' }]} />
-        <div className="hstack"><span className="small" style={{ flex: 1 }}>Chỉ ban đêm (22:00–06:00)</span><Switch label="Chỉ ban đêm" checked={night} onChange={setNight} /></div>
+        <div className="hstack"><span className="small" style={{ flex: 1 }}>Chỉ ban đêm (22:00-06:00)</span><Switch label="Chỉ ban đêm" checked={night} onChange={setNight} /></div>
         <button className="btn sm" onClick={add}><Plus size={16} /> Thêm luật</button>
       </div>
     </Phone>

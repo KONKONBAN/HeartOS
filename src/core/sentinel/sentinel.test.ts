@@ -67,7 +67,7 @@ describe('cận dữ liệu phát hành mới (K2)', () => {
   });
 });
 
-describe('threat scenarios T1–T7', () => {
+describe('threat scenarios T1-T7', () => {
   for (const sc of SCENARIO_LIST) {
     it(`${sc.id} ${sc.threat}: ${sc.title}`, async () => {
       const r = await runScenario(sc.id);

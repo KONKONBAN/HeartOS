@@ -47,16 +47,16 @@ export function FAi() {
       )}
       {shown.map((m) => (
         <div key={m.id} className={'card' + (m.from === 'user' ? ' peach' : '')} style={{ alignSelf: m.from === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%' }}>
-          <div className="label" style={{ marginBottom: 4 }}>{m.from === 'user' ? 'Bạn' : 'Trợ lý · Bản nháp'}</div>
+          <div className="label" style={{ marginBottom: 4 }}>{m.from === 'user' ? 'Bạn' : 'Trợ lý, Bản nháp'}</div>
           <p style={{ color: 'var(--ink)', fontSize: 14 }}>{m.text}</p>
           {m.action && <Link to={m.action.to} className="btn sm" style={{ marginTop: 10 }}>{m.action.label}</Link>}
         </div>
       ))}
-      {busy && <div className="small muted pulse">Trợ lý đang soạn…</div>}
+      {busy && <div className="small muted pulse">Trợ lý đang soạn...</div>}
       <div ref={end} />
       <div className="hstack" style={{ marginTop: 'auto' }}>
         <Link to="/f/voice" className="btn secondary sm" aria-label="Nhập giọng nói"><Mic size={18} /></Link>
-        <input className="input" placeholder="Nhắn cho trợ lý…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void send()} />
+        <input className="input" placeholder="Nhắn cho trợ lý..." value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void send()} />
         <button className="btn sm" onClick={() => void send()} disabled={busy || !text.trim()} aria-label="Gửi"><Send size={18} /></button>
       </div>
       <p className="small muted" style={{ margin: 0 }}>Trợ lý chỉ đề xuất; mọi lời mời, việc và lệnh thiết bị cần bạn duyệt. Trợ lý không giữ khóa và không cấp quyền.</p>
@@ -74,18 +74,18 @@ export function FLanguage() {
     <Phone tabs>
       <TopBar back backTo="/f/more" />
       <Header title="Ngôn ngữ và giọng đọc" sub="Tùy chọn độc lập theo từng tác vụ." />
-      <Row icon={<Languages size={18} />} title="Giao diện" meta="Tiếng Việt · vi-VN" chevron={false} />
+      <Row icon={<Languages size={18} />} title="Giao diện" meta="Tiếng Việt, vi-VN" chevron={false} />
       <Field label="Trợ lý trả lời">
-        <Seg value={prefs.assistantLang} onChange={(x) => set((s) => void (s.prefs.assistantLang = x))} options={[{ value: 'vi-VN', label: 'Tiếng Việt · vi-VN' }, { value: 'en-US', label: 'English · en-US' }]} />
+        <Seg value={prefs.assistantLang} onChange={(x) => set((s) => void (s.prefs.assistantLang = x))} options={[{ value: 'vi-VN', label: 'Tiếng Việt, vi-VN' }, { value: 'en-US', label: 'English, en-US' }]} />
       </Field>
       <Field label={`Người nhận ${linh?.name ?? 'Linh'}`}>
-        <Seg value={linh?.lang ?? 'en'} onChange={(x) => set((s) => void (s.members.find((m) => m.id === 'u-linh')!.lang = x))} options={[{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English · en-US' }]} />
+        <Seg value={linh?.lang ?? 'en'} onChange={(x) => set((s) => void (s.members.find((m) => m.id === 'u-linh')!.lang = x))} options={[{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English, en-US' }]} />
       </Field>
       <Field label="Nhận và đọc giọng nói">
         <Seg value={prefs.voiceLang} onChange={(x) => set((s) => void (s.prefs.voiceLang = x))} options={[{ value: 'vi-VN', label: 'vi-VN' }, { value: 'en-US', label: 'en-US' }]} />
       </Field>
       <div className="card flat">
-        <p>Đọc to: {v.tts === null ? 'đang kiểm tra' : v.tts ? 'có' : 'không hỗ trợ'} · Nhận dạng giọng nói: {v.stt === null ? 'đang kiểm tra' : v.stt ? 'có' : 'chưa có trên máy'} · Giọng {prefs.voiceLang}: {v.voice === null ? 'đang kiểm tra' : v.voice ? 'đã cài' : 'chưa cài, vào cài đặt giọng đọc của máy để thêm'}.</p>
+        <p>Đọc to: {v.tts === null ? 'đang kiểm tra' : v.tts ? 'có' : 'không hỗ trợ'}, Nhận dạng giọng nói: {v.stt === null ? 'đang kiểm tra' : v.stt ? 'có' : 'chưa có trên máy'}, Giọng {prefs.voiceLang}: {v.voice === null ? 'đang kiểm tra' : v.voice ? 'đã cài' : 'chưa cài, vào cài đặt giọng đọc của máy để thêm'}.</p>
       </div>
       <button className="btn soft" onClick={() => speak(prefs.voiceLang === 'vi-VN' ? 'Mời cả nhà ăn cơm lúc bảy giờ tối nay.' : 'Dinner with the family at seven tonight.', prefs.voiceLang)}>
         <Volume2 size={18} /> Nghe thử
@@ -112,7 +112,7 @@ export function FVoice() {
         <button className={'btn' + (sp.listening ? ' danger' : '')} style={{ width: 'auto', margin: '0 auto' }} onClick={sp.listening ? sp.stop : sp.start}>
           {sp.listening ? <MicOff size={20} /> : <Mic size={20} />} {sp.listening ? 'Dừng nghe' : 'Bắt đầu nói'}
         </button>
-        <p className="small" style={{ marginTop: 10 }}>{sp.listening ? 'Đang nghe…' : prefs.voiceLang === 'vi-VN' ? 'Tiếng Việt' : 'English'}</p>
+        <p className="small" style={{ marginTop: 10 }}>{sp.listening ? 'Đang nghe...' : prefs.voiceLang === 'vi-VN' ? 'Tiếng Việt' : 'English'}</p>
       </div>
       {sp.error && <div className="card rose"><p className="danger-text">{sp.error}</p></div>}
       <Field label="Lời đã nhận dạng">

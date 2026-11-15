@@ -82,7 +82,8 @@ function registerIpc() {
   ipcMain.handle('hub:journal', (_e, id: string) => hub.journal(id));
   ipcMain.handle('hub:audit', () => hub.audit.all());
   ipcMain.handle('hub:verify-audit', () => hub.audit.verify());
-  ipcMain.handle('hub:open-pairing', () => hub.openPairing(OPERATOR));
+  ipcMain.handle('hub:open-pairing', (_e, memberId?: string) => hub.openPairing(OPERATOR, typeof memberId === 'string' ? memberId : undefined));
+  ipcMain.handle('hub:reset-household', () => hub.resetHousehold(OPERATOR));
   ipcMain.handle('hub:close-pairing', () => hub.closePairing());
   ipcMain.handle('hub:command', (_e, deviceId: string, kind: CommandKind, params: Record<string, string | number | boolean>) => hub.queueCommand(deviceId, kind, params ?? {}, OPERATOR));
   ipcMain.handle('hub:unpair', (_e, id: string) => hub.unpair(id, OPERATOR));

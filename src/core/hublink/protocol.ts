@@ -14,9 +14,29 @@ export interface PairRequest {
   nonce: string;
 }
 
+export type HouseholdEntity = 'household' | 'member' | 'calendar' | 'task' | 'invitation' | 'ritual' | 'memory' | 'goal' | 'contribution' | 'permission' | 'hospital' | 'incident';
+
+export interface HouseholdInfo {
+  id: string;
+  name: string;
+  tz: string;
+}
+
+export interface HouseholdOp {
+  key: string;
+  entity: HouseholdEntity;
+  id: string;
+  data: unknown | null;
+  ts: number;
+  by: string;
+  aud?: string[];
+}
+
 export interface PairResponseBody {
   v: 1;
   deviceId: string;
+  household?: HouseholdInfo | null;
+  memberId?: string;
   hubName: string;
   hubSignPub: string;
   hubKxPub: string;
@@ -66,7 +86,7 @@ export const COMMAND_LABEL: Record<CommandKind, string> = {
   verify_journal: 'Kiểm chuỗi bằng chứng trên thiết bị',
   revoke_permission: 'Thu hồi một quyền chia sẻ',
   set_bucket: 'Cấu hình hạn mức giải mã (B, r)',
-  run_scenarios: 'Chạy 12 kịch bản T1–T7 trên thiết bị',
+  run_scenarios: 'Chạy 12 kịch bản T1-T7 trên thiết bị',
   set_mode: 'Đổi chế độ nhà',
   close_incident: 'Đóng ca Guardian',
 };
@@ -140,13 +160,22 @@ export interface UpPayload {
   snapshot: DeviceSnapshot;
   journal: RemoteJournalEntry[];
   results: CommandResult[];
+  ops?: HouseholdOp[];
+  opsCursor?: number;
+  memberId?: string;
 }
 
 export interface DownPayload {
   commands: AdminCommand[];
   ackJournalSeq: number;
   hubTime: number;
+  ops?: HouseholdOp[];
+  opsCursor?: number;
+  household?: HouseholdInfo | null;
+  memberId?: string;
 }
+
+export const MAX_OP_BYTES = 4_000_000;
 
 export function newNonce() {
   return toB64(randomBytes(16));

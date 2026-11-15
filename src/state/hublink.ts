@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react';
 import { HubClient, type Transport } from '../core/hublink/client';
 import type { AdminCommand, DeviceSnapshot, RemoteJournalEntry } from '../core/hublink/protocol';
 import { runAll } from '../core/sentinel/threats';
-import { revokePermission } from './actions';
+import { prepareJoin, revokePermission } from './actions';
+import { applyOps, collectOps, commitOps, resetSyncState } from './householdSync';
 import { blobs, getHome, getSentinel, json } from './services';
 import { getApp, memberName } from './store';
 
@@ -144,7 +145,7 @@ async function apply(cmd: AdminCommand): Promise<{ ok: boolean; message: string 
     case 'run_scenarios': {
       const res = await runAll();
       const passed = res.filter((r) => r.passed).length;
-      await log(`chạy ${res.length} kịch bản T1–T7: ${passed} đạt`, 'info');
+      await log(`chạy ${res.length} kịch bản T1-T7: ${passed} đạt`, 'info');
       return { ok: passed === res.length, message: `${passed}/${res.length} kịch bản đạt` };
     }
     case 'set_mode': {
@@ -189,6 +190,10 @@ export function initHubLink(deviceName: () => string): Promise<HubClient> {
       journalSince,
       apply,
       epoch: () => getSentinel().epoch(),
+      collectOps,
+      commitOps,
+      applyOps,
+      memberId: () => getApp().session.actingAs || undefined,
     });
     c.subscribe(() => {
       ver++;
@@ -217,4 +222,21 @@ export function useHubLink() {
     () => ver,
   );
   return client;
+}
+
+export async function joinHousehold(hubUrl: string, code: string, displayName: string) {
+  const c = client ?? (await initHubLink(() => `Điện thoại của ${displayName || 'thành viên'}`));
+  const r = await c.pair(hubUrl, code, `Điện thoại của ${displayName || 'thành viên'}`);
+  if (!r.ok) throw new Error(r.error);
+  if (!r.household || !r.memberId) {
+    c.unpair();
+    throw new Error('Mã này dùng để ghép máy quản trị, không phải mã tham gia hộ. Nhờ quản trị hộ tạo mã tham gia cho bạn.');
+  }
+  resetSyncState();
+  await prepareJoin(r.household, r.memberId);
+  const s = await c.sync();
+  if (!s.ok) throw new Error(s.error ?? 'Không đồng bộ được với hub');
+  const me = getApp().members.find((m) => m.id === r.memberId);
+  if (!me) throw new Error('Hub chưa có hồ sơ thành viên của bạn. Nhờ quản trị hộ đồng bộ điện thoại của họ với hub rồi thử lại.');
+  return { household: r.household.name, sas: r.sas, member: me.name };
 }

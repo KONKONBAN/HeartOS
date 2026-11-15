@@ -26,7 +26,7 @@ export function FMemories() {
           </div>
           <div className="body">
             <h2>{first.title}</h2>
-            <p>{memberName(first.narrator)} kể · {first.kind !== 'story' ? 'Ảnh' : first.audioKey ? 'Bản thu và lời chép' : 'Lời kể chép lại'}</p>
+            <p>{memberName(first.narrator)} kể, {first.kind !== 'story' ? 'Ảnh' : first.audioKey ? 'Bản thu và lời chép' : 'Lời kể chép lại'}</p>
             <div className="cta">Mở ký ức <span>›</span></div>
           </div>
         </Link>
@@ -81,7 +81,7 @@ export function FMemory() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/memories" />
-      <Header title={mem.title} sub={`${memberName(mem.narrator)} kể · ${mem.shared ? 'Chia sẻ với ' + namesOf(mem.viewers) : 'Riêng tư'}`} />
+      <Header title={mem.title} sub={`${memberName(mem.narrator)} kể, ${mem.shared ? 'Chia sẻ với ' + namesOf(mem.viewers) : 'Riêng tư'}`} />
       {mem.image && (
         <div className="hero">
           <div className="img" style={{ backgroundImage: `url(${mem.image})`, height: 170 }}>
@@ -99,13 +99,13 @@ export function FMemory() {
           {mem.audioKey ? (
             <div className="card tint">
               <h3>Bản thu gốc</h3>
-              <p>{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')} · ` : ''}Tiếng Việt</p>
-              {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 8 }} /> : <p className="small" style={{ marginTop: 6 }}>Đang giải mã bản thu…</p>}
+              <p>{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}, ` : ''}Tiếng Việt</p>
+              {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 8 }} /> : <p className="small" style={{ marginTop: 6 }}>Đang giải mã bản thu...</p>}
             </div>
           ) : mem.kind === 'story' && (data.transcript || data.caption) ? (
             <div className="card tint">
               <h3>Lời kể chép lại</h3>
-              <p>Tiếng Việt · nghe bằng giọng đọc của máy</p>
+              <p>Tiếng Việt, nghe bằng giọng đọc của máy</p>
               <button className="btn soft sm" style={{ marginTop: 8 }} onClick={() => speak(String(data.transcript || data.caption))}>
                 <Volume2 size={18} /> Nghe lời chép
               </button>
@@ -214,7 +214,7 @@ export function FMemoryNew() {
       <div className="grid2">
         <button className="btn secondary" onClick={() => fileRef.current?.click()}><Camera size={18} /> {image ? 'Đổi ảnh' : 'Chọn ảnh'}</button>
         {rec.state === 'recording' ? (
-          <button className="btn danger" onClick={rec.stop}><Square size={18} /> Dừng · {rec.seconds}s</button>
+          <button className="btn danger" onClick={rec.stop}><Square size={18} /> Dừng, {rec.seconds}s</button>
         ) : (
           <button className="btn secondary" onClick={() => (rec.state === 'done' ? rec.reset() : void rec.start())}><Mic size={18} /> {rec.state === 'done' ? 'Ghi lại' : 'Thu âm'}</button>
         )}
@@ -226,7 +226,7 @@ export function FMemoryNew() {
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
       </Field>
       <Field label="Lời kể / lời chép (tùy chọn)">
-        <textarea className="input" placeholder="Ví dụ: Ngày đó, cả nhà quây quần bên bếp…" value={transcript} onChange={(e) => setTranscript(e.target.value)} />
+        <textarea className="input" placeholder="Ví dụ: Ngày đó, cả nhà quây quần bên bếp..." value={transcript} onChange={(e) => setTranscript(e.target.value)} />
       </Field>
       {transcript.length > 20 && (
         <button className="btn xs ghost" style={{ alignSelf: 'flex-start' }} onClick={() => { const s = summarizeStory(transcript); setCaption(s.summary); if (title === 'Bữa cơm tháng 11') setTitle(s.title); }}>
@@ -239,7 +239,7 @@ export function FMemoryNew() {
           {rituals.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
       </Field>
-      <Row icon={<Users size={18} />} title="Quyền bản gốc" meta="Chỉ mình tôi · Chờ chọn người xem" chevron={false} />
+      <Row icon={<Users size={18} />} title="Quyền bản gốc" meta="Chỉ mình tôi, Chờ chọn người xem" chevron={false} />
       <button className="btn" disabled={!title.trim() || (!image && !rec.blob && !transcript.trim())} onClick={() => setStep('review')}>
         <ImageIcon size={18} /> Xem trước quyền và nội dung
       </button>

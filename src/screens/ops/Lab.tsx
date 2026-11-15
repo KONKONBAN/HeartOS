@@ -1,4 +1,4 @@
-import { Bot, Check, Play, ShieldAlert, X, Zap } from 'lucide-react';
+import { Bot, Check, ChevronRight, Play, ShieldAlert, X, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { LineChart, SERIES } from '../../components/Charts';
 import { Badge, TraceView } from '../../components/ui';
@@ -35,16 +35,16 @@ export function OpsLab() {
     const done = rel.filter((s) => results[s.id]);
     if (!rel.length) return { label: 'Theo đặc tả', tone: 'line' as const };
     if (!done.length) return { label: 'Chưa kiểm', tone: 'warm' as const };
-    return done.every((s) => results[s.id].passed) ? { label: `Giữ · ${done.length} kịch bản`, tone: undefined } : { label: 'Vi phạm', tone: 'danger' as const };
+    return done.every((s) => results[s.id].passed) ? { label: `Giữ, ${done.length} kịch bản`, tone: undefined } : { label: 'Vi phạm', tone: 'danger' as const };
   };
   const passed = Object.values(results).filter((r) => r.passed).length;
   return (
     <>
-      <OpsHead crumb="PHÒNG THÍ NGHIỆM / KỊCH BẢN" badge="SANDBOX · MÃ THẬT" title="Kịch bản đối phương T1–T7" sub="Mỗi kịch bản chạy trên Sentinel sandbox riêng bằng đúng mã mật mã của hệ thống Live." right={<button className="btn sm" disabled={!!running} onClick={() => void all()}><Play size={14} /> {running === 'all' ? 'Đang chạy…' : 'Chạy tất cả'}</button>} />
+      <OpsHead crumb="PHÒNG THÍ NGHIỆM / KỊCH BẢN" badge="SANDBOX, MÃ THẬT" title="Kịch bản đối phương T1-T7" sub="Mỗi kịch bản chạy trên Sentinel sandbox riêng bằng đúng mã mật mã của hệ thống Live." right={<button className="btn sm" disabled={!!running} onClick={() => void all()}><Play size={14} /> {running === 'all' ? 'Đang chạy...' : 'Chạy tất cả'}</button>} />
       <div className="ops-grid">
         <Metric tint label="Kịch bản đạt" value={`${passed}/${SCENARIO_LIST.length}`} sub="Mọi bước đúng kỳ vọng của đặc tả" />
-        <Metric label="Bất biến" value="I1–I11" sub="Bảng 3.2 · liên kết điểm thực thi" />
-        <Metric label="Giả thuyết kiến trúc" value="HS(C)" sub="A1–A10 ⇒ I1–I10; A10 ⇒ I11" />
+        <Metric label="Bất biến" value="I1-I11" sub="Bảng 3.2, liên kết điểm thực thi" />
+        <Metric label="Giả thuyết kiến trúc" value="HS(C)" sub="A1-A10 ⇒ I1-I10; A10 ⇒ I11" />
       </div>
       <div className="panel">
         <h2>Kịch bản</h2>
@@ -53,12 +53,12 @@ export function OpsLab() {
           return (
             <div key={sc.id}>
               <Item
-                t={`${sc.id} · ${sc.threat}, ${sc.title}`}
-                m={`${sc.invariants.join(', ')}${r ? ` · ${r.ms} ms · ${r.verdict === 'held' ? 'bảo đảm giữ' : r.verdict === 'bounded' ? 'hậu quả bị giới hạn' : 'ngoài phạm vi bảo đảm (công bố)'}` : ''}`}
+                t={`${sc.id}, ${sc.threat}, ${sc.title}`}
+                m={`${sc.invariants.join(', ')}${r ? `, ${r.ms} ms, ${r.verdict === 'held' ? 'bảo đảm giữ' : r.verdict === 'bounded' ? 'hậu quả bị giới hạn' : 'ngoài phạm vi bảo đảm (công bố)'}` : ''}`}
                 right={
                   <span className="hstack">
                     {r && <span className={'badge' + (r.passed ? '' : ' danger')}>{r.passed ? 'Đạt' : 'Lệch'}</span>}
-                    <button className="btn xs secondary" disabled={!!running} onClick={async () => { setRunning(sc.id); save(await runScenario(sc.id)); setRunning(null); setOpen(sc.id); }}>{running === sc.id ? '…' : 'Chạy'}</button>
+                    <button className="btn xs secondary" disabled={!!running} onClick={async () => { setRunning(sc.id); save(await runScenario(sc.id)); setRunning(null); setOpen(sc.id); }}>{running === sc.id ? '...' : 'Chạy'}</button>
                     {r && <button className="btn xs ghost" onClick={() => setOpen(open === sc.id ? null : sc.id)}>{open === sc.id ? 'Ẩn' : 'Chi tiết'}</button>}
                   </span>
                 }
@@ -90,7 +90,7 @@ export function OpsLab() {
                     <td><b>{iv.id}</b></td>
                     <td>{iv.title}</td>
                     <td className="muted">{iv.condition}</td>
-                    <td className="small">{iv.enforcedAt.join(' · ')}</td>
+                    <td className="small">{iv.enforcedAt.join(', ')}</td>
                     <td>{iv.assumptions.join(', ')}</td>
                     <td><Badge tone={st.tone}>{st.label}</Badge></td>
                   </tr>
@@ -103,11 +103,11 @@ export function OpsLab() {
       <div className="ops-cols">
         <div className="panel">
           <h2>Mô hình đối phương</h2>
-          {THREATS.map((t) => <Item key={t.id} t={`${t.id} · ${t.title}`} m={t.text} />)}
+          {THREATS.map((t) => <Item key={t.id} t={`${t.id}, ${t.title}`} m={t.text} />)}
         </div>
         <div className="panel">
           <h2>Mệnh đề lý thuyết</h2>
-          {PROPOSITIONS.map((p) => <Item key={p.id} t={`${p.id} · ${p.title}`} m={`${p.text} Giới hạn: ${p.limit}`} />)}
+          {PROPOSITIONS.map((p) => <Item key={p.id} t={`${p.id}, ${p.title}`} m={`${p.text} Giới hạn: ${p.limit}`} />)}
           <h2 style={{ marginTop: 6 }}>Giả thiết nền</h2>
           {ASSUMPTIONS.map((a) => <Item key={a.id} t={a.id} m={a.text} />)}
         </div>
@@ -146,19 +146,19 @@ export function OpsGate() {
     const t0 = Date.now();
     const out = await Promise.all(Array.from({ length: 24 }, () => s.read({ subject, objectId, purpose, workload: 'ops-burst' })));
     const ok = out.filter((x) => x.ok).length;
-    setBurst(`${ok}/24 được cấp trong ${((Date.now() - t0) / 1000).toFixed(1)} s · ${24 - ok} bị chặn (Bok không đạt hoặc thiếu quyền).`);
+    setBurst(`${ok}/24 được cấp trong ${((Date.now() - t0) / 1000).toFixed(1)} s, ${24 - ok} bị chặn (Bok không đạt hoặc thiếu quyền).`);
   };
   const lights = res?.decision ? [['Gok', res.decision.Gok, 'Grant hợp lệ'], ['Aok', res.decision.Aok, 'Chứng thực + khóa nhận'], ['Eok', res.decision.Eok, 'Epoch còn hiệu lực'], ['Bok', res.decision.Bok, 'Hạn mức đặt chỗ']] as const : null;
   return (
     <>
-      <OpsHead crumb="PHÒNG THÍ NGHIỆM / CỔNG CẤP KHÓA" badge="LIVE · CÓ GHI NHẬT KÝ" title="ReleaseDEK ⇒ Gok ∧ Aok ∧ Eok ∧ Bok" sub="Chạy yêu cầu đọc thật trên Core Vault Live và xem từng điều kiện của hợp đồng (3.13)." />
+      <OpsHead crumb="PHÒNG THÍ NGHIỆM / CỔNG CẤP KHÓA" badge="LIVE, CÓ GHI NHẬT KÝ" title="ReleaseDEK ⇒ Gok ∧ Aok ∧ Eok ∧ Bok" sub="Chạy yêu cầu đọc thật trên Core Vault Live và xem từng điều kiện của hợp đồng (3.13)." />
       <div className="ops-cols">
         <div className="panel">
           <h2>Yêu cầu</h2>
           <label className="field"><span>Chủ thể (nguồn thuộc tính G)</span><select className="input" value={subject} onChange={(e) => setSubject(e.target.value)}>{[...members.map((m) => m.id), 'svc-rhythm', 'u-ops', 'anonymous'].map((id) => <option key={id} value={id}>{memberName(id)} ({id})</option>)}</select></label>
           <label className="field"><span>Đối tượng</span><select className="input" value={objectId} onChange={(e) => { setObjectId(e.target.value); setPurpose(s.vault.meta(e.target.value)?.purposes[0] ?? ''); }}>{objs.map((o) => <option key={o.meta.objectId} value={o.meta.objectId}>{o.meta.label}</option>)}</select></label>
           <label className="field"><span>Mục đích tự khai</span><input className="input" value={purpose} onChange={(e) => setPurpose(e.target.value)} /></label>
-          {meta && <div className="small muted">Chủ: {memberName(meta.owner)} · người xem: {meta.viewers.map((v) => memberName(v)).join(', ') || '-'} · mục đích cho phép: {meta.purposes.join(', ')}</div>}
+          {meta && <div className="small muted">Chủ: {memberName(meta.owner)}, người xem: {meta.viewers.map((v) => memberName(v)).join(', ') || '-'}, mục đích cho phép: {meta.purposes.join(', ')}</div>}
           <button className="btn sm" onClick={() => void run()}><Play size={14} /> Gửi yêu cầu đọc</button>
           {lights && (
             <div className="ops-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
@@ -173,14 +173,14 @@ export function OpsGate() {
         </div>
         <div className="panel">
           <h2>Đường đi của yêu cầu</h2>
-          {res ? <TraceView trace={res.trace} /> : <p className="small muted">Gửi một yêu cầu để xem chuỗi A → G → Ve → Verifier → K/H → Ve → Client.</p>}
+          {res ? <TraceView trace={res.trace} /> : <p className="small muted">Gửi một yêu cầu để xem chuỗi A, G, Ve, Verifier, K/H, Ve, Client.</p>}
         </div>
       </div>
       <div className="ops-cols">
         <div className="panel">
-          <h2>R · Trạng thái bền vững</h2>
+          <h2>R, Trạng thái bền vững</h2>
           <div className="ops-grid">
-            <Metric label="Bucket hiện tại" value={fmt(R.bucket.tokens)} sub={`B = ${fmt(R.bucket.capacity)} · r = ${fmt(R.bucket.rate)}/s`} />
+            <Metric label="Bucket hiện tại" value={fmt(R.bucket.tokens)} sub={`B = ${fmt(R.bucket.capacity)}, r = ${fmt(R.bucket.rate)}/s`} />
             <Metric label="Hạn mức cửa sổ" value={fmt(R.quotaRemaining)} sub={`trên ${fmt(R.bucket.quota)} / 24 giờ`} />
             <Metric label="Chống dùng lại" value={Object.keys(R.usedNonces).length} sub={`${R.stats.replays} lần phát lại bị chặn`} />
           </div>
@@ -209,7 +209,7 @@ export function OpsGate() {
               </tbody>
             </table>
           </div>
-          <p className="small muted">Crash khi chưa rõ lượng phát hành → trạng thái “unknown”, không hoàn ngân sách (§3.10). Phần dư chỉ hoàn vào hạn mức cửa sổ, không vào bucket burst.</p>
+          <p className="small muted">Crash khi chưa rõ lượng phát hành thì chuyển trạng thái “unknown”, không hoàn ngân sách (§3.10). Phần dư chỉ hoàn vào hạn mức cửa sổ, không vào bucket burst.</p>
         </div>
       </div>
     </>
@@ -229,7 +229,7 @@ export function OpsMath() {
   );
   return (
     <>
-      <OpsHead crumb="PHÒNG THÍ NGHIỆM / SUY LUẬN" badge="MÔ HÌNH · KHÔNG PHẢI SỐ ĐO" title="Cận dữ liệu phát hành mới" sub="Mệnh đề K2 dưới giả định A3: hạn mức giải mã B + rT giới hạn lượng bản rõ mới ra khỏi vùng xử lý. Bảng 4.1, tham số giả định." />
+      <OpsHead crumb="PHÒNG THÍ NGHIỆM / SUY LUẬN" badge="MÔ HÌNH, KHÔNG PHẢI SỐ ĐO" title="Cận dữ liệu phát hành mới" sub="Mệnh đề K2 dưới giả định A3: hạn mức giải mã B + rT giới hạn lượng bản rõ mới ra khỏi vùng xử lý. Bảng 4.1, tham số giả định." />
       <div className="panel">
         <h2>E_new(T) ≤ min(D_rem, Q + min(L_rem, B + rT))</h2>
         <div className="hstack wrap">
@@ -274,12 +274,12 @@ export function OpsIncident() {
           {STATES.map((x, i) => (
             <div key={x} className="hstack" style={{ gap: 6 }}>
               <span className={'badge' + (x === st.state ? ' dark' : ' line')} style={{ padding: '7px 12px', fontSize: 12 }}>{SECURITY_STATE_LABEL[x]}</span>
-              {i < STATES.length - 1 && <span className="muted">→</span>}
+              {i < STATES.length - 1 && <ChevronRight size={14} className="muted" />}
             </div>
           ))}
         </div>
         <p className="small" style={{ margin: 0 }}><b>{SECURITY_STATE_LABEL[st.state]}:</b> {SECURITY_STATE_HINT[st.state]}</p>
-        <p className="small muted" style={{ margin: 0 }}>Xuất hàng loạt {st.exportBlocked ? 'đang bị chặn' : 'bình thường'} · phiên bị hạn chế: {st.restrictedSessions.join(', ') || 'không'}</p>
+        <p className="small muted" style={{ margin: 0 }}>Xuất hàng loạt {st.exportBlocked ? 'đang bị chặn' : 'bình thường'}, phiên bị hạn chế: {st.restrictedSessions.join(', ') || 'không'}</p>
         <div className="hstack wrap">
           <button className="btn xs secondary" onClick={() => { s.incident.signal({ kind: 'policy_anomaly', evidence: [], note: 'Thay đổi chính sách bất thường (mô phỏng)', source: 'rule' }); setMsg('Đã bơm tín hiệu policy_anomaly.'); }}>Bơm tín hiệu bất thường</button>
           <button className="btn xs secondary" onClick={() => void s.read({ subject: 'u-linh', objectId: 'canary-ledger', purpose: 'none' }).then(() => setMsg('Đã thử đọc đối tượng mồi (nếu đã triển khai canary).'))}>Thử đọc canary</button>
@@ -308,8 +308,8 @@ export function OpsIncident() {
       <div className="ops-cols">
         <div className="panel">
           <h2>Tín hiệu và lịch sử</h2>
-          {st.signals.slice(-8).reverse().map((g) => <Item key={g.id} t={`${g.id} · ${g.kind}`} m={`${g.note} · ${g.source} · ${hhmmss(g.at)}`} />)}
-          {st.history.slice(-6).reverse().map((h, i) => <Item key={i} t={`${SECURITY_STATE_LABEL[h.from]} → ${SECURITY_STATE_LABEL[h.to]}`} m={`${h.reason} · ${h.by} · ${hhmmss(h.at)}`} />)}
+          {st.signals.slice(-8).reverse().map((g) => <Item key={g.id} t={`${g.id}, ${g.kind}`} m={`${g.note}, ${g.source}, ${hhmmss(g.at)}`} />)}
+          {st.history.slice(-6).reverse().map((h, i) => <Item key={i} t={`${SECURITY_STATE_LABEL[h.from]} sang ${SECURITY_STATE_LABEL[h.to]}`} m={`${h.reason}, ${h.by}, ${hhmmss(h.at)}`} />)}
           {st.signals.length === 0 && <Item t="Chưa có tín hiệu" m="Thử “Đọc dồn dập” ở trang Cổng cấp khóa hoặc chèn log độc bên phải." />}
         </div>
         <div className="panel">
@@ -323,14 +323,14 @@ export function OpsIncident() {
             <>
               <p className="small" style={{ margin: 0 }}>{a.summary}</p>
               <div className="label">Dòng thời gian</div>
-              {a.timeline.slice(-6).map((t) => <Item key={t.id + t.ts} t={t.text} m={`${t.id} · ${t.kind === 'observed' ? 'quan sát' : 'suy luận'}`} />)}
+              {a.timeline.slice(-6).map((t) => <Item key={t.id + t.ts} t={t.text} m={`${t.id}, ${t.kind === 'observed' ? 'quan sát' : 'suy luận'}`} />)}
               <div className="label">Khoảng thiếu bằng chứng</div>
               {a.gaps.map((g) => <Item key={g} t={g} />)}
               <div className="label">Đề xuất có cấu trúc</div>
               {a.proposals.map((p) => (
                 <div key={p.id} className="item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                  <div className="hstack"><b className="small" style={{ flex: 1 }}>{p.action} → {p.target}</b>{FORBIDDEN_REASON[p.action] && <Badge tone="danger">Ngoài allowlist</Badge>}</div>
-                  <div className="small muted">{p.rationale} · phạm vi {p.scope} · TTL {p.ttlSec}s · {p.reversible ? 'hoàn tác được' : 'không hoàn tác'} · bằng chứng {p.evidence.join(', ') || '-'}</div>
+                  <div className="hstack"><b className="small" style={{ flex: 1 }}>{p.action} cho {p.target}</b>{FORBIDDEN_REASON[p.action] && <Badge tone="danger">Ngoài allowlist</Badge>}</div>
+                  <div className="small muted">{p.rationale}, phạm vi {p.scope}, TTL {p.ttlSec}s, {p.reversible ? 'hoàn tác được' : 'không hoàn tác'}, bằng chứng {p.evidence.join(', ') || '-'}</div>
                   <div className="hstack">
                     <label className="hstack small"><input type="checkbox" checked={!!approved[p.id]} onChange={(e) => setApproved({ ...approved, [p.id]: e.target.checked })} /> Người phê duyệt</label>
                     <span className="spacer" />

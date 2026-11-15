@@ -195,7 +195,7 @@ function sanitize(data?: Record<string, unknown>): JournalEntry['data'] {
     if (v === null || typeof v === 'number' || typeof v === 'boolean') out[k] = v;
     else {
       const s = String(v);
-      out[k] = s.length > 160 ? s.slice(0, 157) + '…' : s;
+      out[k] = s.length > 160 ? s.slice(0, 157) + '...' : s;
     }
   }
   return out;

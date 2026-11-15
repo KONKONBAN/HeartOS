@@ -19,7 +19,7 @@ const NAV: { to: string; label: string; icon: ReactNode; grp?: string }[] = [
   { to: '/admin/devices', label: 'Thiết bị đã ghép', icon: <MonitorSmartphone size={16} /> },
   { to: '/admin/pair', label: 'Ghép thiết bị mới', icon: <Link2 size={16} /> },
   { to: '/admin/audit', label: 'Nhật ký quản trị', icon: <FileText size={16} /> },
-  { to: '/admin/lab', label: 'Kịch bản T1–T7', icon: <FlaskConical size={16} />, grp: 'SENTINEL CỤC BỘ' },
+  { to: '/admin/lab', label: 'Kịch bản T1-T7', icon: <FlaskConical size={16} />, grp: 'SENTINEL CỤC BỘ' },
   { to: '/admin/gate', label: 'Cổng cấp khóa', icon: <KeyRound size={16} /> },
   { to: '/admin/vault', label: 'Vault và khóa', icon: <ShieldCheck size={16} /> },
   { to: '/admin/recovery', label: 'Phục hồi', icon: <Lock size={16} /> },
@@ -55,7 +55,7 @@ export function AdminLayout() {
           </div>
         ))}
         <div className="foot">
-          <span>{info ? `Phiên bản ${info.version} · ${info.hostname}` : ''}</span>
+          <span>{info ? `Phiên bản ${info.version}, ${info.hostname}` : ''}</span>
           <span>{info?.port ? `Hub LAN cổng ${info.port}` : info?.serverError}</span>
         </div>
       </aside>
@@ -88,7 +88,7 @@ export function AdminOverview() {
   });
   return (
     <>
-      <OpsHead crumb="MÁY QUẢN TRỊ / TỔNG QUAN" badge={info.port ? `LAN · CỔNG ${info.port}` : 'HUB CHƯA CHẠY'} title="HeartOS Sentinel Admin" sub={`Máy ${info.hostname} · người vận hành ${info.operator}`} />
+      <OpsHead crumb="MÁY QUẢN TRỊ / TỔNG QUAN" badge={info.port ? `LAN, CỔNG ${info.port}` : 'HUB CHƯA CHẠY'} title="HeartOS Sentinel Admin" sub={`Máy ${info.hostname}, người vận hành ${info.operator}`} />
       {info.serverError && <div className="card rose"><p className="danger-text">{info.serverError}</p></div>}
       <div className="ops-grid">
         <Metric tint label="Thiết bị đã ghép" value={devices.length} sub={`${devices.filter((d) => online(d.lastSeen)).length} đang trực tuyến`} />
@@ -99,7 +99,7 @@ export function AdminOverview() {
       <div className="ops-cols">
         <div className="panel">
           <h2>Thiết bị</h2>
-          {devices.length === 0 && <Item t="Chưa có thiết bị nào" m="Mở “Ghép thiết bị mới” rồi nhập mã trên điện thoại (Thêm → Máy quản trị Sentinel)." />}
+          {devices.length === 0 && <Item t="Chưa có thiết bị nào" m="Mở “Ghép thiết bị mới” rồi nhập mã trên điện thoại (Thêm > Máy quản trị Sentinel)." />}
           {devices.map((d) => {
             const s = view.snapshots[d.id];
             return (
@@ -107,7 +107,7 @@ export function AdminOverview() {
                 <Smartphone size={18} />
                 <div style={{ flex: 1 }}>
                   <div className="t">{d.name}</div>
-                  <div className="m">{s ? `Thế hệ quyền ${s.sentinel.epoch} · ${SECURITY_STATE_LABEL[s.sentinel.security.state as SecurityState] ?? s.sentinel.security.state} · ${s.home.incidents.length} ca đang mở` : 'Chưa đồng bộ'} · {d.lastSeen ? ago(d.lastSeen, now) : 'chưa kết nối'}</div>
+                  <div className="m">{s ? `Thế hệ quyền ${s.sentinel.epoch}, ${SECURITY_STATE_LABEL[s.sentinel.security.state as SecurityState] ?? s.sentinel.security.state}, ${s.home.incidents.length} ca đang mở` : 'Chưa đồng bộ'}, {d.lastSeen ? ago(d.lastSeen, now) : 'chưa kết nối'}</div>
                 </div>
                 <Badge tone={online(d.lastSeen) ? undefined : 'warm'}>{online(d.lastSeen) ? 'Trực tuyến' : 'Ngoại tuyến'}</Badge>
               </button>
@@ -119,7 +119,7 @@ export function AdminOverview() {
           {alerts.length === 0 && <Item t="Không có cảnh báo" m="Trạng thái an ninh bình thường trên mọi thiết bị đã đồng bộ." />}
           {alerts.map((a) => <Item key={a} t={a} icon={<ShieldAlert size={16} color="#9E3830" />} />)}
           <h2 style={{ marginTop: 6 }}>Kết nối</h2>
-          <Item t="Địa chỉ cho điện thoại" m={info.addresses.length ? info.addresses.map((a) => `${a}:${info.port}`).join(' · ') : 'Không tìm thấy địa chỉ LAN'} />
+          <Item t="Địa chỉ cho điện thoại" m={info.addresses.length ? info.addresses.map((a) => `${a}:${info.port}`).join(', ') : 'Không tìm thấy địa chỉ LAN'} />
           <Item t="Thư mục dữ liệu" m={info.dataDir} right={<button className="btn xs secondary" onClick={() => void api.openDataDir()}><FolderOpen size={14} /> Mở</button>} />
         </div>
       </div>
@@ -145,11 +145,11 @@ export function AdminDevices() {
                 const js = view.journalStats[d.id];
                 return (
                   <tr key={d.id}>
-                    <td><b>{d.name}</b><div className="small muted">{d.platform} · {d.appVersion} · {d.id}</div></td>
+                    <td><b>{d.name}</b><div className="small muted">{d.platform}, {d.appVersion}, {d.id}</div></td>
                     <td className="mono">{d.sas}</td>
                     <td>{s?.sentinel.epoch ?? '-'}</td>
                     <td>{s ? SECURITY_STATE_LABEL[s.sentinel.security.state as SecurityState] ?? s.sentinel.security.state : '-'}</td>
-                    <td>{js ? `${js.count} bản ghi${js.broken ? ` · ${js.broken} lỗi` : ''}` : '-'}</td>
+                    <td>{js ? `${js.count} bản ghi${js.broken ? `, ${js.broken} lỗi` : ''}` : '-'}</td>
                     <td>{d.revoked ? <Badge tone="line">Đã gỡ</Badge> : d.lastSeen ? ago(d.lastSeen, now) : 'chưa kết nối'}{d.lastError && <div className="small danger-text">{d.lastError}</div>}</td>
                     <td className="mono">{d.lastAddress}</td>
                     <td>
@@ -210,27 +210,27 @@ export function AdminDevice() {
         crumb="MÁY QUẢN TRỊ / THIẾT BỊ"
         badge={online(d.lastSeen) ? 'TRỰC TUYẾN' : 'NGOẠI TUYẾN'}
         title={d.name}
-        sub={`${d.platform} · ${d.appVersion} · mã đối chiếu ${d.sas} · ${d.lastSeen ? 'đồng bộ ' + ago(d.lastSeen, now) : 'chưa đồng bộ'} · ${d.lastAddress ?? ''}`}
+        sub={`${d.platform}, ${d.appVersion}, mã đối chiếu ${d.sas}, ${d.lastSeen ? 'đồng bộ ' + ago(d.lastSeen, now) : 'chưa đồng bộ'}, ${d.lastAddress ?? ''}`}
         right={<button className="btn xs secondary" onClick={() => ask('ping', {}, 'Gửi lệnh kiểm tra kết nối?')}><RefreshCw size={14} /> Kiểm tra kết nối</button>}
       />
       {d.lastError && <div className="card rose"><p className="danger-text">Lỗi đồng bộ gần nhất: {d.lastError}</p></div>}
       <Seg<Tab> value={tab} onChange={setTab} options={[{ value: 'sentinel', label: 'Sentinel' }, { value: 'vault', label: 'Két và phục hồi' }, { value: 'home', label: 'Nhà và quyền' }, { value: 'journal', label: 'Nhật ký' }, { value: 'commands', label: `Lệnh (${cmds.length})` }]} />
-      {!s && <div className="panel"><Item t="Thiết bị chưa gửi dữ liệu" m="Trên điện thoại: Thêm → Máy quản trị Sentinel → Đồng bộ ngay." /></div>}
+      {!s && <div className="panel"><Item t="Thiết bị chưa gửi dữ liệu" m="Trên điện thoại: Thêm > Máy quản trị Sentinel > Đồng bộ ngay." /></div>}
       {s && tab === 'sentinel' && (
         <>
           <div className="ops-grid">
             <Metric tint label="Thế hệ quyền" value={s.sentinel.epoch} sub={`Tenant ${s.sentinel.tenant}`} />
-            <Metric label="Trạng thái an ninh" value={SECURITY_STATE_LABEL[s.sentinel.security.state as SecurityState] ?? s.sentinel.security.state} sub={`${s.sentinel.security.signals} tín hiệu · xuất hàng loạt ${s.sentinel.security.exportBlocked ? 'bị chặn' : 'bình thường'}`} />
-            <Metric label="Hạn mức giải mã" value={fmt(s.sentinel.R.tokens)} sub={`B ${fmt(s.sentinel.R.capacity)} · r ${fmt(s.sentinel.R.rate)}/s · còn ${fmt(s.sentinel.R.quotaRemaining)}`} />
-            <Metric label="Đường đọc két" value={s.sentinel.R.locked ? 'Đang khóa' : 'Mở'} sub={`${s.sentinel.R.replays} lần phát lại bị chặn · ${s.sentinel.R.denials} từ chối`} />
+            <Metric label="Trạng thái an ninh" value={SECURITY_STATE_LABEL[s.sentinel.security.state as SecurityState] ?? s.sentinel.security.state} sub={`${s.sentinel.security.signals} tín hiệu, xuất hàng loạt ${s.sentinel.security.exportBlocked ? 'bị chặn' : 'bình thường'}`} />
+            <Metric label="Hạn mức giải mã" value={fmt(s.sentinel.R.tokens)} sub={`B ${fmt(s.sentinel.R.capacity)}, r ${fmt(s.sentinel.R.rate)}/s, còn ${fmt(s.sentinel.R.quotaRemaining)}`} />
+            <Metric label="Đường đọc két" value={s.sentinel.R.locked ? 'Đang khóa' : 'Mở'} sub={`${s.sentinel.R.replays} lần phát lại bị chặn, ${s.sentinel.R.denials} từ chối`} />
           </div>
           <div className="ops-cols">
             <div className="panel">
               <h2>Thành phần</h2>
-              <Item t="HSM" m={`KEK v${s.sentinel.hsm.activeVersion} (${s.sentinel.hsm.versions} phiên bản) · sinh ${s.sentinel.hsm.generate} · cấp ${s.sentinel.hsm.release} · từ chối ${s.sentinel.hsm.refused}`} />
-              <Item t="Enclave Ve" m={`${s.sentinel.ve.name}@${s.sentinel.ve.version} · TCB ${s.sentinel.ve.tcb} · ${s.sentinel.ve.measurement.slice(0, 16)}…`} right={<Badge tone={s.sentinel.ve.accepted ? undefined : 'danger'}>{s.sentinel.ve.accepted ? 'Được chấp nhận' : 'Đã thu hồi'}</Badge>} />
-              <Item t="Cổng cấp khóa" m={`Đã cấp ${s.sentinel.gate.released} · từ chối ${s.sentinel.gate.denied} · đặt chỗ chưa đóng ${fmt(s.sentinel.R.outstanding)}`} />
-              <Item t="Nhật ký trên thiết bị" m={`${s.sentinel.journalHead.count} bản ghi · đầu chuỗi #${s.sentinel.journalHead.seq} ${s.sentinel.journalHead.hash.slice(0, 14)}…`} />
+              <Item t="HSM" m={`KEK v${s.sentinel.hsm.activeVersion} (${s.sentinel.hsm.versions} phiên bản), sinh ${s.sentinel.hsm.generate}, cấp ${s.sentinel.hsm.release}, từ chối ${s.sentinel.hsm.refused}`} />
+              <Item t="Enclave Ve" m={`${s.sentinel.ve.name}@${s.sentinel.ve.version}, TCB ${s.sentinel.ve.tcb}, ${s.sentinel.ve.measurement.slice(0, 16)}...`} right={<Badge tone={s.sentinel.ve.accepted ? undefined : 'danger'}>{s.sentinel.ve.accepted ? 'Được chấp nhận' : 'Đã thu hồi'}</Badge>} />
+              <Item t="Cổng cấp khóa" m={`Đã cấp ${s.sentinel.gate.released}, từ chối ${s.sentinel.gate.denied}, đặt chỗ chưa đóng ${fmt(s.sentinel.R.outstanding)}`} />
+              <Item t="Nhật ký trên thiết bị" m={`${s.sentinel.journalHead.count} bản ghi, đầu chuỗi #${s.sentinel.journalHead.seq} ${s.sentinel.journalHead.hash.slice(0, 14)}...`} />
             </div>
             <div className="panel">
               <h2>Phiên bị hạn chế</h2>
@@ -259,7 +259,7 @@ export function AdminDevice() {
           </div>
           <div className="panel">
             <h2>Điểm phục hồi</h2>
-            {s.sentinel.recovery.map((c) => <Item key={c.id} t={`${c.id} · ${c.status}`} m={`${new Date(c.createdAt).toLocaleString('vi-VN')} · ${c.objects} đối tượng · epoch ${c.epochAt}`} />)}
+            {s.sentinel.recovery.map((c) => <Item key={c.id} t={`${c.id}, ${c.status}`} m={`${new Date(c.createdAt).toLocaleString('vi-VN')}, ${c.objects} đối tượng, epoch ${c.epochAt}`} />)}
           </div>
         </>
       )}
@@ -268,16 +268,16 @@ export function AdminDevice() {
           <div className="panel">
             <h2>Nhà</h2>
             <Item t="Chế độ" m={s.home.mode === 'home' ? 'Ở nhà' : s.home.mode === 'away' ? 'Vắng nhà' : 'Ban đêm'} />
-            <Item t="Điện" m={`Lưới ${s.home.power.mains === 'on' ? 'có' : 'mất'} · ATS ${s.home.power.ats} · UPS ${Math.round(s.home.power.battery)}% · máy phát ${s.home.power.generator}`} />
-            <Item t="Mạng" m={`LAN ${s.home.net.lan ? 'hoạt động' : 'mất'} · Internet ${s.home.net.internet ? 'ổn định' : 'gián đoạn'}`} />
-            <Item t="Vùng có tín hiệu" m={`${s.home.roomsFresh}/${s.home.roomsTotal}${s.home.offlineDevices.length ? ' · ngoại tuyến: ' + s.home.offlineDevices.join(', ') : ''}`} />
+            <Item t="Điện" m={`Lưới ${s.home.power.mains === 'on' ? 'có' : 'mất'}, ATS ${s.home.power.ats}, UPS ${Math.round(s.home.power.battery)}%, máy phát ${s.home.power.generator}`} />
+            <Item t="Mạng" m={`LAN ${s.home.net.lan ? 'hoạt động' : 'mất'}, Internet ${s.home.net.internet ? 'ổn định' : 'gián đoạn'}`} />
+            <Item t="Vùng có tín hiệu" m={`${s.home.roomsFresh}/${s.home.roomsTotal}${s.home.offlineDevices.length ? ', ngoại tuyến: ' + s.home.offlineDevices.join(', ') : ''}`} />
             <h2 style={{ marginTop: 6 }}>Ca Guardian đang mở</h2>
             {s.home.incidents.length === 0 && <Item t="Không có" />}
-            {s.home.incidents.map((i) => <Item key={i.id} t={`${i.id} · ${i.title}`} m={`${i.priority} · ${i.status}${i.assignee ? ' · ' + i.assignee : ''} · ${hhmm(i.createdAt)}`} />)}
+            {s.home.incidents.map((i) => <Item key={i.id} t={`${i.id}, ${i.title}`} m={`${i.priority}, ${i.status}${i.assignee ? ', ' + i.assignee : ''}, ${hhmm(i.createdAt)}`} />)}
           </div>
           <div className="panel">
             <h2>Quyền chia sẻ</h2>
-            {s.family.permissions.map((p) => <Item key={p.id} t={p.title} m={`của ${p.owner} · xem: ${p.viewers.join(', ') || '-'}`} right={<Badge tone={p.status === 'granted' ? undefined : 'warm'}>{p.status === 'granted' ? 'Đã cấp' : 'Đã thu hồi'}</Badge>} />)}
+            {s.family.permissions.map((p) => <Item key={p.id} t={p.title} m={`của ${p.owner}, xem: ${p.viewers.join(', ') || '-'}`} right={<Badge tone={p.status === 'granted' ? undefined : 'warm'}>{p.status === 'granted' ? 'Đã cấp' : 'Đã thu hồi'}</Badge>} />)}
             <Item t="Thiết bị chờ áp dụng quyền mới" m={String(s.family.syncPending)} />
             <h2 style={{ marginTop: 6 }}>Thành viên</h2>
             {s.family.members.map((m) => <Item key={m.id} t={m.name} m={m.role} />)}
@@ -288,7 +288,7 @@ export function AdminDevice() {
         <div className="panel">
           <div className="hstack wrap">
             <h2 style={{ flex: 1 }}>Nhật ký bằng chứng từ thiết bị ({journal.length})</h2>
-            <input className="input" style={{ maxWidth: 240, minHeight: 36 }} placeholder="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input className="input" style={{ maxWidth: 240, minHeight: 36 }} placeholder="Tìm..." value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <p className="small muted" style={{ margin: 0 }}>Máy quản trị tính lại băm SHA-256 của từng bản ghi và kiểm liên kết với bản ghi liền trước.</p>
           <div className="scroll-x">
@@ -299,7 +299,7 @@ export function AdminDevice() {
                   <tr key={e.seq}>
                     <td className="mono">{e.seq}</td>
                     <td className="mono">{hhmmss(e.ts)}</td>
-                    <td><div style={{ fontWeight: 600 }}>{e.summary}</div><div className="small muted">{e.kind} · {e.actor}{e.epoch ? ' · epoch ' + e.epoch : ''}</div></td>
+                    <td><div style={{ fontWeight: 600 }}>{e.summary}</div><div className="small muted">{e.kind}, {e.actor}{e.epoch ? ', epoch ' + e.epoch : ''}</div></td>
                     <td>{e.decision ? <Badge tone={e.decision === 'deny' ? 'danger' : undefined}>{e.decision === 'deny' ? 'Từ chối' : 'Cho phép'}</Badge> : ''}</td>
                     <td><Badge tone={!e.hashOk || e.linkOk === false ? 'danger' : e.linkOk === null ? 'line' : undefined}>{!e.hashOk ? 'Băm sai' : e.linkOk === false ? 'Nối sai' : e.linkOk === null ? 'Đầu đoạn' : 'Đạt'}</Badge></td>
                   </tr>
@@ -333,7 +333,7 @@ export function AdminDevice() {
             <div className="item">
               <select className="input" style={{ minHeight: 36, flex: 1 }} value={perm} onChange={(e) => setPerm(e.target.value)}>
                 <option value="">Chọn quyền chia sẻ</option>
-                {s?.family.permissions.filter((p) => p.status === 'granted').map((p) => <option key={p.id} value={p.id}>{p.title} · {p.owner}</option>)}
+                {s?.family.permissions.filter((p) => p.status === 'granted').map((p) => <option key={p.id} value={p.id}>{p.title}, {p.owner}</option>)}
               </select>
               <button className="btn xs danger" disabled={!perm} onClick={() => ask('revoke_permission', { permissionId: perm }, 'Thu hồi quyền chia sẻ này trên thiết bị?')}>Thu hồi</button>
             </div>
@@ -353,7 +353,7 @@ export function AdminDevice() {
             <div className="item">
               <select className="input" style={{ minHeight: 36, flex: 1 }} value={incident} onChange={(e) => setIncident(e.target.value)}>
                 <option value="">Chọn ca Guardian</option>
-                {s?.home.incidents.map((i) => <option key={i.id} value={i.id}>{i.id} · {i.title}</option>)}
+                {s?.home.incidents.map((i) => <option key={i.id} value={i.id}>{i.id}, {i.title}</option>)}
               </select>
               <button className="btn xs secondary" disabled={!incident} onClick={() => ask('close_incident', { incidentId: incident }, 'Đóng ca này trên thiết bị?')}>Đóng ca</button>
             </div>
@@ -405,7 +405,7 @@ function CommandRow({ c }: { c: HubCommandRecord }) {
   return (
     <Item
       t={COMMAND_LABEL[c.kind]}
-      m={`${hhmmss(c.issuedAt)} · ${c.issuedBy}${c.result ? ' · ' + c.result.message : ''}${c.result ? ` · epoch ${c.result.epoch}` : ''}`}
+      m={`${hhmmss(c.issuedAt)}, ${c.issuedBy}${c.result ? ', ' + c.result.message : ''}${c.result ? `, epoch ${c.result.epoch}` : ''}`}
       right={<Badge tone={tone}>{label}</Badge>}
     />
   );
@@ -415,6 +415,7 @@ export function AdminPair() {
   const { view, info, api } = useHubView();
   const now = useNow(500);
   const [known, setKnown] = useState<string[] | null>(null);
+  const [target, setTarget] = useState('');
   useEffect(() => {
     if (view && known === null) setKnown(view.devices.map((d) => d.id));
   }, [view, known]);
@@ -422,18 +423,29 @@ export function AdminPair() {
   const fresh = view.devices.filter((d) => known && !known.includes(d.id));
   return (
     <>
-      <OpsHead crumb="MÁY QUẢN TRỊ / GHÉP NỐI" badge="MÃ MỘT LẦN · 120 GIÂY" title="Ghép thiết bị mới" sub="Trên điện thoại: Thêm → Máy quản trị Sentinel, nhập địa chỉ và mã dưới đây." />
+      <OpsHead crumb="MÁY QUẢN TRỊ / GHÉP NỐI" badge="MÃ MỘT LẦN, 120 GIÂY" title="Ghép thiết bị mới" sub="Điện thoại quản trị: Thêm > Máy quản trị Sentinel. Thành viên khác: màn Tham gia bằng mã khi mở ứng dụng." />
       <div className="ops-cols">
         <div className="panel">
           <h2>Mã ghép nối</h2>
           {view.pairing ? (
             <>
               <div className="mono" style={{ fontSize: 56, fontWeight: 800, letterSpacing: '.12em', color: '#18382D' }}>{view.pairing.code.slice(0, 3)} {view.pairing.code.slice(3)}</div>
-              <Item t={`Còn ${mmss(view.pairing.expiresAt - now)}`} m="Sai quá 5 lần thì mã bị hủy." right={<button className="btn xs secondary" onClick={() => void api.closePairing()}>Hủy</button>} />
+              <Item t={view.pairing.memberId ? `Mã tham gia hộ cho ${view.members.find((m) => m.id === view.pairing!.memberId)?.name ?? 'thành viên'}` : 'Mã ghép điện thoại quản trị'} m={`Còn ${mmss(view.pairing.expiresAt - now)}. Sai quá 5 lần thì mã bị hủy.`} right={<button className="btn xs secondary" onClick={() => void api.closePairing()}>Hủy</button>} />
             </>
           ) : (
-            <button className="btn" style={{ maxWidth: 260 }} onClick={() => void api.openPairing()}><Link2 size={18} /> Tạo mã ghép nối</button>
+            <>
+              <label className="field">
+                <span>Mã dành cho</span>
+                <select className="input" value={target} onChange={(e) => setTarget(e.target.value)}>
+                  <option value="">Điện thoại quản trị hộ (gửi dữ liệu hộ lên hub)</option>
+                  {view.members.map((m) => <option key={m.id} value={m.id}>Tham gia hộ: {m.name}{m.relation ? ` (${m.relation})` : ''}</option>)}
+                </select>
+              </label>
+              {!view.household && <Item t="Hub chưa có dữ liệu hộ" m="Ghép điện thoại quản trị trước. Sau lần đồng bộ đầu, danh sách thành viên hiện ở đây để tạo mã tham gia." />}
+              <button className="btn" style={{ maxWidth: 260 }} onClick={() => void api.openPairing(target || undefined)}><Link2 size={18} /> Tạo mã</button>
+            </>
           )}
+          {view.household && <Item t={`Hộ trên hub: ${view.household.name}`} m={`${view.members.length} thành viên, ${view.opsCount} mục dữ liệu đồng bộ`} />}
           <h2 style={{ marginTop: 8 }}>Địa chỉ máy quản trị</h2>
           {info.addresses.length === 0 && <Item t="Không tìm thấy địa chỉ LAN" m="Kiểm tra Wi-Fi/Ethernet của máy tính." />}
           {info.addresses.map((a) => <Item key={a} t={`${a}:${info.port ?? '-'}`} m="Nhập địa chỉ này trên điện thoại cùng mạng Wi-Fi" />)}
@@ -442,8 +454,8 @@ export function AdminPair() {
         <div className="panel">
           <h2>So khớp mã đối chiếu</h2>
           <p className="small muted" style={{ margin: 0 }}>Sau khi ghép, điện thoại hiển thị một mã đối chiếu. Mã đó phải trùng với mã bên dưới; nếu khác, hãy gỡ ghép nối ngay vì có thể có thiết bị trung gian.</p>
-          {fresh.length === 0 && <Item t="Đang chờ thiết bị…" />}
-          {fresh.map((d) => <Item key={d.id} t={d.name} m={`${d.platform} · ${d.lastAddress}`} right={<span className="mono" style={{ fontSize: 20, fontWeight: 800 }}>{d.sas}</span>} />)}
+          {fresh.length === 0 && <Item t="Đang chờ thiết bị..." />}
+          {fresh.map((d) => <Item key={d.id} t={d.name} m={`${d.platform}, ${d.lastAddress}`} right={<span className="mono" style={{ fontSize: 20, fontWeight: 800 }}>{d.sas}</span>} />)}
           <h2 style={{ marginTop: 8 }}>Cổng LAN</h2>
           <PortForm current={info.port} />
         </div>

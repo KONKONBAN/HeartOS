@@ -7,7 +7,7 @@ import { HomeEngine } from '../core/smarthome/engine';
 import { encryptedJsonStore, openAtRest, type AtRest } from '../core/atrest';
 import { indexedObjectStore, memoryJsonStore, type JsonStore, type ObjectStore } from '../core/storage';
 
-export const TENANT = 'nha-an';
+export const TENANT = 'heartos-home';
 
 export const blobs: ObjectStore = indexedObjectStore('heartos', 'objects');
 export let json: JsonStore = memoryJsonStore();
@@ -45,6 +45,10 @@ export function initServices(members: Parameters<typeof directoryFrom>[0]): Prom
     }
   })();
   return ready;
+}
+
+export function syncDirectory(members: Parameters<typeof directoryFrom>[0]) {
+  sentinel?.directory.replace(directoryFrom(members));
 }
 
 export function getSentinel(): Sentinel {

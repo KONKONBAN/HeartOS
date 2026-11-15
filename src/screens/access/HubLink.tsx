@@ -22,7 +22,7 @@ export function FHub() {
     return (
       <Phone tabs>
         <TopBar back backTo="/f/more" />
-        <Header title="Máy quản trị Sentinel" sub="Đang khởi động kết nối…" />
+        <Header title="Máy quản trị Sentinel" sub="Đang khởi động kết nối..." />
       </Phone>
     );
   const pair = async () => {
@@ -48,7 +48,7 @@ export function FHub() {
       <Phone tabs>
         <TopBar back backTo="/f/more" />
         <Header title="Máy quản trị Sentinel" sub="Ghép điện thoại với phần mềm HeartOS Sentinel Admin trên máy tính cùng mạng Wi-Fi." />
-        <Row tone="tint" icon={<Monitor size={18} />} tileTone="white" title="Trên máy tính" meta="Mở HeartOS Sentinel Admin → Ghép thiết bị mới → Tạo mã ghép nối. Máy tính hiển thị địa chỉ và mã 6 số." />
+        <Row tone="tint" icon={<Monitor size={18} />} tileTone="white" title="Trên máy tính" meta="Mở HeartOS Sentinel Admin > Ghép thiết bị mới > Tạo mã ghép nối. Máy tính hiển thị địa chỉ và mã 6 số." />
         <Field label="Địa chỉ máy quản trị">
           <input className="input mono" inputMode="url" autoCapitalize="none" autoCorrect="off" placeholder="192.168.1.10:7420" value={url} onChange={(e) => setUrl(e.target.value)} />
         </Field>
@@ -60,7 +60,7 @@ export function FHub() {
         </Field>
         {error && <Row tone="rose" icon={<X size={18} />} tileTone="white" title="Chưa ghép được" meta={error} />}
         <button className="btn" disabled={busy || !url.trim() || code.length !== 6} onClick={() => void pair()}>
-          <Link2 size={18} /> {busy ? 'Đang ghép…' : 'Ghép nối'}
+          <Link2 size={18} /> {busy ? 'Đang ghép...' : 'Ghép nối'}
         </button>
         <div className="card flat">
           <p>Sau khi ghép, điện thoại gửi trạng thái Sentinel, nhật ký bằng chứng và ca Guardian tới máy quản trị mỗi 5 giây. Gói tin được ký và mã hóa riêng; bản rõ dữ liệu và khóa giải mã không rời điện thoại. Máy quản trị gửi lại lệnh đã ký, điện thoại kiểm chữ ký trước khi áp dụng.</p>
@@ -71,7 +71,7 @@ export function FHub() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/more" />
-      <Header title="Máy quản trị Sentinel" sub={`${link.hubName} · ${link.hubUrl}`} />
+      <Header title="Máy quản trị Sentinel" sub={`${link.hubName}, ${link.hubUrl}`} />
       <Row
         tone={link.lastError ? 'rose' : fresh ? 'tint' : undefined}
         icon={link.lastError ? <X size={18} /> : <Check size={18} />}
@@ -91,7 +91,7 @@ export function FHub() {
       <div className="section-title">Lệnh từ máy quản trị</div>
       {link.history.length === 0 && <div className="empty">Chưa nhận lệnh nào.</div>}
       {link.history.map((h, i) => (
-        <Row key={i} icon={h.ok ? <ShieldCheck size={18} /> : <X size={18} />} tileTone={h.ok ? undefined : 'rose'} title={h.label} meta={`${hhmm(h.at)} · ${h.by} · ${h.message}`} badge={<Badge tone={h.ok ? undefined : 'danger'}>{h.ok ? 'Đã áp dụng' : 'Từ chối'}</Badge>} chevron={false} />
+        <Row key={i} icon={h.ok ? <ShieldCheck size={18} /> : <X size={18} />} tileTone={h.ok ? undefined : 'rose'} title={h.label} meta={`${hhmm(h.at)}, ${h.by}, ${h.message}`} badge={<Badge tone={h.ok ? undefined : 'danger'}>{h.ok ? 'Đã áp dụng' : 'Từ chối'}</Badge>} chevron={false} />
       ))}
       <button className="btn ghost" onClick={() => setConfirmUnpair(true)}>
         <Unplug size={16} /> Gỡ ghép nối

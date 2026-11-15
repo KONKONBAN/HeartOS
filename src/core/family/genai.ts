@@ -77,7 +77,7 @@ export function checkDraft(raw: unknown, f: InviteFacts): { ok: boolean; draft?:
   if (!parsed.success) return { ok: false, checks };
   const d = parsed.data;
   const slotOk = d.slot.start === fromMin(f.slot.start) && d.slot.end === fromMin(f.slot.end);
-  checks.push({ name: 'Khung giờ khớp dữ kiện', ok: slotOk, detail: `${d.slot.start}–${d.slot.end} / ${fromMin(f.slot.start)}–${fromMin(f.slot.end)}` });
+  checks.push({ name: 'Khung giờ khớp dữ kiện', ok: slotOk, detail: `${d.slot.start}-${d.slot.end} / ${fromMin(f.slot.start)}-${fromMin(f.slot.end)}` });
   const ids = new Set(f.recipients.map((r) => r.id));
   const recOk = d.messages.every((m) => ids.has(m.recipientId)) && f.recipients.every((r) => d.messages.some((m) => m.recipientId === r.id));
   checks.push({ name: 'Người nhận đúng danh sách được cấp quyền', ok: recOk, detail: d.messages.map((m) => m.recipientId).join(', ') });
@@ -90,7 +90,7 @@ export function checkDraft(raw: unknown, f: InviteFacts): { ok: boolean; draft?:
     const r = f.recipients.find((x) => x.id === m.recipientId);
     return r ? r.lang === m.lang && (m.lang !== 'vi' || VI_DIACRITIC.test(m.text)) : false;
   });
-  checks.push({ name: 'Ngôn ngữ theo người nhận · kiểm tiếng Việt có dấu', ok: langOk, detail: langOk ? 'Đạt' : 'Sai ngôn ngữ hoặc tiếng Việt không dấu' });
+  checks.push({ name: 'Ngôn ngữ theo người nhận, kiểm tiếng Việt có dấu', ok: langOk, detail: langOk ? 'Đạt' : 'Sai ngôn ngữ hoặc tiếng Việt không dấu' });
   return { ok: checks.every((c) => c.ok), draft: d, checks };
 }
 
@@ -168,7 +168,7 @@ export function parseIntent(text: string): AssistantIntent {
 }
 
 export function summarizeStory(transcript: string) {
-  const sentences = transcript.split(/(?<=[.!?…])\s+/).filter(Boolean);
+  const sentences = transcript.split(/(?<=[.!?...])\s+/).filter(Boolean);
   const first = sentences[0] ?? transcript;
   const words = first.replace(/[“”".,!?]/g, '').split(/\s+/).slice(0, 6).join(' ');
   return { title: words.charAt(0).toUpperCase() + words.slice(1), summary: sentences.slice(0, 2).join(' '), wordCount: transcript.split(/\s+/).filter(Boolean).length };

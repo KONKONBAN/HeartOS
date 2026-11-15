@@ -7,16 +7,16 @@ export interface InvariantDef {
 }
 
 export const INVARIANTS: InvariantDef[] = [
-  { id: 'I1', title: 'Không đọc sai tenant hoặc đối tượng', condition: 'Thuộc tính được xác minh độc lập tại Ve.', enforcedAt: ['GrantService.decide · tenant từ Directory', 'Enclave.checkGrant · ngữ cảnh đối tượng', 'AAD = Encode(tenant, object, version, type)'], assumptions: ['A1', 'A2'] },
-  { id: 'I2', title: 'Ứng dụng không tự mở rộng quyền', condition: 'Không nắm khóa ký, policy hoặc token quản trị.', enforcedAt: ['Khóa ký G không xuất được', 'Hsm.assertCaller · chỉ danh tính cổng', 'Vai trò tự khai bị bỏ qua'], assumptions: ['A1', 'A7'] },
-  { id: 'I3', title: 'Ngân sách không tăng do replay hoặc đồng thời', condition: 'Kiểm tra và đặt chỗ nguyên tử trên toàn phạm vi.', enforcedAt: ['StateService.checkAndReserve · nonce + bucket trong một bước', 'Không hoàn bucket burst'], assumptions: ['A3'] },
-  { id: 'I4', title: 'Thu hồi có hiệu lực theo epoch hiện hành', condition: 'Quản lý cache, phiên và yêu cầu đang xử lý.', enforcedAt: ['KeyGate · Eok so epoch grant với R', 'Grant TTL 60 giây', 'Kiểm lại quyền khi phát hành lời mời'], assumptions: ['A3', 'A9'] },
-  { id: 'I5', title: 'AI không thay cơ chế cấp quyền', condition: 'Bộ thực thi và quyền công cụ độc lập với nội dung mô hình.', enforcedAt: ['checkExecution · allowlist, phạm vi, TTL, hoàn tác', 'AI không giữ khóa, không mở lại dịch vụ'], assumptions: ['A4'] },
-  { id: 'I6', title: 'Quyền vận hành không phá bản phục hồi được giữ', condition: 'Miền quản trị và vật liệu phục hồi đáp ứng giả thiết.', enforcedAt: ['RecoveryVault.requestDelete · khóa lưu giữ + 2 người duyệt', 'KEK cũ chuyển chỉ-giải-mã, không hủy'], assumptions: ['A4'] },
+  { id: 'I1', title: 'Không đọc sai tenant hoặc đối tượng', condition: 'Thuộc tính được xác minh độc lập tại Ve.', enforcedAt: ['GrantService.decide, tenant từ Directory', 'Enclave.checkGrant, ngữ cảnh đối tượng', 'AAD = Encode(tenant, object, version, type)'], assumptions: ['A1', 'A2'] },
+  { id: 'I2', title: 'Ứng dụng không tự mở rộng quyền', condition: 'Không nắm khóa ký, policy hoặc token quản trị.', enforcedAt: ['Khóa ký G không xuất được', 'Hsm.assertCaller, chỉ danh tính cổng', 'Vai trò tự khai bị bỏ qua'], assumptions: ['A1', 'A7'] },
+  { id: 'I3', title: 'Ngân sách không tăng do replay hoặc đồng thời', condition: 'Kiểm tra và đặt chỗ nguyên tử trên toàn phạm vi.', enforcedAt: ['StateService.checkAndReserve, nonce + bucket trong một bước', 'Không hoàn bucket burst'], assumptions: ['A3'] },
+  { id: 'I4', title: 'Thu hồi có hiệu lực theo epoch hiện hành', condition: 'Quản lý cache, phiên và yêu cầu đang xử lý.', enforcedAt: ['KeyGate, Eok so epoch grant với R', 'Grant TTL 60 giây', 'Kiểm lại quyền khi phát hành lời mời'], assumptions: ['A3', 'A9'] },
+  { id: 'I5', title: 'AI không thay cơ chế cấp quyền', condition: 'Bộ thực thi và quyền công cụ độc lập với nội dung mô hình.', enforcedAt: ['checkExecution, allowlist, phạm vi, TTL, hoàn tác', 'AI không giữ khóa, không mở lại dịch vụ'], assumptions: ['A4'] },
+  { id: 'I6', title: 'Quyền vận hành không phá bản phục hồi được giữ', condition: 'Miền quản trị và vật liệu phục hồi đáp ứng giả thiết.', enforcedAt: ['RecoveryVault.requestDelete, khóa lưu giữ + 2 người duyệt', 'KEK cũ chuyển chỉ-giải-mã, không hủy'], assumptions: ['A4'] },
   { id: 'I7', title: 'DEK và bản rõ xử lý giữ trong ranh giới đã chỉ định', condition: 'Không trả DEK cho host, proxy hoặc plugin ngoài vùng.', enforcedAt: ['Hsm chỉ trả bản bọc KEK / bọc cho khóa nhận', 'Enclave unwrap DEK không xuất được', 'Đầu ra niêm phong cho đích đã xác minh'], assumptions: ['A2', 'A5', 'A7', 'A8'] },
-  { id: 'I8', title: 'Khóa nhận DEK gắn với môi trường và phiên được chấp nhận', condition: 'Xác minh chứng thực, tính mới và ngữ cảnh grant.', enforcedAt: ['Verifier.verify · chữ ký gốc, measurement, TCB, debug, thử thách', 'KeyGate · Aok so thumbprint khóa phiên với grant'], assumptions: ['A6'] },
-  { id: 'I9', title: 'Restart và rollback không khôi phục quyền đã tiêu thụ', condition: 'Epoch và hạn mức có trạng thái bền vững tại R.', enforcedAt: ['StateService.restoreSnapshot · epoch=max, nonce=hợp, ngân sách=min', 'highWater bền vững'], assumptions: ['A3', 'A9'] },
-  { id: 'I10', title: 'Phục hồi áp dụng quyền hiện hành và có thẩm quyền riêng', condition: 'Không hạ epoch, mở quyền cũ hoặc bỏ qua cấp khóa.', enforcedAt: ['RecoveryVault.approveAndRestore · ACL hiện hành, epoch không hạ', 'Bước 2 chứng thực lại môi trường mới'], assumptions: ['A4', 'A9'] },
+  { id: 'I8', title: 'Khóa nhận DEK gắn với môi trường và phiên được chấp nhận', condition: 'Xác minh chứng thực, tính mới và ngữ cảnh grant.', enforcedAt: ['Verifier.verify, chữ ký gốc, measurement, TCB, debug, thử thách', 'KeyGate, Aok so thumbprint khóa phiên với grant'], assumptions: ['A6'] },
+  { id: 'I9', title: 'Restart và rollback không khôi phục quyền đã tiêu thụ', condition: 'Epoch và hạn mức có trạng thái bền vững tại R.', enforcedAt: ['StateService.restoreSnapshot, epoch=max, nonce=hợp, ngân sách=min', 'highWater bền vững'], assumptions: ['A3', 'A9'] },
+  { id: 'I10', title: 'Phục hồi áp dụng quyền hiện hành và có thẩm quyền riêng', condition: 'Không hạ epoch, mở quyền cũ hoặc bỏ qua cấp khóa.', enforcedAt: ['RecoveryVault.approveAndRestore, ACL hiện hành, epoch không hạ', 'Bước 2 chứng thực lại môi trường mới'], assumptions: ['A4', 'A9'] },
   { id: 'I11', title: 'Nghiệp vụ hợp lệ hoàn thành khi điều kiện tiến triển được giữ', condition: 'A10, tập W không rỗng và cấu hình đáp ứng năng lực.', enforcedAt: ['Đọc/ghi hợp lệ hoàn thành trong ngân sách', 'Từ chối khi không đủ căn cứ (đánh đổi sẵn sàng được công bố)'], assumptions: ['A10'] },
 ];
 
@@ -34,9 +34,9 @@ export const ASSUMPTIONS: { id: string; text: string }[] = [
 ];
 
 export const PROPOSITIONS = [
-  { id: 'K1', title: 'Phạm vi phát hành bản rõ', text: 'Dưới A1–A2, mọi sự kiện phát hành bản rõ mới tại Ve nằm trong phạm vi grant hợp lệ do G cấp.', limit: 'Không thu hồi đầu ra đã được phát hành.' },
+  { id: 'K1', title: 'Phạm vi phát hành bản rõ', text: 'Dưới A1-A2, mọi sự kiện phát hành bản rõ mới tại Ve nằm trong phạm vi grant hợp lệ do G cấp.', limit: 'Không thu hồi đầu ra đã được phát hành.' },
   { id: 'K2', title: 'Lượng dữ liệu phát hành mới', text: 'Bổ sung A3: E_new(T) ≤ min(D_rem, Q + min(L_rem, B + rT)).', limit: 'Không bao phủ đường đi vòng hoặc bản rõ đã ở ngoài biên.' },
-  { id: 'K3', title: 'Ranh giới HSM–enclave', text: 'Dưới A1–A9, quan sát bộ nhớ/kho/đường truyền của host ngoài vùng không tạo quyền đọc DEK hay bản rõ trong Ve ngoài đầu ra được phép.', limit: 'Không bao phủ T7 hoặc tính sẵn sàng khi host gây dừng.' },
+  { id: 'K3', title: 'Ranh giới HSM-enclave', text: 'Dưới A1-A9, quan sát bộ nhớ/kho/đường truyền của host ngoài vùng không tạo quyền đọc DEK hay bản rõ trong Ve ngoài đầu ra được phép.', limit: 'Không bao phủ T7 hoặc tính sẵn sàng khi host gây dừng.' },
 ];
 
 export const THREATS = [
@@ -50,13 +50,13 @@ export const THREATS = [
 ];
 
 export const TRACEABILITY = [
-  { claim: 'K1 · Phạm vi phát hành', basis: 'A1–A2; G và Ve đúng đặc tả.', limit: 'Không thu hồi đầu ra đã được phát hành.' },
-  { claim: 'K2 · Cận dữ liệu mới', basis: 'A3; hạn mức toàn cục và Q hữu hạn.', limit: 'Không bao phủ đường đi vòng hoặc bản rõ đã ở ngoài biên.' },
-  { claim: 'K3 · Ranh giới HSM–enclave', basis: 'A1–A9; giữ TCB, cấp khóa và nhập xuất.', limit: 'Không bao phủ T7 hoặc tính sẵn sàng trước host gây dừng.' },
-  { claim: 'I8 · Gắn người nhận', basis: 'A6; chứng thực và khóa phiên.', limit: 'Một bằng chứng hợp lệ không tự cấp quyền dữ liệu.' },
-  { claim: 'I9 · Chống lùi', basis: 'A3, A9; R còn đáng tin.', limit: 'Snapshot cũ không là nguồn quyền hiện hành.' },
-  { claim: 'I10 · Phục hồi', basis: 'A4, A9; quyền riêng và manifest.', limit: 'Bản dữ liệu đủ byte không tự đủ khóa hoặc quyền.' },
-  { claim: 'I11 · Tiến triển', basis: 'A10; nghiệp vụ W hợp lệ.', limit: 'Không hứa dịch vụ chạy khi máy hoặc mạng bị dừng.' },
+  { claim: 'K1, Phạm vi phát hành', basis: 'A1-A2; G và Ve đúng đặc tả.', limit: 'Không thu hồi đầu ra đã được phát hành.' },
+  { claim: 'K2, Cận dữ liệu mới', basis: 'A3; hạn mức toàn cục và Q hữu hạn.', limit: 'Không bao phủ đường đi vòng hoặc bản rõ đã ở ngoài biên.' },
+  { claim: 'K3, Ranh giới HSM-enclave', basis: 'A1-A9; giữ TCB, cấp khóa và nhập xuất.', limit: 'Không bao phủ T7 hoặc tính sẵn sàng trước host gây dừng.' },
+  { claim: 'I8, Gắn người nhận', basis: 'A6; chứng thực và khóa phiên.', limit: 'Một bằng chứng hợp lệ không tự cấp quyền dữ liệu.' },
+  { claim: 'I9, Chống lùi', basis: 'A3, A9; R còn đáng tin.', limit: 'Snapshot cũ không là nguồn quyền hiện hành.' },
+  { claim: 'I10, Phục hồi', basis: 'A4, A9; quyền riêng và manifest.', limit: 'Bản dữ liệu đủ byte không tự đủ khóa hoặc quyền.' },
+  { claim: 'I11, Tiến triển', basis: 'A10; nghiệp vụ W hợp lệ.', limit: 'Không hứa dịch vụ chạy khi máy hoặc mạng bị dừng.' },
   { claim: 'Bằng chứng có thể đối chiếu', basis: 'Nguồn, thời gian và chuỗi quản lý.', limit: 'Không tự chứng minh danh tính từ IP.' },
   { claim: 'AI có quyền giới hạn', basis: 'Bộ thực thi và schema độc lập.', limit: 'Không loại bỏ lỗi ở bộ thực thi hoặc nguồn log.' },
 ];

@@ -48,7 +48,7 @@ function oracle(f: ReplayFacts) {
     if (ok && start < 0) start = m;
     if (start >= 0 && (!ok || m === 24 * 60 - 1)) {
       const end = ok ? m + 1 : m;
-      if (end - start >= 60) return `${fromMin(start)}–${fromMin(start + 60)}`;
+      if (end - start >= 60) return `${fromMin(start)}-${fromMin(start + 60)}`;
       start = -1;
     }
   }

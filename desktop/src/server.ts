@@ -3,7 +3,7 @@ import os from 'node:os';
 import type { HubCore } from '../../src/core/hublink/hubcore';
 import type { Envelope, PairRequest } from '../../src/core/hublink/protocol';
 
-const MAX_BODY = 2 * 1024 * 1024;
+const MAX_BODY = 16 * 1024 * 1024;
 
 export function lanAddresses(): string[] {
   const out: string[] = [];

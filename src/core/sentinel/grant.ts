@@ -33,6 +33,10 @@ export class Directory {
   upsert(e: DirectoryEntry) {
     this.m.set(e.id, e);
   }
+  replace(entries: DirectoryEntry[]) {
+    this.m.clear();
+    entries.forEach((e) => this.m.set(e.id, e));
+  }
   list() {
     return [...this.m.values()];
   }

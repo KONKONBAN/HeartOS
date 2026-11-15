@@ -133,7 +133,7 @@ export class StateService {
     if (this.hasNonce(nonce)) {
       this.s.stats.replays++;
       this.persist();
-      return { ok: false, reason: 'replay', detail: `Mã chống dùng lại ${nonce.slice(0, 10)}… đã được dùng` };
+      return { ok: false, reason: 'replay', detail: `Mã chống dùng lại ${nonce.slice(0, 10)}... đã được dùng` };
     }
     this.s.usedNonces[nonce] = nonceExpiresAt;
     const b = this.s.bucket;

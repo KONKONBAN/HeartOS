@@ -13,6 +13,8 @@ import {
   type DeviceSnapshot,
   type DownPayload,
   type Envelope,
+  type HouseholdInfo,
+  type HouseholdOp,
   type PairRequest,
   type PairResponse,
   type RemoteJournalEntry,
@@ -36,6 +38,9 @@ export interface LinkState {
   seen: string[];
   pendingResults: CommandResult[];
   history: { at: number; kind: string; label: string; ok: boolean; message: string; by: string }[];
+  opsCursor?: number;
+  household?: HouseholdInfo | null;
+  memberId?: string;
 }
 
 export interface Transport {
@@ -47,6 +52,10 @@ export interface ClientDeps {
   journalSince(seq: number, limit: number): RemoteJournalEntry[];
   apply(cmd: AdminCommand): Promise<{ ok: boolean; message: string }>;
   epoch(): number;
+  collectOps?(): Promise<HouseholdOp[]>;
+  commitOps?(ops: HouseholdOp[]): void;
+  applyOps?(ops: HouseholdOp[], household: HouseholdInfo | null, memberId: string | undefined): Promise<void>;
+  memberId?(): string | undefined;
 }
 
 export function normalizeHubUrl(input: string) {
@@ -91,7 +100,7 @@ export class HubClient {
     this.listeners.forEach((l) => l());
   }
 
-  async pair(hubUrl: string, code: string, deviceName?: string): Promise<{ ok: true; sas: string; hubName: string } | { ok: false; error: string }> {
+  async pair(hubUrl: string, code: string, deviceName?: string): Promise<{ ok: true; sas: string; hubName: string; household: HouseholdInfo | null; memberId?: string } | { ok: false; error: string }> {
     let url: string;
     try {
       url = normalizeHubUrl(hubUrl);
@@ -128,10 +137,13 @@ export class HubClient {
       seen: [],
       pendingResults: [],
       history: [],
+      opsCursor: 0,
+      household: pr.body.household ?? null,
+      memberId: pr.body.memberId,
     };
     this.sessionKey = null;
     this.save();
-    return { ok: true, sas: code6, hubName: pr.body.hubName };
+    return { ok: true, sas: code6, hubName: pr.body.hubName, household: pr.body.household ?? null, memberId: pr.body.memberId };
   }
 
   unpair() {
@@ -153,7 +165,8 @@ export class HubClient {
     this.busy = true;
     try {
       const key = await this.getSessionKey();
-      const payload: UpPayload = { snapshot: this.deps.snapshot(), journal: this.deps.journalSince(s.ackJournalSeq, 150), results: s.pendingResults };
+      const ops = this.deps.collectOps ? await this.deps.collectOps() : [];
+      const payload: UpPayload = { snapshot: this.deps.snapshot(), journal: this.deps.journalSince(s.ackJournalSeq, 150), results: s.pendingResults, ops, opsCursor: s.opsCursor ?? 0, memberId: s.memberId ?? this.deps.memberId?.() };
       const seq = s.upSeq + 1;
       const env = await sealEnvelope({ deviceId: s.deviceId, dir: 'up', seq, payload, sessionKey: key, signKey: this.keys.sign.privateKey, now: this.now() });
       s.upSeq = seq;
@@ -164,6 +177,12 @@ export class HubClient {
       if (!opened.ok) throw new Error('Phản hồi máy quản trị bị từ chối: ' + opened.reason);
       s.downSeq = (res.data as Envelope).seq;
       s.pendingResults = [];
+      if (ops.length) this.deps.commitOps?.(ops);
+      const down = opened.payload;
+      if (down.household !== undefined) s.household = down.household;
+      if (down.memberId) s.memberId = down.memberId;
+      if (down.ops?.length && this.deps.applyOps) await this.deps.applyOps(down.ops, down.household ?? null, s.memberId);
+      if (typeof down.opsCursor === 'number') s.opsCursor = down.opsCursor;
       s.ackJournalSeq = Math.max(s.ackJournalSeq, opened.payload.ackJournalSeq);
       let applied = 0;
       for (const cmd of opened.payload.commands) {

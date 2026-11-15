@@ -37,15 +37,15 @@ export interface EntropySource {
 
 export const HYPOTHESES = {
   H1: {
-    title: 'H1 · Điều chỉnh độ nhớt và tán xạ',
+    title: 'H1, Điều chỉnh độ nhớt và tán xạ',
     text: 'Hỗn hợp có độ nhớt/tán xạ điều chỉnh được có thể làm thay đổi λ qua hình học và chuyển động; điều đó không tự xác định mức bí mật của X. Bác bỏ nếu biến động được giải thích bởi tín hiệu đối phương quan sát/điều khiển được (thuộc E).',
   },
   H2: {
-    title: 'H2 · Đường thu điện của microplasma',
+    title: 'H2, Đường thu điện của microplasma',
     text: 'Tín hiệu điện của microplasma có thể là một đường thu khác ngoài camera. Không suy luận rằng nhiệt độ cao hay trạng thái plasma luôn làm tăng cận entropy của dữ liệu đo.',
   },
   H3: {
-    title: 'H3 · Phần ngẫu nhiên bổ sung giữa hai kênh',
+    title: 'H3, Phần ngẫu nhiên bổ sung giữa hai kênh',
     text: 'Hai kênh có thể đóng góp phần ngẫu nhiên bổ sung khi quan hệ phụ thuộc được mô hình hóa. Không cộng entropy hai kênh nếu không có phân tích phụ thuộc; ghép phải qua construction được thẩm định, không XOR/hash tự phát.',
   },
 } as const;
@@ -75,7 +75,7 @@ export function defaultSources(): EntropySource[] {
       firmware: 'cam-fw 2.4.1',
       assumedHPerSample: 2,
       profile: {
-        phenomenon: 'Tán xạ ánh sáng qua hỗn hợp glycerol–nước trong ống kín; cảm biến ảnh mô-đun nghiên cứu.',
+        phenomenon: 'Tán xạ ánh sáng qua hỗn hợp glycerol-nước trong ống kín; cảm biến ảnh mô-đun nghiên cứu.',
         blockX: 'Khối 64×64 pixel kênh xanh, 8 bit, trước nén.',
       },
       constructionEvaluated: false,

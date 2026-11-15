@@ -44,7 +44,7 @@ export function SignOutButton({ size = 18 }: { size?: number }) {
       <div className="btnrow">
         <button className="btn secondary" disabled={busy} onClick={() => setConfirm(false)}>Ở lại</button>
         <button className="btn" disabled={busy} onClick={() => void finish()}>
-          <RotateCcw size={size} /> {busy ? 'Đang đặt lại…' : 'Đặt lại và đăng xuất'}
+          <RotateCcw size={size} /> {busy ? 'Đang đặt lại...' : 'Đặt lại và đăng xuất'}
         </button>
       </div>
     </div>

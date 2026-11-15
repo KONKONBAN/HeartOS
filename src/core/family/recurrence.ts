@@ -6,9 +6,9 @@ export type Recurrence =
 export const WEEKDAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
 
 export function describe(r: Recurrence) {
-  if (r.freq === 'daily') return `Mỗi ngày · ${r.time}`;
-  if (r.freq === 'weekly') return `Mỗi ${WEEKDAYS[r.weekday]} · ${r.time}`;
-  return `${WEEKDAYS[r.weekday]} cuối tháng · ${r.time}`;
+  if (r.freq === 'daily') return `Mỗi ngày, ${r.time}`;
+  if (r.freq === 'weekly') return `Mỗi ${WEEKDAYS[r.weekday]}, ${r.time}`;
+  return `${WEEKDAYS[r.weekday]} cuối tháng, ${r.time}`;
 }
 
 function at(d: Date, time: string) {

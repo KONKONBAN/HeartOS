@@ -36,5 +36,5 @@ export function fuse(inp: FusionInput): FusionResult {
 }
 
 export function summarizeTargets(t: RadarTarget[]) {
-  return t.map((x) => `#${x.id} (${(x.x / 1000).toFixed(1)}, ${(x.y / 1000).toFixed(1)}) m · ${x.speed} cm/s`).join(' · ');
+  return t.map((x) => `#${x.id} (${(x.x / 1000).toFixed(1)}, ${(x.y / 1000).toFixed(1)}) m, ${x.speed} cm/s`).join(', ');
 }

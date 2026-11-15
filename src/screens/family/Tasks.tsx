@@ -30,7 +30,7 @@ export function FTasks() {
           icon={t.kind === 'call' ? <PhoneIcon size={18} /> : <Check size={18} />}
           tileTone={t.kind === 'call' ? 'peach' : 'sand'}
           title={t.title}
-          meta={`${memberName(t.assignee)} · ${isToday(t.remindAt) ? (t.kind === 'chore' ? 'Trước ' : '') + hhmm(t.remindAt) : fmtDate(new Date(t.remindAt))}`}
+          meta={`${memberName(t.assignee)}, ${isToday(t.remindAt) ? (t.kind === 'chore' ? 'Trước ' : '') + hhmm(t.remindAt) : fmtDate(new Date(t.remindAt))}`}
           badge={t.id === justAdded ? <Badge tone="warm">Vừa thêm</Badge> : statusBadge(t)}
           to={`/f/task/${t.id}`}
         />
@@ -70,7 +70,7 @@ export function FTask() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/tasks" />
-      <Header title={t.kind === 'call' ? t.title : 'Chi tiết việc chung'} sub={t.kind === 'call' ? `Nhắc ${memberName(t.assignee)} · ${fmtDate(new Date(t.remindAt))}` : t.title} />
+      <Header title={t.kind === 'call' ? t.title : 'Chi tiết việc chung'} sub={t.kind === 'call' ? `Nhắc ${memberName(t.assignee)}, ${fmtDate(new Date(t.remindAt))}` : t.title} />
       {t.kind === 'call' ? (
         <div className="card">
           <KV items={[['Người hỏi thăm', memberName(t.assignee)], ['Nhắc lúc', fmtDate(new Date(t.remindAt))], ['Người được hỏi thăm', memberName(t.target ?? '')], ['Ghi chú', t.note]]} />
@@ -92,7 +92,7 @@ export function FTask() {
           </Field>
           <div className="label">Ai thấy việc này</div>
           <Chips options={members.filter((m) => m.role !== 'carer').map((m) => ({ value: m.id, label: m.name }))} value={visibleTo} onChange={canEdit ? setVisibleTo : () => undefined} />
-          <div className="card flat"><p>{t.note || 'Không có ghi chú.'} · Trạng thái: {t.status === 'done' ? `đã xong lúc ${hhmm(t.doneAt ?? Date.now())}` : TASK_STATUS[t.status]}</p></div>
+          <div className="card flat"><p>{t.note || 'Không có ghi chú.'}, Trạng thái: {t.status === 'done' ? `đã xong lúc ${hhmm(t.doneAt ?? Date.now())}` : TASK_STATUS[t.status]}</p></div>
           {canEdit && <button className="btn" onClick={save}>Lưu việc chung</button>}
         </>
       )}
@@ -195,12 +195,12 @@ export function FRituals() {
             </div>
             <div className="body">
               <h2>{r.name}</h2>
-              <p>{r.recurrence.time} · {r.participants.length} thành viên · lần tới {fmtDate(at)}</p>
+              <p>{r.recurrence.time}, {r.participants.length} thành viên, lần tới {fmtDate(at)}</p>
               <div className="cta">Xem lịch lặp <span>›</span></div>
             </div>
           </Link>
         ) : (
-          <Row key={r.id} icon={<Heart size={18} />} tileTone="peach" title={r.name} meta={`${describe(r.recurrence)} · lần tới ${fmtDate(at)}`} badge={r.id === added ? <Badge tone="warm">Vừa thêm</Badge> : undefined} to={`/f/ritual/${r.id}`} />
+          <Row key={r.id} icon={<Heart size={18} />} tileTone="peach" title={r.name} meta={`${describe(r.recurrence)}, lần tới ${fmtDate(at)}`} badge={r.id === added ? <Badge tone="warm">Vừa thêm</Badge> : undefined} to={`/f/ritual/${r.id}`} />
         ),
       )}
       <Link to="/f/ritual-new" className="btn">
@@ -232,8 +232,8 @@ export function FRitual() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/rituals" />
-      <Header title={r.name} sub={`Lần tiếp theo · ${fmtDate(next)}`} />
-      <Row icon={<Repeat size={18} />} tileTone="peach" title="Lịch lặp" meta={`${describe(r.recurrence)} · GMT+7`} chevron={false} />
+      <Header title={r.name} sub={`Lần tiếp theo, ${fmtDate(next)}`} />
+      <Row icon={<Repeat size={18} />} tileTone="peach" title="Lịch lặp" meta={`${describe(r.recurrence)}, GMT+7`} chevron={false} />
       <Row icon={<Users size={18} />} tileTone="peach" title="Người tham gia" meta={namesOf(r.participants)} chevron={false} />
       <Field label="Giờ diễn ra">
         <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
@@ -250,7 +250,7 @@ export function FRitual() {
       >
         <CalendarDays size={16} /> Bỏ qua lần này
       </button>
-      <Row icon={<Image size={18} />} title="Thêm ảnh hoặc lời kể" meta={`Gắn ký ức với lần diễn ra · ${r.memoryIds.length} ký ức đã gắn`} to={`/f/memory-new?ritual=${r.id}`} />
+      <Row icon={<Image size={18} />} title="Thêm ảnh hoặc lời kể" meta={`Gắn ký ức với lần diễn ra, ${r.memoryIds.length} ký ức đã gắn`} to={`/f/memory-new?ritual=${r.id}`} />
       {r.memoryIds.map((mid) => {
         const m = mems.find((x) => x.id === mid);
         return m ? <Row key={mid} icon={<Image size={18} />} tileTone="sand" title={m.title} meta={memberName(m.narrator)} to={`/f/memory/${m.id}`} /> : null;

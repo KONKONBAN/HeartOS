@@ -21,21 +21,23 @@ async function main() {
   const hub = await new HubCore(store, keys, os.hostname()).init();
   const srv = await startHubServer(hub, Number(arg('--port') ?? DEFAULT_HUB_PORT));
   const log = (s: string) => process.stdout.write(s + '\n');
-  log(`HeartOS Sentinel Hub · cổng ${srv.port} · dữ liệu ${dataDir}`);
+  log(`HeartOS Sentinel Hub, cổng ${srv.port}, dữ liệu ${dataDir}`);
   log(`Địa chỉ LAN: ${lanAddresses().map((a) => `http://${a}:${srv.port}`).join(', ') || 'không có'}`);
   if (protection === 'file') log('Lưu ý: khóa hub được lưu trong tệp có quyền 600, không qua kho khóa hệ điều hành.');
-  const pair = () => {
-    const p = hub.openPairing('console');
-    log(`Mã ghép nối: ${p.code} (hết hạn ${new Date(p.expiresAt).toLocaleTimeString('vi-VN')})`);
+  const pair = (memberId?: string) => {
+    const p = hub.openPairing('console', memberId);
+    const who = p.memberId ? hub.members().find((m) => m.id === p.memberId)?.name : undefined;
+    log(`${who ? `Mã tham gia hộ cho ${who}` : 'Mã ghép điện thoại quản trị'}: ${p.code} (hết hạn ${new Date(p.expiresAt).toLocaleTimeString('vi-VN')})`);
   };
   if (args.includes('--pair')) pair();
   hub.subscribe(() => undefined);
   if (process.stdin.isTTY) {
-    log('Lệnh: pair | devices | cmd <deviceId> <kind> | quit');
+    log('Lệnh: pair [memberId] | members | devices | cmd <deviceId> <kind> | quit');
     const rl = readline.createInterface({ input: process.stdin });
     rl.on('line', (line) => {
       const [c, a, b] = line.trim().split(/\s+/);
-      if (c === 'pair') pair();
+      if (c === 'pair') pair(a);
+      else if (c === 'members') for (const m of hub.members()) log(`${m.id}  ${m.name}  ${m.relation}  ${m.role}`);
       else if (c === 'devices') for (const d of hub.view().devices) log(`${d.id}  ${d.name}  ${d.sas}  ${d.lastSeen ? new Date(d.lastSeen).toLocaleTimeString('vi-VN') : '-'}${d.revoked ? '  (đã gỡ)' : ''}`);
       else if (c === 'cmd' && a && b && b in COMMAND_LABEL) log(hub.queueCommand(a, b as CommandKind, {}, 'console') ? 'Đã xếp lệnh' : 'Không có thiết bị');
       else if (c === 'quit') {

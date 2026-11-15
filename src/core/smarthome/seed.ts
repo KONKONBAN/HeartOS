@@ -16,7 +16,7 @@ const base = (now: number) => ({ online: true, paired: true, lastSeen: now, zone
 export function seedDevices(now: number): Device[] {
   const b = base(now);
   return [
-    { ...b, id: 'hub', name: 'HeartOS Hub', kind: 'hub', room: 'living', model: 'Hub N100 · LAN', firmware: '1.4.0', essential: true, state: { cpu: 18, storage: 41 }, controlRoles: [], latencyMs: 80 },
+    { ...b, id: 'hub', name: 'HeartOS Hub', kind: 'hub', room: 'living', model: 'Hub N100, LAN', firmware: '1.4.0', essential: true, state: { cpu: 18, storage: 41 }, controlRoles: [], latencyMs: 80 },
     { ...b, id: 'light-living', name: 'Đèn phòng khách', kind: 'light', room: 'living', model: 'Zigbee bulb E27', firmware: '2.1', state: { on: true, brightness: 80, temp: 'warm' }, controlRoles: ['admin', 'member', 'child'], confirmedAt: now - 120_000, latencyMs: 900 },
     { ...b, id: 'light-kitchen', name: 'Đèn bếp', kind: 'light', room: 'kitchen', model: 'Zigbee panel', firmware: '2.1', state: { on: false, brightness: 100, temp: 'neutral' }, controlRoles: ['admin', 'member', 'child'], latencyMs: 600 },
     { ...b, id: 'light-hall', name: 'Đèn hành lang', kind: 'light', room: 'hall', model: 'Zigbee strip', firmware: '2.0', state: { on: false, brightness: 30, temp: 'warm' }, controlRoles: ['admin', 'member', 'child'], latencyMs: 500 },
@@ -29,7 +29,7 @@ export function seedDevices(now: number): Device[] {
     { ...b, id: 'lock-door', name: 'Khóa cửa chính', kind: 'lock', room: 'door', model: 'Khóa Zigbee', firmware: '4.2', battery: 64, state: { locked: true }, controlRoles: ['admin'], latencyMs: 1100 },
     { ...b, id: 'valve-main', name: 'Van nước tổng', kind: 'valve', room: 'laundry', model: 'Van điện 24V', firmware: '1.0', essential: true, state: { open: true }, controlRoles: ['admin', 'member'], latencyMs: 1600 },
     { ...b, id: 'siren', name: 'Còi báo tại nhà', kind: 'siren', room: 'hall', model: 'Còi 105 dB', firmware: '1.1', essential: true, state: { on: false }, controlRoles: ['admin', 'member'], latencyMs: 300 },
-    { ...b, id: 'door-main', name: 'Cảm biến cửa · DR-01', kind: 'door', room: 'door', model: 'Contact sensor', firmware: '1.3', battery: 88, state: { open: false }, controlRoles: [] },
+    { ...b, id: 'door-main', name: 'Cảm biến cửa, DR-01', kind: 'door', room: 'door', model: 'Contact sensor', firmware: '1.3', battery: 88, state: { open: false }, controlRoles: [] },
     { ...b, id: 'smoke-kitchen', name: 'Còi khói/CO bếp', kind: 'smoke', room: 'kitchen', model: 'Smoke+CO', firmware: '2.2', battery: 92, essential: true, state: { smoke: false, co: 3 }, controlRoles: [] },
     { ...b, id: 'smoke-living', name: 'Còi khói phòng khách', kind: 'smoke', room: 'living', model: 'Smoke', firmware: '2.2', battery: 90, essential: true, state: { smoke: false, co: 2 }, controlRoles: [] },
     { ...b, id: 'leak-kitchen', name: 'Cảm biến nước bếp', kind: 'leak', room: 'kitchen', model: 'Leak sensor', firmware: '1.0', battery: 76, state: { wet: false }, controlRoles: [] },
@@ -39,7 +39,7 @@ export function seedDevices(now: number): Device[] {
     { ...b, id: 'radar-bedroom', name: 'Radar phòng ngủ', kind: 'radar', room: 'bedroom', model: 'LD2450 2D', firmware: 'V2.04', essential: true, state: { targets: 0 }, controlRoles: [] },
     { ...b, id: 'thermal-hall', name: 'Ảnh nhiệt hành lang', kind: 'thermal', room: 'hall', model: 'MLX90640 32×24', firmware: '1.0', essential: true, state: { maxC: 24 }, controlRoles: [] },
     { ...b, id: 'thermal-living', name: 'Ảnh nhiệt phòng khách', kind: 'thermal', room: 'living', model: 'MLX90640 32×24', firmware: '1.0', essential: true, state: { maxC: 33 }, controlRoles: [] },
-    { ...b, id: 'cam-living', name: 'Camera phòng khách', kind: 'camera', room: 'living', model: 'Camera 2K · che vùng', firmware: '5.1', state: { privacy: false, masks: 2 }, controlRoles: ['admin'] },
+    { ...b, id: 'cam-living', name: 'Camera phòng khách', kind: 'camera', room: 'living', model: 'Camera 2K, che vùng', firmware: '5.1', state: { privacy: false, masks: 2 }, controlRoles: ['admin'] },
     { ...b, id: 'sos-living', name: 'Nút SOS phòng khách', kind: 'sos', room: 'living', model: 'Nút SOS Zigbee', firmware: '1.0', battery: 81, essential: true, state: { pressed: false }, controlRoles: [] },
     { ...b, id: 'sos-bedroom', name: 'Nút SOS đầu giường', kind: 'sos', room: 'bedroom', model: 'Nút SOS Zigbee', firmware: '1.0', battery: 95, essential: true, state: { pressed: false }, controlRoles: [] },
     { ...b, id: 'ups', name: 'UPS / BMS', kind: 'ups', room: 'hall', model: 'UPS 1kVA LiFePO4', firmware: 'BMS 2.3', essential: true, state: { battery: 78 }, controlRoles: [] },
@@ -106,7 +106,7 @@ export function seedRules(): AutomationRule[] {
   return [
     {
       id: 'r-smoke',
-      name: 'Khói/CO → báo tại chỗ',
+      name: 'Khói/CO: báo tại chỗ',
       description: 'Bật còi tại nhà, bật đèn dẫn lối và mở ca P1. Đường báo tối thiểu chạy cả khi mất Internet.',
       enabled: true,
       builtin: true,
@@ -120,7 +120,7 @@ export function seedRules(): AutomationRule[] {
     },
     {
       id: 'r-leak',
-      name: 'Rò nước → khóa van tổng',
+      name: 'Rò nước: khóa van tổng',
       description: 'Khi cảm biến nước báo ướt: khóa van tổng và thông báo người quản thiết bị.',
       enabled: true,
       builtin: true,
@@ -134,8 +134,8 @@ export function seedRules(): AutomationRule[] {
     },
     {
       id: 'r-night-path',
-      name: 'Đêm có chuyển động hành lang → đèn dẫn lối',
-      description: '22:00–06:00, radar hành lang thấy người: bật đèn hành lang 30%.',
+      name: 'Đêm có chuyển động hành lang: đèn dẫn lối',
+      description: '22:00-06:00, radar hành lang thấy người: bật đèn hành lang 30%.',
       enabled: true,
       builtin: true,
       trigger: { type: 'sensor', deviceId: 'radar-hall', event: 'motion' },
@@ -145,8 +145,8 @@ export function seedRules(): AutomationRule[] {
     },
     {
       id: 'r-fall',
-      name: 'Nghi ngã → mở ca xác minh',
-      description: 'Guardian ghép radar–nhiệt vượt ngưỡng: mở ca P2 "đang xác minh", không tự kết luận.',
+      name: 'Nghi ngã: mở ca xác minh',
+      description: 'Guardian ghép radar-nhiệt vượt ngưỡng: mở ca P2 "đang xác minh", không tự kết luận.',
       enabled: true,
       builtin: true,
       trigger: { type: 'guardian', event: 'fall_suspected' },
@@ -158,7 +158,7 @@ export function seedRules(): AutomationRule[] {
     },
     {
       id: 'r-shed',
-      name: 'Mất điện lưới → cắt tải không thiết yếu',
+      name: 'Mất điện lưới: cắt tải không thiết yếu',
       description: 'Khi chạy UPS: tắt ổ cắm không thiết yếu, giữ hub, cảm biến và đường SOS.',
       enabled: true,
       builtin: true,
@@ -168,7 +168,7 @@ export function seedRules(): AutomationRule[] {
     },
     {
       id: 'r-away-door',
-      name: 'Vắng nhà + cửa mở → cảnh báo',
+      name: 'Vắng nhà + cửa mở: cảnh báo',
       description: 'Chế độ Vắng nhà, cảm biến cửa mở: thông báo cho quản trị hộ.',
       enabled: true,
       builtin: true,
@@ -179,7 +179,7 @@ export function seedRules(): AutomationRule[] {
     },
     {
       id: 'r-sos',
-      name: 'Nút SOS → báo tại nhà và người thân',
+      name: 'Nút SOS: báo tại nhà và người thân',
       description: 'Bật còi, mở ca P1, gửi tới danh sách hỗ trợ của nhà.',
       enabled: true,
       builtin: true,

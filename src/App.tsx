@@ -55,7 +55,7 @@ function Splash({ error }: { error?: string }) {
       <div>
         <Logo size={96} />
         <div style={{ fontSize: 24, fontWeight: 800 }}>HeartOS</div>
-        <div className="muted small" style={{ marginTop: 6 }}>{error ?? 'Đang khởi động Sentinel và hub tại nhà…'}</div>
+        <div className="muted small" style={{ marginTop: 6 }}>{error ?? 'Đang khởi động Sentinel và hub tại nhà...'}</div>
       </div>
     </div>
   );
@@ -128,7 +128,7 @@ export default function App() {
       <Runtime />
       <Toasts />
       <ApprovalSheet />
-      <Suspense fallback={<Splash error="Đang tải bàn vận hành…" />}>
+      <Suspense fallback={<Splash error="Đang tải bàn vận hành..." />}>
       <Routes>
         <Route path="/" element={<Root />} />
         <Route path="/welcome" element={<A.Welcome />} />

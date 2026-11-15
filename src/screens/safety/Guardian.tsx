@@ -23,7 +23,7 @@ export function FMap() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/safe" />
-      <Header title="Vùng quan sát" sub={`Guardian · ${fresh.length}/${home.s.rooms.length} vùng có tín hiệu gần đây`} />
+      <Header title="Vùng quan sát" sub={`Guardian, ${fresh.length}/${home.s.rooms.length} vùng có tín hiệu gần đây`} />
       <svg viewBox="0 0 100 100" className="plan" role="img" aria-label="Sơ đồ vùng quan sát">
         {home.s.rooms.map((r) => {
           const ok = fresh.includes(r);
@@ -45,7 +45,7 @@ export function FMap() {
         icon={room.stale || now - room.lastSignal > 5 * 60_000 ? <EyeOff size={18} /> : <Check size={18} />}
         tileTone={room.stale ? 'sand' : undefined}
         title={room.name}
-        meta={`Lần cuối ${hhmm(room.lastSignal)} (${ago(room.lastSignal, now)})${room.stale ? ' · Đang chờ dữ liệu mới' : ''}`}
+        meta={`Lần cuối ${hhmm(room.lastSignal)} (${ago(room.lastSignal, now)})${room.stale ? ', Đang chờ dữ liệu mới' : ''}`}
         badge={<Badge tone={room.stale ? 'warm' : undefined}>{room.stale ? 'Chưa rõ' : 'Có tín hiệu'}</Badge>}
         chevron={false}
       />
@@ -54,7 +54,7 @@ export function FMap() {
         <div className="list">
           {devices.map((d) => (
             <div key={d.id} className="li">
-              <span style={{ flex: 1 }}><b>{d.name}</b><div className="small muted">{d.model}{d.battery !== undefined ? ` · pin ${d.battery}%` : ''}</div></span>
+              <span style={{ flex: 1 }}><b>{d.name}</b><div className="small muted">{d.model}{d.battery !== undefined ? `, pin ${d.battery}%` : ''}</div></span>
               <Badge tone={d.online ? undefined : 'danger'}>{d.online ? 'Trực tuyến' : 'Ngoại tuyến'}</Badge>
             </div>
           ))}
@@ -145,15 +145,15 @@ export function FGuardian() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/safe" />
-      <Header title="Guardian trực tiếp" sub="Ghép radar–nhiệt theo cặp vùng. Ảnh nhiệt không nhận diện khuôn mặt." />
+      <Header title="Guardian trực tiếp" sub="Ghép radar-nhiệt theo cặp vùng. Ảnh nhiệt không nhận diện khuôn mặt." />
       <Seg value={room} onChange={setRoom} options={[{ value: 'hall', label: 'Hành lang' }, { value: 'living', label: 'Phòng khách' }, { value: 'bedroom', label: 'Phòng ngủ' }]} />
       <div className="card stack">
-        <div className="hstack"><Radar size={16} /><b className="small" style={{ flex: 1 }}>Radar LD2450 · {targets.length} mục tiêu</b><span className="small muted">2D, ≤3 mục tiêu</span></div>
+        <div className="hstack"><Radar size={16} /><b className="small" style={{ flex: 1 }}>Radar LD2450, {targets.length} mục tiêu</b><span className="small muted">2D, ≤3 mục tiêu</span></div>
         <canvas ref={rRef} className="radar" aria-label="Biểu đồ radar" />
         <div className="small muted">{targets.length ? summarizeTargets(targets) : 'Không có mục tiêu trong vùng.'}</div>
       </div>
       <div className="card stack">
-        <div className="hstack"><Thermometer size={16} /><b className="small" style={{ flex: 1 }}>Ảnh nhiệt MLX90640 · 32×24</b><span className="small muted">{frame ? `${frame.min.toFixed(1)}–${frame.max.toFixed(1)}°C` : '-'}</span></div>
+        <div className="hstack"><Thermometer size={16} /><b className="small" style={{ flex: 1 }}>Ảnh nhiệt MLX90640, 32×24</b><span className="small muted">{frame ? `${frame.min.toFixed(1)}-${frame.max.toFixed(1)}°C` : '-'}</span></div>
         <canvas ref={tRef} className="thermal" aria-label="Ảnh nhiệt" />
       </div>
       {fusion && (
@@ -169,7 +169,7 @@ export function FGuardian() {
               <div key={c.name} className="li small">
                 {c.hit ? <Check size={14} color="#9E3830" /> : <X size={14} color="#8a8076" />}
                 <span style={{ flex: 1 }}>{c.name}</span>
-                <span className="muted">{c.value} · w={c.weight}</span>
+                <span className="muted">{c.value}, w={c.weight}</span>
               </div>
             ))}
           </div>
@@ -221,7 +221,7 @@ export function FCamera() {
     }
     ctx.fillStyle = '#fff';
     ctx.font = '12px Inter, sans-serif';
-    ctx.fillText(`Phòng khách · ${new Date(now).toLocaleTimeString('vi-VN')}`, 12, 290);
+    ctx.fillText(`Phòng khách, ${new Date(now).toLocaleTimeString('vi-VN')}`, 12, 290);
   }, [active, now]);
   const start = async () => {
     const r = await startCamera(id!, me.id);
@@ -236,7 +236,7 @@ export function FCamera() {
     return (
       <Phone tabs>
         <TopBar back backTo="/f/map" />
-        <Header title="Đã đóng phiên xem" sub="Camera phòng khách · Thiết bị này" />
+        <Header title="Đã đóng phiên xem" sub="Camera phòng khách, Thiết bị này" />
         <Row tone="tint" icon={<Check size={18} />} tileTone="white" title="Quyền xem đã kết thúc" meta={`Đầu phát đã xác nhận đóng phiên lúc ${hhmm(last.endedAt!)}.`} />
         <button className="btn secondary" onClick={() => void start()}>Mở phiên mới</button>
         <Link to="/f/map" className="btn">Về bản đồ vùng</Link>
@@ -245,14 +245,14 @@ export function FCamera() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/map" />
-      <Header title="Camera phòng khách" sub="Xem từ xa · Phiên có thời hạn" />
+      <Header title="Camera phòng khách" sub="Xem từ xa, Phiên có thời hạn" />
       {active ? (
         <>
           <div className="camview">
             <canvas ref={canvas} style={{ width: '100%', height: '100%', display: 'block' }} aria-label="Khung xem mẫu" />
             <span className="badge dark" style={{ position: 'absolute', left: 10, top: 10 }}>Minh họa vùng che</span>
           </div>
-          <Row icon={<Lock size={18} />} title="Phạm vi phiên" meta={`Phòng khách · Còn ${mmss(active.expiresAt - now)}`} chevron={false} />
+          <Row icon={<Lock size={18} />} title="Phạm vi phiên" meta={`Phòng khách, Còn ${mmss(active.expiresAt - now)}`} chevron={false} />
           <Row tone="tint" icon={<EyeOff size={18} />} tileTone="white" title="Vùng riêng tư" meta={`Vùng che áp dụng trên luồng quan sát từ nhà: ${masks || 'theo cấu hình'}.`} />
           <button className="btn" onClick={() => void endCamera(active.id).then(() => nav(`/f/camera/${id}`))}>Kết thúc phiên xem</button>
         </>

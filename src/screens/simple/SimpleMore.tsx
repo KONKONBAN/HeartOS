@@ -21,7 +21,7 @@ export function SHelp() {
     <Phone tabs simple>
       <TopBar back backTo="/s" right={<Sim sos />} />
       <Header title="Bà cần giúp?" sub="Gửi SOS cho người thân đã chọn." />
-      <Row icon={<Users size={22} />} tileTone="peach" title="Người nhận SOS" meta={`${namesOf(home.s.helpers.map((h) => h.id))} · Danh sách hỗ trợ của nhà`} />
+      <Row icon={<Users size={22} />} tileTone="peach" title="Người nhận SOS" meta={`${namesOf(home.s.helpers.map((h) => h.id))}, Danh sách hỗ trợ của nhà`} />
       {open ? (
         <button className="btn danger" onClick={() => nav(`/s/sos/${open.id}`)}>
           <Siren size={22} /> Xem SOS đang mở
@@ -64,7 +64,7 @@ export function SSos() {
   return (
     <Phone simple>
       <TopBar back backTo="/s" right={<Sim sos />} />
-      <Header title={acked ? `${inc.steps.helper.by} đã nhận hỗ trợ` : inc.status === 'closed' ? 'Đã đóng SOS' : 'Đã báo tại nhà'} sub={acked ? `Cập nhật lúc ${hhmm(inc.steps.helper.at!)} · ${inc.id}` : `${inc.id} · ${hhmm(inc.createdAt)}`} />
+      <Header title={acked ? `${inc.steps.helper.by} đã nhận hỗ trợ` : inc.status === 'closed' ? 'Đã đóng SOS' : 'Đã báo tại nhà'} sub={acked ? `Cập nhật lúc ${hhmm(inc.steps.helper.at!)}, ${inc.id}` : `${inc.id}, ${hhmm(inc.createdAt)}`} />
       {acked ? (
         <Row tone="tint" icon={<Users size={22} />} tileTone="white" title={`${inc.steps.helper.by} đang tới`} meta={inc.steps.handover.state === 'done' ? 'Đã có mặt và bàn giao.' : `${inc.steps.helper.by} xác nhận nhận việc. Chưa có xác nhận đã đến.`} />
       ) : (
@@ -120,7 +120,7 @@ export function SRoute() {
         <RouteMap edges={home.s.edges} highlight={r} height={230} />
         <span className="badge dark" style={{ position: 'absolute', left: 10, top: 10 }}>TUYẾN MINH HỌA</span>
       </div>
-      <Row tone="tint" icon={<MapPin size={22} />} tileTone="white" title={`${f.name} · ${f.gate}`} meta={`Khoảng ${inc.destination.etaMin} phút · Ước tính lúc ${hhmm(inc.destination.computedAt)}.`} />
+      <Row tone="tint" icon={<MapPin size={22} />} tileTone="white" title={`${f.name}, ${f.gate}`} meta={`Khoảng ${inc.destination.etaMin} phút, Ước tính lúc ${hhmm(inc.destination.computedAt)}.`} />
       <button className="btn secondary" onClick={() => nav(`/s/sos/${inc.id}`)}>Về trạng thái SOS</button>
     </Phone>
   );
@@ -133,7 +133,7 @@ export function SMore() {
   return (
     <Phone tabs simple>
       <TopBar back backTo="/s" />
-      <Header title="Cài đặt dễ dùng" sub={`Nhà An · ${me.name}`} />
+      <Header title="Cài đặt dễ dùng" sub={`Nhà An, ${me.name}`} />
       <Row icon={<Sun size={22} />} tileTone="peach" title="Đổi cách hiển thị" meta="Thân Quen hoặc Gia Đình" to="/mode" />
       <Row icon={<Languages size={22} />} tileTone="peach" title="Ngôn ngữ và giọng đọc" meta="Giao diện tiếng Việt" to="/s/language" />
       <Row icon={<Users size={22} />} tileTone="peach" title="Quyền của tôi" meta="Xem mình đang chia sẻ gì" to="/s/permissions" />
@@ -186,7 +186,7 @@ export function SPermissions() {
         chevron={false}
         right={<Switch label="Chia sẻ lịch rảnh" checked={!!cal?.shared} onChange={(v) => void setCalendarShared(me.id, v).then(() => toast(v ? 'Đã bật chia sẻ lịch rảnh.' : 'Đã thu hồi chia sẻ lịch rảnh.'))} />}
       />
-      <Row icon={<Image size={22} />} tileTone="peach" title="Ký ức" meta={`Bà chọn người nghe từng bản thu · ${mems.length} bản`} to="/s/memory" />
+      <Row icon={<Image size={22} />} tileTone="peach" title="Ký ức" meta={`Bà chọn người nghe từng bản thu, ${mems.length} bản`} to="/s/memory" />
       <Row icon={<MapPin size={22} />} tileTone="peach" title="Vị trí hỗ trợ" meta="Chỉ dùng khi bà chọn gửi SOS" />
       <button className="btn secondary" onClick={() => nav('/s/more')}>Về cài đặt</button>
     </Phone>

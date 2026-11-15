@@ -107,7 +107,7 @@ export class Sentinel {
     this.client = { priv: kp.privateKey, pub, thumb: await thumbprint(pub) };
     json.del(this.k('sentinel.sources'));
     for (const sub of [this.journal, this.R, this.vault, this.recovery, this.incident]) sub.subscribe(() => this.bump());
-    await this.log({ kind: 'session', actor: 'A', summary: `Sentinel khởi động · epoch ${this.R.epoch(this.tenant)} · KEK v${this.H.status(this.tenant).activeVersion}`, epoch: this.R.epoch(this.tenant) });
+    await this.log({ kind: 'session', actor: 'A', summary: `Sentinel khởi động, epoch ${this.R.epoch(this.tenant)}, KEK v${this.H.status(this.tenant).activeVersion}`, epoch: this.R.epoch(this.tenant) });
   }
 
   subscribe(fn: () => void) {
@@ -132,9 +132,9 @@ export class Sentinel {
     const t0 = this.now();
     const challenge = this.verifier.challenge();
     const ses = await this.Ve.openSession(challenge);
-    trace.push({ actor: 'Ve', label: 'Tạo khóa phiên trong vùng và báo cáo chứng thực', ok: true, detail: `${ses.sessionId} · measurement ${this.Ve.measurement.slice(0, 12)}…`, ms: this.now() - t0 });
+    trace.push({ actor: 'Ve', label: 'Tạo khóa phiên trong vùng và báo cáo chứng thực', ok: true, detail: `${ses.sessionId}, measurement ${this.Ve.measurement.slice(0, 12)}...`, ms: this.now() - t0 });
     const v = await this.verifier.verify(ses.attestation, { consume: false });
-    trace.push({ actor: 'Verifier', label: 'Xác minh chứng thực: gốc ký, measurement, TCB, debug, tính mới', ok: v.ok, detail: v.ok ? `khóa nhận ${v.recipient?.slice(0, 12)}…` : v.reasons.join(' ') });
+    trace.push({ actor: 'Verifier', label: 'Xác minh chứng thực: gốc ký, measurement, TCB, debug, tính mới', ok: v.ok, detail: v.ok ? `khóa nhận ${v.recipient?.slice(0, 12)}...` : v.reasons.join(' ') });
     return { ses, recipient: v.recipient ?? (await thumbprint(ses.pub)), attOk: v.ok };
   }
 
@@ -158,7 +158,7 @@ export class Sentinel {
     const { ses, recipient } = await this.session(trace);
     try {
       const sealed = await sealTo(ses.pub, plaintext, `input|${meta.objectId}|${ses.sessionId}`);
-      trace.push({ actor: 'Client', label: 'Niêm phong dữ liệu cho khóa phiên của enclave, host chỉ chuyển tiếp bản mã', ok: true, detail: `${plaintext.length} B → ${sealed.ct.length} ký tự bản mã` });
+      trace.push({ actor: 'Client', label: 'Niêm phong dữ liệu cho khóa phiên của enclave, host chỉ chuyển tiếp bản mã', ok: true, detail: `${plaintext.length} B thành ${sealed.ct.length} ký tự bản mã` });
       const out = await this.G.issueForNewObject(
         { subject: input.subject, workload: 'heartos-app', objectId: meta.objectId, operation: 'write', purpose: input.purposes[0] ?? 'store', recipient, sessionId: ses.sessionId, destination: this.client.thumb },
         meta,
@@ -169,7 +169,7 @@ export class Sentinel {
         await this.log({ kind: 'grant.denied', actor: 'G', severity: 'notice', summary: `Từ chối ghi ${meta.label}: ${out.reason}`, subject: input.subject, objectId: meta.objectId, decision: 'deny' });
         return { ok: false, error: out.reason, trace };
       }
-      trace.push({ actor: 'G', label: 'Ký grant ghi gắn phiên, khóa nhận và epoch', ok: true, detail: `${out.signed.grant.grantId} · epoch ${out.signed.grant.epoch}` });
+      trace.push({ actor: 'G', label: 'Ký grant ghi gắn phiên, khóa nhận và epoch', ok: true, detail: `${out.signed.grant.grantId}, epoch ${out.signed.grant.epoch}` });
       const g = await this.gate.evaluate({ signed: out.signed, attestation: ses.attestation, meta, operation: 'write' });
       trace.push({ actor: 'K', label: 'Cổng cấp khóa: Gok ∧ Aok ∧ Eok ∧ Bok', ok: g.decision.release, detail: g.decision.release ? 'HSM sinh DEK mới, trả bản bọc KEK + bản cho khóa nhận' : g.decision.reasons.join(' ') });
       if (!g.decision.release || !g.release || !g.blob) {
@@ -177,7 +177,7 @@ export class Sentinel {
         return { ok: false, error: g.decision.reasons.join(' '), decision: g.decision, trace };
       }
       const enc = await this.Ve.encryptRecord(ses.sessionId, out.signed, meta, sealed, g.release);
-      trace.push({ actor: 'Ve', label: 'Mở dữ liệu trong vùng, mã hóa AES-256-GCM với AAD(tenant, đối tượng, phiên bản, loại)', ok: true, detail: `nonce 96 bit · ${enc.size} B` });
+      trace.push({ actor: 'Ve', label: 'Mở dữ liệu trong vùng, mã hóa AES-256-GCM với AAD(tenant, đối tượng, phiên bản, loại)', ok: true, detail: `nonce 96 bit, ${enc.size} B` });
       const stored: StoredObject = { meta, iv: enc.iv, ciphertext: enc.ciphertext, blob: g.blob, alg: 'AES-256-GCM', size: enc.size, committedAt: this.now() };
       this.vault.commit(stored);
       this.R.settle(g.decision.reservationId!, enc.size, true);
@@ -192,7 +192,7 @@ export class Sentinel {
   async read<T = Record<string, unknown>>(input: ReadInput): Promise<ReadResult<T>> {
     const trace: TraceStep[] = [];
     const stored = this.vault.get(input.objectId);
-    trace.push({ actor: 'A', label: 'Ứng dụng chuyển yêu cầu có ngữ cảnh chuẩn hóa', ok: true, detail: `${input.subject} · ${input.objectId} · mục đích ${input.purpose}` });
+    trace.push({ actor: 'A', label: 'Ứng dụng chuyển yêu cầu có ngữ cảnh chuẩn hóa', ok: true, detail: `${input.subject}, ${input.objectId}, mục đích ${input.purpose}` });
     if (!stored) {
       trace.push({ actor: 'Ve', label: 'Không có đối tượng', ok: false });
       return { ok: false, error: 'Không có đối tượng trong két.', trace };
@@ -218,9 +218,9 @@ export class Sentinel {
         return { ok: false, error: out.reason, trace };
       }
       const grant = out.signed.grant;
-      trace.push({ actor: 'G', label: 'Ký grant: chủ thể, đối tượng, trường, đích nhận, hạn 60 s, nonce, hạn mức, epoch', ok: true, detail: `${grant.grantId} · ${grant.fields.join(', ')} · ${grant.budgetBytes} B · epoch ${grant.epoch}` });
+      trace.push({ actor: 'G', label: 'Ký grant: chủ thể, đối tượng, trường, đích nhận, hạn 60 s, nonce, hạn mức, epoch', ok: true, detail: `${grant.grantId}, ${grant.fields.join(', ')}, ${grant.budgetBytes} B, epoch ${grant.epoch}` });
       const g = await this.gate.evaluate({ signed: out.signed, attestation: ses.attestation, meta: stored.meta, operation: 'read', stored });
-      trace.push({ actor: 'K', label: 'Cổng cấp khóa: Gok ∧ Aok ∧ Eok ∧ Bok', ok: g.decision.release, detail: `Gok ${tick(g.decision.Gok)} · Aok ${tick(g.decision.Aok)} · Eok ${tick(g.decision.Eok)} · Bok ${tick(g.decision.Bok)}${g.decision.release ? '' : ' · ' + g.decision.reasons.join(' ')}` });
+      trace.push({ actor: 'K', label: 'Cổng cấp khóa: Gok ∧ Aok ∧ Eok ∧ Bok', ok: g.decision.release, detail: `Gok ${tick(g.decision.Gok)}, Aok ${tick(g.decision.Aok)}, Eok ${tick(g.decision.Eok)}, Bok ${tick(g.decision.Bok)}${g.decision.release ? '' : ', ' + g.decision.reasons.join(' ')}` });
       if (!g.decision.release || !g.release) {
         await this.log({ kind: g.decision.Bok === false && g.decision.Gok && g.decision.Aok && g.decision.Eok ? 'budget.deny' : 'gate.deny', actor: 'K', severity: 'warning', summary: `Cổng từ chối DEK cho ${stored.meta.label}`, subject: input.subject, objectId: input.objectId, decision: 'deny', epoch: grant.epoch, data: { reasons: g.decision.reasons.join(' | ') } });
         this.checkSpike();
@@ -275,7 +275,7 @@ export class Sentinel {
 
   async revokeScope(p: { actor: string; scope: string; target?: string; reason: string }) {
     const epoch = this.R.bumpEpoch(this.tenant);
-    await this.log({ kind: 'policy.revoke', actor: 'G', severity: 'notice', summary: `Thu hồi phạm vi ${p.scope}${p.target ? ' · ' + p.target : ''}`, subject: p.actor, epoch, data: { reason: p.reason } });
+    await this.log({ kind: 'policy.revoke', actor: 'G', severity: 'notice', summary: `Thu hồi phạm vi ${p.scope}${p.target ? ', ' + p.target : ''}`, subject: p.actor, epoch, data: { reason: p.reason } });
     return epoch;
   }
 
@@ -299,7 +299,7 @@ export class Sentinel {
     this.recovery.startRun(id);
     this.recovery.updateStep(1, 'running');
     const r = await this.recovery.verifyManifest(id, this.vault);
-    this.recovery.updateStep(1, r.ok ? 'ok' : 'fail', r.ok ? 'Manifest, băm bản mã và phiên bản khóa khớp' : r.problems.join(' · '));
+    this.recovery.updateStep(1, r.ok ? 'ok' : 'fail', r.ok ? 'Manifest, băm bản mã và phiên bản khóa khớp' : r.problems.join(', '));
     await this.log({ kind: 'recovery.step', actor: 'B', severity: r.ok ? 'info' : 'warning', summary: `Bước 1 kiểm điểm ${id}: ${r.ok ? 'đạt' : 'lỗi'}` });
     return r;
   }
@@ -330,7 +330,7 @@ export class Sentinel {
   async aiAnalyze(): Promise<Analysis> {
     const a = analyze(await this.journal.redactedForAI(150));
     this.lastAnalysis = a;
-    for (const p of a.proposals) await this.log({ kind: 'ai.proposal', actor: 'AI', summary: `Đề xuất ${p.action} → ${p.target}`, data: { scope: p.scope, ttl: p.ttlSec, evidence: p.evidence.join(',') } });
+    for (const p of a.proposals) await this.log({ kind: 'ai.proposal', actor: 'AI', summary: `Đề xuất ${p.action} cho ${p.target}`, data: { scope: p.scope, ttl: p.ttlSec, evidence: p.evidence.join(',') } });
     this.bump();
     return a;
   }
@@ -346,7 +346,7 @@ export class Sentinel {
     if (p.action === 'deploy_canary' && !this.vault.get('canary-ledger')) {
       await this.protect({ subject: this.ownerId(), objectId: 'canary-ledger', type: 'canary', label: 'Sổ mồi (canary)', data: { note: 'decoy' }, viewers: [], purposes: ['none'], canary: true });
     }
-    await this.log({ kind: 'ai.executed', actor: 'AI', severity: 'notice', summary: `Bộ thực thi chạy ${p.action} → ${p.target} (TTL ${p.ttlSec}s)`, decision: 'allow' });
+    await this.log({ kind: 'ai.executed', actor: 'AI', severity: 'notice', summary: `Bộ thực thi chạy ${p.action} cho ${p.target} (TTL ${p.ttlSec}s)`, decision: 'allow' });
     return c;
   }
 

@@ -4,12 +4,12 @@ import { checkDraft, localDraft, parseIntent, type InviteFacts } from './genai';
 import { nextOccurrence } from './recurrence';
 
 describe('Nhịp Nhà calendar intersection', () => {
-  it('reproduces replay F.8 (A 18:30–20:00, B 19:00–20:30, quiet 20:00 → 19:00–20:00)', () => {
+  it('reproduces replay F.8 (A 18:30-20:00, B 19:00-20:30, quiet 20:00, kết quả 19:00-20:00)', () => {
     const r = commonSlots([
       { memberId: 'A', windows: [{ start: '18:30', end: '20:00' }] },
       { memberId: 'B', windows: [{ start: '19:00', end: '20:30' }] },
     ]);
-    expect(r.best && fmtSlot(r.best)).toBe('19:00–20:00');
+    expect(r.best && fmtSlot(r.best)).toBe('19:00-20:00');
   });
   it('reports when quiet hours cut the window', () => {
     const r = commonSlots([

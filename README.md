@@ -46,7 +46,7 @@ Lần đầu mở, Windows Firewall có thể hỏi quyền mạng. Chọn cho p
 ### Ghép điện thoại với máy quản trị
 
 1. Trên máy tính: **Ghép thiết bị mới** rồi **Tạo mã ghép nối**. Màn hình hiện địa chỉ LAN (ví dụ `192.168.1.10:7420`) và mã 6 chữ số, mã có hạn 2 phút và cho tối đa 5 lần thử.
-2. Trên điện thoại: **Thêm → Máy quản trị Sentinel**, nhập địa chỉ và mã, bấm **Ghép nối**.
+2. Trên điện thoại: **Thêm > Máy quản trị Sentinel**, nhập địa chỉ và mã, bấm **Ghép nối**.
 3. So **mã đối chiếu** trên hai màn hình. Nếu trùng nhau thì kênh đã an toàn, nếu khác thì gỡ ghép và làm lại.
 
 Sau khi ghép, điện thoại tự đồng bộ mỗi 5 giây khi ứng dụng đang mở. Máy quản trị xem được trạng thái Sentinel, nhật ký bằng chứng (đã kiểm lại chuỗi băm), thiết bị nhà, sự cố, và gửi lệnh có chữ ký: kiểm tra kết nối, thu hồi khẩn cấp (tăng thế hệ quyền), khóa hoặc mở đường đọc trong két, hạn chế phiên thành viên, gửi tín hiệu nghi vấn, niêm phong điểm phục hồi, kiểm chuỗi bằng chứng, thu hồi một quyền chia sẻ, cấu hình hạn mức giải mã (B, r), chạy 12 kịch bản T1 đến T7, đổi chế độ nhà, đóng ca Guardian, gỡ ghép. Lệnh hết hạn sau 15 phút nếu thiết bị chưa nhận.
@@ -157,7 +157,7 @@ Trên Linux chỉ build được bản portable và zip cho Windows. Bộ cài N
 
 ## GenAI (tùy chọn)
 
-Mặc định lời mời được soạn bằng mẫu trên thiết bị. Trong **Thêm → Cài đặt ứng dụng** có thể bật Claude bằng khóa API của chính người dùng. Khóa lưu trên thiết bị, ứng dụng gọi thẳng `api.anthropic.com` qua SDK chính thức với structured output theo schema zod. Chỉ dữ kiện tối thiểu được gửi đi. Bản nháp vẫn phải qua bước kiểm dữ kiện, chưa đạt thì dùng mẫu.
+Mặc định lời mời được soạn bằng mẫu trên thiết bị. Trong **Thêm > Cài đặt ứng dụng** có thể bật Claude bằng khóa API của chính người dùng. Khóa lưu trên thiết bị, ứng dụng gọi thẳng `api.anthropic.com` qua SDK chính thức với structured output theo schema zod. Chỉ dữ kiện tối thiểu được gửi đi. Bản nháp vẫn phải qua bước kiểm dữ kiện, chưa đạt thì dùng mẫu.
 
 ## Giới hạn
 

@@ -22,9 +22,27 @@ export interface Member {
   expiresAt?: number;
 }
 
+export interface Household {
+  id: string;
+  name: string;
+  demo: boolean;
+  createdAt: number;
+  tz: string;
+}
+
+export interface Hospital {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  note: string;
+}
+
 export interface Session {
   signedIn: boolean;
   email: string;
+  displayName?: string;
+  phone?: string;
   passkey?: { id: string; createdAt: number; kind: 'webauthn' | 'device-key' };
   expo?: boolean;
   householdId: string | null;

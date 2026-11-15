@@ -33,6 +33,7 @@ export interface Actor {
 
 export interface HomeState {
   v: 2;
+  real?: boolean;
   rooms: Room[];
   devices: Device[];
   commands: Command[];
@@ -99,8 +100,32 @@ export class HomeEngine {
     private key = 'home.state',
   ) {
     const saved = store.get<HomeState>(key);
-    this.s = saved && saved.v === 2 ? saved : HomeEngine.fresh(now());
+    this.s = saved && saved.v === 2 ? saved : HomeEngine.freshReal(now());
+    if (this.s.real) this.people = [];
     this.cmdSeq = this.s.commands.length;
+  }
+
+  static freshReal(t: number): HomeState {
+    return {
+      v: 2,
+      real: true,
+      rooms: [],
+      devices: [],
+      commands: [],
+      scenes: [],
+      rules: [],
+      power: { mains: 'on', voltage: 0, ups: { battery: 0, loadW: 0, charging: false }, generator: 'standby', ats: 'mains', lastChange: t, history: [] },
+      net: { lan: true, internet: typeof navigator === 'undefined' ? true : navigator.onLine !== false, changedAt: t },
+      mode: 'home',
+      incidents: [],
+      notices: [],
+      edges: [],
+      timers: [],
+      nextIncident: 1,
+      energy: [],
+      helpers: [],
+      simulateHelpers: false,
+    };
   }
 
   static fresh(t: number): HomeState {
@@ -198,7 +223,7 @@ export class HomeEngine {
     }
     if (!this.s.net.lan) return this.pushCmd({ ...base, desired, status: 'failed', reason: 'Hub mất kết nối LAN.' });
     const cmd = this.pushCmd({ ...base, desired });
-    this.audit('smarthome.command', `${actor.name} → ${d.name}: ${describeDesired(desired)} (${source})`);
+    this.audit('smarthome.command', `${actor.name} điều khiển ${d.name}: ${describeDesired(desired)} (${source})`);
     return cmd;
   }
 
@@ -363,7 +388,7 @@ export class HomeEngine {
         handover: { state: 'todo' },
       },
       evidence: evidence ? [evidence] : [],
-      timeline: [{ at: t, text: `Mở ca ${id} · ${priority}`, by: 'Guardian' }],
+      timeline: [{ at: t, text: `Mở ca ${id}, ${priority}`, by: 'Guardian' }],
     };
     if (isSos) {
       this.sendCommand('siren', 'set', { on: true }, SYSTEM, 'guardian');
@@ -400,7 +425,7 @@ export class HomeEngine {
     inc.status = 'assigned';
     inc.steps.handover = { state: 'active' };
     inc.timeline.push({ at: this.now(), text: `${helper.name} nhận việc hỗ trợ`, by: helper.name });
-    this.notify(`${helper.name} đã nhận hỗ trợ`, `${inc.id} · ${inc.title}. Chưa có xác nhận đã đến.`, 'info', `/f/incident/${id}`);
+    this.notify(`${helper.name} đã nhận hỗ trợ`, `${inc.id}, ${inc.title}. Chưa có xác nhận đã đến.`, 'info', `/f/incident/${id}`);
     this.audit('guardian.event', `${inc.id}: ${helper.name} nhận việc`, 'notice');
     this.emit();
   }
@@ -417,7 +442,7 @@ export class HomeEngine {
       inc.steps.helper = { state: 'active' };
       this.sendCommand('siren', 'set', { on: true }, SYSTEM, 'guardian');
       if (this.s.net.internet) this.s.timers.push({ at: this.now() + 1200, kind: 'remote_ack', ref: id });
-      inc.timeline.push({ at: this.now(), text: `${by.name} xác nhận cần hỗ trợ → P1`, by: by.name });
+      inc.timeline.push({ at: this.now(), text: `${by.name} xác nhận cần hỗ trợ, nâng lên P1`, by: by.name });
     } else {
       this.closeIncident(id, 'Đã xác minh: không có sự cố', by);
     }
@@ -430,7 +455,7 @@ export class HomeEngine {
     if (!inc || !f) return;
     const r = compareRoutes(this.s.edges).results.find((x) => x.facility.id === facilityId)!;
     inc.destination = { facilityId, gate: f.gate, etaMin: r.minutes, computedAt: this.now(), confirmedAt: this.now(), confirmedBy: by.name };
-    inc.timeline.push({ at: this.now(), text: `Chốt đích bàn giao: ${f.name} · ${f.gate} (ETA ${r.minutes} phút)`, by: by.name });
+    inc.timeline.push({ at: this.now(), text: `Chốt đích bàn giao: ${f.name}, ${f.gate} (ETA ${r.minutes} phút)`, by: by.name });
     this.audit('guardian.event', `${inc.id}: chốt ${f.name} ${f.gate}`, 'notice');
     this.emit();
   }
@@ -633,8 +658,20 @@ export class HomeEngine {
     }
   }
 
+  get real() {
+    return !!this.s.real;
+  }
+
   tick() {
     const t = this.now();
+    if (this.s.real) {
+      this.runTimers(t);
+      if (t - this.lastSensor >= 1000) {
+        this.lastSensor = t;
+        this.emit(t - this.lastPersist > 5000);
+      }
+      return;
+    }
     this.pumpCommands(t);
     this.runTimers(t);
     if (t - this.lastSensor >= 1000) {
@@ -703,7 +740,7 @@ export class HomeEngine {
           this.fire({ type: 'guardian', event: 'fall_suspected' }, room, {
             kind: 'radar',
             at: t,
-            summary: `Điểm ghép ${res.score} · ${res.cues.filter((c) => c.hit).map((c) => c.name).join('; ')}`,
+            summary: `Điểm ghép ${res.score}, ${res.cues.filter((c) => c.hit).map((c) => c.name).join('; ')}`,
             ref: `fusion-${room}-${t}`,
           });
           const inc = this.s.incidents.find((i) => i.kind === 'fall' && i.room === room && i.status !== 'closed');
@@ -755,9 +792,21 @@ export class HomeEngine {
     if (gen) gen.state.state = p.generator;
   }
 
-  reset() {
-    this.s = HomeEngine.fresh(this.now());
-    this.people = seedPeople();
+  mergeIncident(id: string, inc: HomeIncident | null) {
+    const i = this.s.incidents.findIndex((x) => x.id === id);
+    if (inc === null) {
+      if (i >= 0) this.s.incidents.splice(i, 1);
+    } else if (i >= 0) this.s.incidents[i] = inc;
+    else this.s.incidents.unshift(inc);
+    this.emit(true);
+  }
+
+  reset(real = false) {
+    this.s = real ? HomeEngine.freshReal(this.now()) : HomeEngine.fresh(this.now());
+    this.people = real ? [] : seedPeople();
+    this.frames = {};
+    this.radar = {};
+    this.fusion = {};
     this.emit();
   }
 }
@@ -786,11 +835,11 @@ export function describeDesired(d: Record<string, string | number | boolean>) {
 function incidentTitle(kind: IncidentKind, room: string) {
   return {
     sos: `SOS ở ${room.toLowerCase()}`,
-    fall: `Tín hiệu nghi ngã · ${room}`,
-    smoke: `Khói/CO · ${room}`,
-    leak: `Rò nước · ${room}`,
-    door: `Cửa mở bất thường · ${room}`,
-    power: `Sự cố điện · ${room}`,
+    fall: `Tín hiệu nghi ngã, ${room}`,
+    smoke: `Khói/CO, ${room}`,
+    leak: `Rò nước, ${room}`,
+    door: `Cửa mở bất thường, ${room}`,
+    power: `Sự cố điện, ${room}`,
   }[kind];
 }
 

@@ -40,7 +40,7 @@ export function SHome() {
       {inv ? (
         <Link to={`/s/invite/${inv.id}`} className="hero peach" style={{ textDecoration: 'none' }}>
           <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
-            <span className="badge">HÔM NAY · {fmtSlot(inv.slot).split('–')[0]}</span>
+            <span className="badge">HÔM NAY, {fmtSlot(inv.slot).split('-')[0]}</span>
           </div>
           <div className="body">
             <h2>{inv.occasion}</h2>
@@ -52,7 +52,7 @@ export function SHome() {
         nextRitual && (
           <div className="hero peach">
             <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
-              <span className="badge">NGHI THỨC · {hhmm(nextRitual.at.getTime())}</span>
+              <span className="badge">NGHI THỨC, {hhmm(nextRitual.at.getTime())}</span>
             </div>
             <div className="body">
               <h2>{nextRitual.r.name}</h2>
@@ -76,7 +76,7 @@ export function SCall() {
       <TopBar back backTo="/s" />
       <Header title="Gọi người thân" sub="Chọn người bà muốn gọi." />
       {list.map((m) => (
-        <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.name} meta={m.relation.split(' · ')[0]} to={`/s/call/${m.id}`} right={<PhoneIcon size={20} color="#244C3E" />} />
+        <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.name} meta={m.relation.split(', ')[0]} to={`/s/call/${m.id}`} right={<PhoneIcon size={20} color="#244C3E" />} />
       ))}
       <Row tone="tint" icon={<Check size={20} />} tileTone="white" title="Xem lại trước khi gọi" meta="Ở bước tiếp theo, bà kiểm tra tên rồi mở ứng dụng Điện thoại." />
     </Phone>
@@ -98,7 +98,7 @@ export function SCallPerson() {
           <Avatar name={m.name} color={m.color} size="lg" />
         </div>
         <div style={{ fontSize: 26, fontWeight: 800, marginTop: 10 }}>{m.name}</div>
-        <div className="muted" style={{ fontSize: 16 }}>{m.relation.split(' · ')[0]}</div>
+        <div className="muted" style={{ fontSize: 16 }}>{m.relation.split(', ')[0]}</div>
         <div style={{ marginTop: 8 }}><Badge>Đã lưu trong danh bạ</Badge></div>
       </div>
       {opened && <Row tone="tint" icon={<Check size={20} />} tileTone="white" title={`Đã chọn ${m.name}`} meta="Điện thoại hiển thị tên người nhận trước khi bà bấm gọi." />}
@@ -131,20 +131,20 @@ export function SToday() {
       {mine
         .filter((t) => t.kind === 'call')
         .map((t) => (
-          <Row key={t.id} icon={<PhoneIcon size={20} />} tileTone="peach" title={`${hhmm(t.remindAt)} · ${t.title}`} meta={t.note} to={t.target ? `/s/call/${t.target === me.id ? t.assignee : t.target}` : undefined} />
+          <Row key={t.id} icon={<PhoneIcon size={20} />} tileTone="peach" title={`${hhmm(t.remindAt)}, ${t.title}`} meta={t.note} to={t.target ? `/s/call/${t.target === me.id ? t.assignee : t.target}` : undefined} />
         ))}
       {inv && (
         <Row
           icon={<CalendarDays size={20} />}
           tileTone="peach"
-          title={`${fmtSlot(inv.slot).split('–')[0]} · Bữa cơm`}
+          title={`${fmtSlot(inv.slot).split('-')[0]}, Bữa cơm`}
           meta={inv.receipts[me.id] === 'accepted' ? inv.place : `${memberName(inv.hostId)} mời cả nhà cùng ăn tối`}
           badge={inv.receipts[me.id] === 'accepted' ? <Badge>Đã xác nhận tham gia</Badge> : undefined}
           to={`/s/invite/${inv.id}`}
         />
       )}
       {ritualToday.map(({ r, at }) => (
-        <Row key={r.id} icon={<CalendarDays size={20} />} tileTone="sand" title={`${hhmm(at.getTime())} · ${r.name}`} meta={r.note} />
+        <Row key={r.id} icon={<CalendarDays size={20} />} tileTone="sand" title={`${hhmm(at.getTime())}, ${r.name}`} meta={r.note} />
       ))}
       <div className="section-title">Việc đã nhận</div>
       {mine
@@ -175,7 +175,7 @@ export function STask() {
   return (
     <Phone simple>
       <TopBar back backTo="/s/today" />
-      <Header title={t.title.replace(' ngoài ban công', '')} sub="Việc bà đã nhận · Hôm nay" />
+      <Header title={t.title.replace(' ngoài ban công', '')} sub="Việc bà đã nhận, Hôm nay" />
       <div className="card peach" style={{ padding: 20 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>{t.place || 'Trong nhà'}</div>
         <p style={{ fontSize: 16, color: '#753F30', marginTop: 4 }}>{t.note}</p>
@@ -221,7 +221,7 @@ export function SInvite() {
       <Phone simple>
         <TopBar back backTo="/s" />
         <Header title={`Hẹn bà lúc ${viTime(inv.slot.start).replace(/ (sáng|trưa|chiều|tối)$/, '')}!`} sub="Phản hồi tham gia đã được lưu." />
-        <Row tone="tint" icon={<CalendarDays size={22} />} tileTone="white" title="Đã thêm vào lịch" meta={`${inv.occasion} · ${fmtSlot(inv.slot).split('–')[0]} hôm nay.`} />
+        <Row tone="tint" icon={<CalendarDays size={22} />} tileTone="white" title="Đã thêm vào lịch" meta={`${inv.occasion}, ${fmtSlot(inv.slot).split('-')[0]} hôm nay.`} />
         <button className="btn" onClick={() => nav('/s/today')}>Xem lịch hôm nay</button>
         <button className="btn secondary" onClick={() => nav('/s')}>Về trang nhà</button>
       </Phone>
@@ -277,7 +277,7 @@ export function SMemory() {
           </div>
           <div className="body">
             <h2>{story.title}</h2>
-            <p>{story.audioKey && story.durationSec ? `Đoạn ghi âm · ${Math.floor(story.durationSec / 60)} phút ${story.durationSec % 60} giây` : story.audioKey ? 'Đoạn ghi âm' : 'Lời kể chép lại · bấm để nghe'}</p>
+            <p>{story.audioKey && story.durationSec ? `Đoạn ghi âm, ${Math.floor(story.durationSec / 60)} phút ${story.durationSec % 60} giây` : story.audioKey ? 'Đoạn ghi âm' : 'Lời kể chép lại, bấm để nghe'}</p>
             <div className="cta">Mở lời kể <span>›</span></div>
           </div>
         </Link>
@@ -286,7 +286,7 @@ export function SMemory() {
       {mems
         .filter((m) => m.id !== story?.id)
         .map((m) => (
-          <Row key={m.id} icon={<PlayCircle size={22} />} tileTone="sand" title={m.title} meta={`${memberName(m.narrator)} · ${m.kind === 'story' ? 'Lời kể' : 'Ảnh'}`} to={`/s/story/${m.id}`} />
+          <Row key={m.id} icon={<PlayCircle size={22} />} tileTone="sand" title={m.title} meta={`${memberName(m.narrator)}, ${m.kind === 'story' ? 'Lời kể' : 'Ảnh'}`} to={`/s/story/${m.id}`} />
         ))}
     </Phone>
   );
@@ -313,7 +313,7 @@ export function SStory() {
   return (
     <Phone simple>
       <TopBar back backTo="/s/memory" />
-      <Header title={mem.title} sub={`${memberName(mem.narrator)} kể · Chia sẻ với ${namesOf(mem.viewers)}`} />
+      <Header title={mem.title} sub={`${memberName(mem.narrator)} kể, Chia sẻ với ${namesOf(mem.viewers)}`} />
       {mem.image && <img src={mem.image} alt="" style={{ borderRadius: 18, height: 180, objectFit: 'cover', width: '100%' }} />}
       {err && <div className="card rose"><p className="danger-text">{err}</p></div>}
       {data && (
@@ -323,7 +323,7 @@ export function SStory() {
               <PlayCircle size={26} color="#244C3E" />
               <div style={{ flex: 1 }}>
                 <b style={{ fontSize: 18 }}>{mem.audioKey ? 'Lời kể đã ghi âm' : 'Lời kể chép lại'}</b>
-                <div className="muted">{mem.audioKey && mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')} · ` : ''}Tiếng Việt</div>
+                <div className="muted">{mem.audioKey && mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}, ` : ''}Tiếng Việt</div>
               </div>
             </div>
             {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 10 }} /> : (
@@ -386,7 +386,7 @@ export function SRecord() {
       {rec.state === 'done' && (
         <>
           <div className="card tint">
-            <b>Bản thu · {rec.seconds} giây</b>
+            <b>Bản thu, {rec.seconds} giây</b>
             <audio controls src={rec.url} style={{ width: '100%', marginTop: 8 }} />
           </div>
           <Field label="Tên lời kể">

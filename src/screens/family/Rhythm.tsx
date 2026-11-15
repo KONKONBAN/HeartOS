@@ -60,7 +60,7 @@ export function FRhythm() {
       <TopBar />
       <Header title="Nhịp Nhà" sub="Lịch, lời mời và khoảng rảnh của gia đình." />
       {invitations.map((i) => (
-        <Row key={i.id} icon={<CalendarDays size={18} />} tileTone="peach" title={i.occasion} meta={`Hôm nay · ${fmtSlot(i.slot)}`} badge={statusBadge(i)} to={linkFor(i)} />
+        <Row key={i.id} icon={<CalendarDays size={18} />} tileTone="peach" title={i.occasion} meta={`Hôm nay, ${fmtSlot(i.slot)}`} badge={statusBadge(i)} to={linkFor(i)} />
       ))}
       {call && <Row icon={<PhoneIcon size={18} />} tileTone="peach" title={call.title} meta={fmtDate(new Date(call.remindAt))} to={`/f/task/${call.id}`} />}
       <button className="btn soft" onClick={() => setOpen(true)}>
@@ -80,7 +80,7 @@ export function FRhythm() {
         <div className="label">Giọng điệu</div>
         <Seg value={tone} onChange={setTone} options={[{ value: 'warm', label: 'Ấm áp' }, { value: 'short', label: 'Ngắn gọn' }, { value: 'formal', label: 'Trang trọng' }]} />
         <p className="small muted" style={{ margin: 0 }}>Nhịp Nhà chỉ đọc khoảng rảnh/bận được chia sẻ cho bạn (qua Sentinel), cắt theo giờ yên tĩnh, rồi GenAI soạn bản nháp chờ duyệt.</p>
-        <button className="btn" disabled={busy || !recips.length || !occasion.trim()} onClick={() => void create()}>{busy ? 'Đang tìm khung chung…' : 'Tìm khung chung và soạn nháp'}</button>
+        <button className="btn" disabled={busy || !recips.length || !occasion.trim()} onClick={() => void create()}>{busy ? 'Đang tìm khung chung...' : 'Tìm khung chung và soạn nháp'}</button>
       </Sheet>
     </Phone>
   );
@@ -104,7 +104,7 @@ export function FCalendar() {
       <TopBar back backTo="/f/rhythm" />
       <Header title="Lịch rảnh đã chia sẻ" sub="Nhịp Nhà dùng các khoảng rảnh/bận đã được cấp quyền." />
       {rhythm?.readable.map((r) => (
-        <Row key={r.memberId} icon={<Users size={18} />} title={memberName(r.memberId)} meta={`${r.windows.map((w) => `${w.start}–${w.end}`).join(', ')} · Hôm nay`} badge={<Badge>Đọc được qua Sentinel</Badge>} chevron={false} />
+        <Row key={r.memberId} icon={<Users size={18} />} title={memberName(r.memberId)} meta={`${r.windows.map((w) => `${w.start}-${w.end}`).join(', ')}, Hôm nay`} badge={<Badge>Đọc được qua Sentinel</Badge>} chevron={false} />
       ))}
       {rhythm?.denied.map((d) => (
         <Row key={d.memberId} icon={<Lock size={18} />} tileTone="rose" title={memberName(d.memberId)} meta={d.reason} badge={<Badge tone="danger">Không có quyền</Badge>} chevron={false} />
@@ -112,7 +112,7 @@ export function FCalendar() {
       {rhythm && (
         <div className="card tint">
           <h3>Khung chung gợi ý</h3>
-          <p>{rhythm.slot ? `${fmtSlot(rhythm.slot)} · GMT+7` : rhythm.reason}</p>
+          <p>{rhythm.slot ? `${fmtSlot(rhythm.slot)}, GMT+7` : rhythm.reason}</p>
           <button className="btn xs ghost" style={{ marginTop: 6, paddingLeft: 0 }} onClick={() => setShowTrace((v) => !v)}>{showTrace ? 'Ẩn' : 'Xem'} đường đọc qua Sentinel</button>
           {showTrace && rhythm.traces[0] && <div style={{ marginTop: 8 }}><TraceView trace={rhythm.traces[0]} /></div>}
         </div>
@@ -122,7 +122,7 @@ export function FCalendar() {
         {windows.map((w, i) => (
           <div key={i} className="hstack">
             <input className="input" type="time" style={{ flex: 1, minWidth: 0, padding: '0 8px' }} value={w.start} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))} />
-            <span>–</span>
+            <span>-</span>
             <input className="input" type="time" style={{ flex: 1, minWidth: 0, padding: '0 8px' }} value={w.end} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
             <button className="btn xs ghost" style={{ flexShrink: 0 }} aria-label="Xóa khoảng" onClick={() => setWindows(windows.filter((_, j) => j !== i))}><Trash2 size={16} /></button>
           </div>
@@ -147,7 +147,7 @@ export function FCalendar() {
       <Row
         icon={<Moon size={18} />}
         title="Giờ yên tĩnh"
-        meta={`Từ ${prefs.quietFrom} · GMT+7`}
+        meta={`Từ ${prefs.quietFrom}, GMT+7`}
         chevron={false}
         right={<input className="input" type="time" style={{ width: 110 }} value={prefs.quietFrom} onChange={(e) => set((s) => void (s.prefs.quietFrom = e.target.value))} />}
       />
@@ -180,22 +180,22 @@ export function FDraft() {
       <Header title="Duyệt lời mời" sub="GenAI soạn lời mời dựa trên lịch được chia sẻ." />
       <div className="hero peach">
         <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
-          <span className="badge">{inv.status === 'snoozed' ? 'ĐÃ HOÃN' : 'CHỜ DUYỆT'} · HÔM NAY</span>
+          <span className="badge">{inv.status === 'snoozed' ? 'ĐÃ HOÃN' : 'CHỜ DUYỆT'}, HÔM NAY</span>
         </div>
         <div className="body">
           <h2>{fmtSlot(inv.slot)}</h2>
-          <p style={{ marginBottom: 0 }}>Khung giờ rảnh chung · {inv.tz}</p>
+          <p style={{ marginBottom: 0 }}>Khung giờ rảnh chung, {inv.tz}</p>
         </div>
       </div>
       {inv.draft.messages.map((m) => (
         <div key={m.recipientId} className="card">
-          <div className="label">{m.lang === 'vi' ? 'Tiếng Việt' : 'English'} · {memberName(m.recipientId)}</div>
+          <div className="label">{m.lang === 'vi' ? 'Tiếng Việt' : 'English'}, {memberName(m.recipientId)}</div>
           <p className="quote">“{m.text}”</p>
         </div>
       ))}
       <div className="card flat">
         <div className="hstack">
-          <Badge tone={inv.gen.provider === 'claude' ? 'dark' : undefined}>{inv.gen.provider === 'claude' ? `Claude · ${inv.gen.model}` : 'Mẫu trên thiết bị'}</Badge>
+          <Badge tone={inv.gen.provider === 'claude' ? 'dark' : undefined}>{inv.gen.provider === 'claude' ? `Claude, ${inv.gen.model}` : 'Mẫu trên thiết bị'}</Badge>
           <Badge tone={okChecks === inv.gen.checks.length ? undefined : 'danger'}>Kiểm dữ kiện {okChecks}/{inv.gen.checks.length}</Badge>
           <span className="spacer" />
           <button className="btn xs ghost" onClick={() => setShowChecks((v) => !v)}>{showChecks ? 'Ẩn' : 'Chi tiết'}</button>
@@ -274,7 +274,7 @@ export function FCompose() {
       <div className="label">Tạo lại bằng GenAI</div>
       <Seg value={tone} onChange={setTone} options={[{ value: 'warm', label: 'Ấm áp' }, { value: 'short', label: 'Ngắn gọn' }, { value: 'formal', label: 'Trang trọng' }]} />
       <button className="btn soft" disabled={busy} onClick={() => { setBusy(true); void regenerateInvitation(inv.id, tone).finally(() => setBusy(false)); }}>
-        <Sparkles size={18} /> {busy ? 'Đang soạn…' : 'Soạn lại'}
+        <Sparkles size={18} /> {busy ? 'Đang soạn...' : 'Soạn lại'}
       </button>
       <Link to={`/f/draft/${inv.id}`} className="btn secondary">Về bản xem trước</Link>
     </Phone>
@@ -321,13 +321,13 @@ export function FQueued() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/rhythm" />
-      <Header title={inv.status === 'delivered' ? 'Đã chuyển giao lời mời' : 'Đã duyệt lời mời'} sub={`${inv.occasion} · ${inv.status === 'delivered' ? 'Chờ biên nhận' : 'Đang chờ gửi'}`} />
+      <Header title={inv.status === 'delivered' ? 'Đã chuyển giao lời mời' : 'Đã duyệt lời mời'} sub={`${inv.occasion}, ${inv.status === 'delivered' ? 'Chờ biên nhận' : 'Đang chờ gửi'}`} />
       <div className="card">
         <Steps
           items={[
-            { title: 'Bản xem trước', meta: `Đã được ${memberName(inv.approvedBy ?? '')} duyệt · ${inv.approvedAt ? hhmm(inv.approvedAt) : ''}`, state: 'done' },
-            { title: 'Hàng đợi', meta: inv.status === 'delivered' ? `Đã chuyển giao · ${hhmm(inv.deliveredAt!)}` : sending ? 'Đang kiểm lại quyền theo epoch hiện hành…' : 'Đã xếp chuyển giao', state: inv.status === 'delivered' ? 'done' : 'active' },
-            { title: 'Biên nhận người nhận', meta: receipts.map(([id, r]) => `${memberName(id)}: ${r === 'pending' ? 'chưa có' : r === 'accepted' ? 'sẽ tham gia' : r === 'declined' ? 'không tham gia' : 'trả lời sau'}`).join(' · '), state: receipts.every(([, r]) => r !== 'pending') ? 'done' : 'todo' },
+            { title: 'Bản xem trước', meta: `Đã được ${memberName(inv.approvedBy ?? '')} duyệt, ${inv.approvedAt ? hhmm(inv.approvedAt) : ''}`, state: 'done' },
+            { title: 'Hàng đợi', meta: inv.status === 'delivered' ? `Đã chuyển giao, ${hhmm(inv.deliveredAt!)}` : sending ? 'Đang kiểm lại quyền theo epoch hiện hành...' : 'Đã xếp chuyển giao', state: inv.status === 'delivered' ? 'done' : 'active' },
+            { title: 'Biên nhận người nhận', meta: receipts.map(([id, r]) => `${memberName(id)}: ${r === 'pending' ? 'chưa có' : r === 'accepted' ? 'sẽ tham gia' : r === 'declined' ? 'không tham gia' : 'trả lời sau'}`).join(', '), state: receipts.every(([, r]) => r !== 'pending') ? 'done' : 'todo' },
           ]}
         />
       </div>

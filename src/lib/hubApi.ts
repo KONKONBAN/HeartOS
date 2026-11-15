@@ -20,7 +20,8 @@ export interface HubApi {
   journal(id: string): Promise<StoredJournalEntry[]>;
   audit(): Promise<JournalEntry[]>;
   verifyAudit(): Promise<{ ok: boolean; checked: number; brokenAt?: number }>;
-  openPairing(): Promise<{ code: string; expiresAt: number }>;
+  openPairing(memberId?: string): Promise<{ code: string; expiresAt: number; memberId?: string }>;
+  resetHousehold(): Promise<void>;
   closePairing(): Promise<void>;
   command(deviceId: string, kind: CommandKind, params: Record<string, string | number | boolean>): Promise<HubCommandRecord | null>;
   unpair(id: string): Promise<void>;

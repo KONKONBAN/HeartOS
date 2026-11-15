@@ -18,10 +18,13 @@ import {
   type DeviceSnapshot,
   type DownPayload,
   type Envelope,
+  type HouseholdInfo,
+  type HouseholdOp,
   type PairRequest,
   type PairResponse,
   type RemoteJournalEntry,
   type UpPayload,
+  MAX_OP_BYTES,
 } from './protocol';
 
 export interface HubKeys {
@@ -44,6 +47,20 @@ export interface HubDevice {
   downSeq: number;
   lastError?: string;
   revoked?: boolean;
+  memberId?: string;
+}
+
+export interface StoredOp extends HouseholdOp {
+  seq: number;
+  device: string;
+  revokedFor?: string[];
+}
+
+export interface HubMember {
+  id: string;
+  name: string;
+  relation: string;
+  role: string;
 }
 
 export interface HubCommandRecord extends AdminCommand {
@@ -62,12 +79,16 @@ interface PairingWindow {
   code: string;
   expiresAt: number;
   attempts: number;
+  memberId?: string;
 }
 
 export interface HubView {
   name: string;
   signPub: string;
-  pairing: { code: string; expiresAt: number } | null;
+  pairing: { code: string; expiresAt: number; memberId?: string } | null;
+  household: HouseholdInfo | null;
+  members: HubMember[];
+  opsCount: number;
   devices: HubDevice[];
   commands: HubCommandRecord[];
   snapshots: Record<string, DeviceSnapshot | undefined>;
@@ -84,6 +105,9 @@ export class HubCore {
   private snapshots: Record<string, DeviceSnapshot>;
   private pairing: PairingWindow | null = null;
   private sessionKeys = new Map<string, CryptoKey>();
+  private household: HouseholdInfo | null;
+  private ops: Record<string, StoredOp>;
+  private opSeq: number;
   private listeners = new Set<() => void>();
   readonly audit: Journal;
   signPub = '';
@@ -98,6 +122,9 @@ export class HubCore {
     this.devices = store.get<Record<string, HubDevice>>('hub.devices') ?? {};
     this.commands = store.get<HubCommandRecord[]>('hub.commands') ?? [];
     this.snapshots = store.get<Record<string, DeviceSnapshot>>('hub.snapshots') ?? {};
+    this.household = store.get<HouseholdInfo>('hub.household') ?? null;
+    this.ops = store.get<Record<string, StoredOp>>('hub.ops') ?? {};
+    this.opSeq = store.get<number>('hub.opSeq') ?? 0;
     this.audit = new Journal(store, 'hub.audit', 2000, now);
   }
 
@@ -126,6 +153,12 @@ export class HubCore {
     this.listeners.forEach((l) => l());
   }
 
+  private persistOps() {
+    this.store.set('hub.household', this.household);
+    this.store.set('hub.ops', this.ops);
+    this.store.set('hub.opSeq', this.opSeq);
+  }
+
   view(): HubView {
     const journalStats: HubView['journalStats'] = {};
     for (const id of Object.keys(this.devices)) {
@@ -141,7 +174,10 @@ export class HubCore {
     return {
       name: this.name,
       signPub: this.signPub,
-      pairing: this.pairing && this.pairing.expiresAt > this.now() ? { code: this.pairing.code, expiresAt: this.pairing.expiresAt } : null,
+      pairing: this.pairing && this.pairing.expiresAt > this.now() ? { code: this.pairing.code, expiresAt: this.pairing.expiresAt, memberId: this.pairing.memberId } : null,
+      household: this.household,
+      members: this.members(),
+      opsCount: Object.values(this.ops).filter((o) => o.data !== null).length,
       devices: Object.values(this.devices).sort((a, b) => b.pairedAt - a.pairedAt),
       commands: [...this.commands].reverse(),
       snapshots: this.snapshots,
@@ -153,11 +189,21 @@ export class HubCore {
     return this.store.get<StoredJournalEntry[]>(`hub.journal.${deviceId}`) ?? [];
   }
 
-  openPairing(operator: string) {
-    this.pairing = { code: pairingCode(), expiresAt: this.now() + PAIR_TTL, attempts: 0 };
-    void this.audit.append({ kind: 'session', actor: 'Human', summary: `${operator} mở cửa sổ ghép nối (120 giây)` });
+  members(): HubMember[] {
+    return Object.values(this.ops)
+      .filter((o) => o.entity === 'member' && o.data)
+      .map((o) => {
+        const m = o.data as Partial<HubMember>;
+        return { id: o.id, name: String(m.name ?? ''), relation: String(m.relation ?? ''), role: String(m.role ?? 'member') };
+      });
+  }
+
+  openPairing(operator: string, memberId?: string) {
+    const member = memberId ? this.members().find((m) => m.id === memberId) : undefined;
+    this.pairing = { code: pairingCode(), expiresAt: this.now() + PAIR_TTL, attempts: 0, memberId: member?.id };
+    void this.audit.append({ kind: 'session', actor: 'Human', summary: member ? `${operator} tạo mã tham gia hộ cho ${member.name} (120 giây)` : `${operator} mở cửa sổ ghép nối (120 giây)` });
     this.persist();
-    return { code: this.pairing.code, expiresAt: this.pairing.expiresAt };
+    return { code: this.pairing.code, expiresAt: this.pairing.expiresAt, memberId: member?.id };
   }
 
   closePairing() {
@@ -179,6 +225,7 @@ export class HubCore {
       return { ok: false, status: 401, reason: 'Mã ghép nối không đúng' };
     }
     if (!req.signPub || !req.kxPub || !req.nonce) return { ok: false, status: 400, reason: 'Thiếu khóa thiết bị' };
+    const memberId = w.memberId;
     this.pairing = null;
     const id = randomId('dev', 6);
     const device: HubDevice = {
@@ -193,10 +240,11 @@ export class HubCore {
       lastAddress: address,
       upSeq: 0,
       downSeq: 0,
+      memberId,
     };
     this.devices[id] = device;
-    const response = await signPairResponse({ v: 1, deviceId: id, hubName: this.name, hubSignPub: this.signPub, hubKxPub: this.kxPub, nonce: req.nonce, pairedAt: device.pairedAt }, this.keys.sign.privateKey);
-    await this.audit.append({ kind: 'session', actor: 'Human', severity: 'notice', summary: `Ghép nối thiết bị ${device.name} (${id}) · mã đối chiếu ${device.sas}`, decision: 'allow' });
+    const response = await signPairResponse({ v: 1, deviceId: id, household: memberId ? this.household : null, memberId, hubName: this.name, hubSignPub: this.signPub, hubKxPub: this.kxPub, nonce: req.nonce, pairedAt: device.pairedAt }, this.keys.sign.privateKey);
+    await this.audit.append({ kind: 'session', actor: 'Human', severity: 'notice', summary: `Ghép nối thiết bị ${device.name} (${id}), mã đối chiếu ${device.sas}`, decision: 'allow' });
     this.persist();
     return { ok: true, response };
   }
@@ -233,9 +281,12 @@ export class HubCore {
       if (c && c.status !== 'done' && c.status !== 'failed') {
         c.status = r.ok ? 'done' : 'failed';
         c.result = r;
-        await this.audit.append({ kind: 'note', actor: 'A', severity: r.ok ? 'info' : 'warning', summary: `${d.name}: ${COMMAND_LABEL[c.kind]} → ${r.ok ? 'đã áp dụng' : 'từ chối'} · ${r.message}`, decision: r.ok ? 'allow' : 'deny' });
+        await this.audit.append({ kind: 'note', actor: 'A', severity: r.ok ? 'info' : 'warning', summary: `${d.name}: ${COMMAND_LABEL[c.kind]}: ${r.ok ? 'đã áp dụng' : 'từ chối'}, ${r.message}`, decision: r.ok ? 'allow' : 'deny' });
       }
     }
+    if (!d.memberId && typeof p.memberId === 'string' && p.memberId) d.memberId = p.memberId;
+    const rejected = Array.isArray(p.ops) && p.ops.length ? this.ingestOps(d, p.ops) : 0;
+    if (rejected) await this.audit.append({ kind: 'gate.deny', actor: 'G', severity: 'warning', summary: `Từ chối ${rejected} thay đổi của ${d.name} (khác hộ hoặc sai định dạng)`, decision: 'deny' });
     this.expireCommands();
     const pending = this.commands.filter((c) => c.deviceId === d.id && (c.status === 'queued' || c.status === 'delivered'));
     pending.forEach((c) => {
@@ -248,11 +299,69 @@ export class HubCore {
       commands: pending.map(({ id, kind, params, issuedAt, expiresAt, issuedBy }) => ({ id, kind, params, issuedAt, expiresAt, issuedBy })),
       ackJournalSeq: this.journal(d.id).at(-1)?.seq ?? 0,
       hubTime: this.now(),
+      ops: this.opsFor(d, Number(p.opsCursor) || 0),
+      opsCursor: this.opSeq,
+      household: this.household,
+      memberId: d.memberId,
     };
     d.downSeq += 1;
     const response = await sealEnvelope({ deviceId: d.id, dir: 'down', seq: d.downSeq, payload: down, sessionKey: key, signKey: this.keys.sign.privateKey, now: this.now() });
     this.persist();
     return { ok: true, response };
+  }
+
+  private ingestOps(d: HubDevice, ops: HouseholdOp[]) {
+    let rejected = 0;
+    for (const op of ops) {
+      if (!op || typeof op.key !== 'string' || typeof op.entity !== 'string' || typeof op.ts !== 'number' || JSON.stringify(op.data ?? null).length > MAX_OP_BYTES) {
+        rejected++;
+        continue;
+      }
+      if (op.entity === 'household') {
+        const h = op.data as HouseholdInfo | null;
+        if (!h || typeof h.id !== 'string') {
+          rejected++;
+          continue;
+        }
+        if (this.household && this.household.id !== h.id) {
+          rejected++;
+          continue;
+        }
+        this.household = { id: h.id, name: String(h.name ?? '').slice(0, 80), tz: String(h.tz ?? 'Asia/Ho_Chi_Minh') };
+      } else if (!this.household) {
+        rejected++;
+        continue;
+      }
+      const prev = this.ops[op.key];
+      if (prev && (prev.ts > op.ts || (prev.ts === op.ts && prev.device >= d.id))) continue;
+      const lost = prev?.aud && op.aud ? prev.aud.filter((m) => !op.aud!.includes(m)) : [];
+      this.ops[op.key] = { key: op.key, entity: op.entity, id: String(op.id), data: op.data ?? null, ts: op.ts, by: String(op.by ?? ''), aud: Array.isArray(op.aud) ? op.aud.map(String) : undefined, seq: ++this.opSeq, device: d.id, revokedFor: lost.length ? lost : undefined };
+    }
+    this.persistOps();
+    return rejected;
+  }
+
+  private opsFor(d: HubDevice, cursor: number): HouseholdOp[] {
+    if (!this.household) return [];
+    const me = d.memberId;
+    const out: HouseholdOp[] = [];
+    for (const o of Object.values(this.ops)) {
+      if (o.seq <= cursor || o.device === d.id) continue;
+      const allowed = !o.aud || (me !== undefined && (o.aud.includes(me) || o.by === me));
+      if (allowed) out.push({ key: o.key, entity: o.entity, id: o.id, data: o.data, ts: o.ts, by: o.by, aud: o.aud });
+      else if (me && o.revokedFor?.includes(me)) out.push({ key: o.key, entity: o.entity, id: o.id, data: null, ts: o.ts, by: o.by });
+    }
+    const rank = (o: HouseholdOp) => (o.entity === 'household' ? 0 : o.entity === 'member' ? 1 : 2);
+    return out.sort((a, b) => rank(a) - rank(b) || a.ts - b.ts);
+  }
+
+  resetHousehold(operator: string) {
+    this.household = null;
+    this.ops = {};
+    this.opSeq += 1;
+    void this.audit.append({ kind: 'policy.revoke', actor: 'Human', severity: 'notice', summary: `${operator} xóa dữ liệu hộ trên hub` });
+    this.persistOps();
+    this.persist();
   }
 
   private async ingestJournal(deviceId: string, entries: RemoteJournalEntry[]) {

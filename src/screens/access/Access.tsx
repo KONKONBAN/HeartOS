@@ -22,10 +22,10 @@ export function FMore() {
   return (
     <Phone tabs>
       <TopBar />
-      <Header title="Cài đặt nhà An" sub={`Tài khoản · ${me.name}`} />
+      <Header title="Cài đặt nhà An" sub={`Tài khoản, ${me.name}`} />
       <Row icon={<Users size={18} />} title="Thành viên và vai trò" meta="Quản lý hộ theo quyền của bạn" to="/f/members" />
       <Row icon={<KeyRound size={18} />} title="Quyền chia sẻ" meta="Lịch, ký ức, camera và hỗ trợ" to="/f/permissions" />
-      <Row icon={<ShieldCheck size={18} />} title="Bảo mật Sentinel" meta={`Phiên, thiết bị tin cậy, sự kiện · ${SECURITY_STATE_LABEL[s.incident.view().state]}`} to="/f/sentinel" />
+      <Row icon={<ShieldCheck size={18} />} title="Bảo mật Sentinel" meta={`Phiên, thiết bị tin cậy, sự kiện, ${SECURITY_STATE_LABEL[s.incident.view().state]}`} to="/f/sentinel" />
       <Row icon={<Monitor size={18} />} title="Máy quản trị Sentinel" meta="Ghép với phần mềm quản trị trên máy tính" to="/f/hub" />
       <Row icon={<Languages size={18} />} title="Ngôn ngữ và giọng đọc" meta="Giao diện, trợ lý và người nhận" to="/f/language" />
       <Row icon={<Sun size={18} />} title="Đổi cách hiển thị" meta="Gia Đình / Thân Quen" to="/mode" />
@@ -45,11 +45,11 @@ export function FMembers() {
       <TopBar back backTo="/f/more" />
       <Header title="Thành viên nhà An" sub="Quyền theo hộ và mục đích sử dụng." />
       {members.map((m) => (
-        <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.name} meta={m.role === 'child' ? `Hồ sơ trẻ · Theo cấu hình người giám hộ ${memberName(m.guardian ?? '')}` : m.role === 'carer' ? `Quyền có thời hạn theo ca${m.expiresAt ? ' · hết hạn ' + hhmm(m.expiresAt) : ''}` : `${roleName(m.role)} · ${m.mode === 'simple' ? 'Thân Quen' : 'Gia Đình'}`} to={`/f/member/${m.id}`} />
+        <Row key={m.id} icon={<Avatar name={m.name} color={m.color} />} tileTone="white" title={m.name} meta={m.role === 'child' ? `Hồ sơ trẻ, Theo cấu hình người giám hộ ${memberName(m.guardian ?? '')}` : m.role === 'carer' ? `Quyền có thời hạn theo ca${m.expiresAt ? ', hết hạn ' + hhmm(m.expiresAt) : ''}` : `${roleName(m.role)}, ${m.mode === 'simple' ? 'Thân Quen' : 'Gia Đình'}`} to={`/f/member/${m.id}`} />
       ))}
       {me.role === 'admin' && <button className="btn" onClick={() => setCode(newInviteCode())}><Users size={18} /> Tạo lời mời</button>}
       <Sheet open={!!code} onClose={() => setCode(null)} title="Lời mời vào Nhà An">
-        <div className="card tint center"><div className="mono" style={{ fontSize: 22, fontWeight: 800 }}>{code}</div><p>Mã dùng một lần · hết hạn sau 24 giờ · vai trò Thành viên</p></div>
+        <div className="card tint center"><div className="mono" style={{ fontSize: 22, fontWeight: 800 }}>{code}</div><p>Mã dùng một lần, hết hạn sau 24 giờ, vai trò Thành viên</p></div>
         <button className="btn" onClick={() => { void navigator.clipboard?.writeText(code ?? ''); toast('Đã sao chép mã mời.'); }}><ClipboardCopy size={18} /> Sao chép mã</button>
       </Sheet>
     </Phone>
@@ -70,10 +70,10 @@ export function FMember() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/members" />
-      <Header title="Vai trò và phạm vi" sub={`Hồ sơ · ${m.name}`} />
+      <Header title="Vai trò và phạm vi" sub={`Hồ sơ, ${m.name}`} />
       <div className="card center"><div style={{ display: 'grid', placeItems: 'center' }}><Avatar name={m.name} color={m.color} size="lg" /></div><div style={{ fontWeight: 800, fontSize: 20, marginTop: 8 }}>{m.name}</div><div className="muted">{m.relation}</div></div>
       <Row icon={<UserCog size={18} />} title="Vai trò" meta={m.role === 'child' ? 'Thành viên trẻ' : m.role === 'carer' ? 'Người hỗ trợ có thời hạn' : roleName(m.role)} chevron={false} />
-      {m.guardian && <Row icon={<Shield size={18} />} title="Người giám hộ" meta={`${memberName(m.guardian)} · Liên kết đang hiệu lực`} chevron={false} />}
+      {m.guardian && <Row icon={<Shield size={18} />} title="Người giám hộ" meta={`${memberName(m.guardian)}, Liên kết đang hiệu lực`} chevron={false} />}
       {m.expiresAt && <Row icon={<Shield size={18} />} title="Hạn quyền" meta={`Hết hạn lúc ${hhmm(m.expiresAt)} ${new Date(m.expiresAt).toLocaleDateString('vi-VN')}`} chevron={false} />}
       <div className="card tint"><h3>Phạm vi mặc định</h3><p>{scope}</p></div>
       {me.role === 'admin' && m.id !== me.id && (
@@ -102,7 +102,7 @@ export function FPermissions() {
           icon={SCOPE_ICON[p.scope]}
           tileTone={p.status === 'granted' ? undefined : 'sand'}
           title={p.title}
-          meta={`${p.subtitle} · của ${memberName(p.ownerId)} · xem: ${namesOf(p.viewers)}`}
+          meta={`${p.subtitle}, của ${memberName(p.ownerId)}, xem: ${namesOf(p.viewers)}`}
           badge={<Badge tone={p.status === 'granted' ? undefined : 'warm'}>{p.status === 'granted' ? 'Đã cấp' : 'Đã thu hồi'}</Badge>}
           to={p.ownerId === me.id || me.role === 'admin' ? `/f/revoke/${p.id}` : undefined}
         />
@@ -133,7 +133,7 @@ export function FRevoke() {
     return (
       <Phone tabs>
         <TopBar back backTo="/f/permissions" />
-        <Header title="Quyền đã thu hồi" sub={`${p.title} · ${memberName(p.ownerId)}`} />
+        <Header title="Quyền đã thu hồi" sub={`${p.title}, ${memberName(p.ownerId)}`} />
         <Row tone="sand" icon={SCOPE_ICON[p.scope]} tileTone="white" title="Đang thu hồi" meta="Grant mới bị từ chối; thiết bị đồng bộ theo phiên bản quyền mới." />
         <button className="btn" onClick={() => void regrantPermission(p.id, me.id).then(() => toast('Đã cấp lại quyền.'))}>Cấp lại quyền</button>
         <Link to={`/f/sync?perm=${p.id}`} className="btn secondary">Xem trạng thái đồng bộ</Link>
@@ -142,11 +142,11 @@ export function FRevoke() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/permissions" />
-      <Header title="Thu hồi quyền chia sẻ" sub={`${p.title} · ${memberName(p.ownerId)}`} />
+      <Header title="Thu hồi quyền chia sẻ" sub={`${p.title}, ${memberName(p.ownerId)}`} />
       <KV items={[['Phạm vi', p.title], ['Người xem', namesOf(p.viewers)], ['Mục đích', p.purpose], ['Hạn', p.expiresAt ? hhmm(p.expiresAt) : 'Đến khi thu hồi']]} />
       <div className="card tint">
         <h3>Áp dụng theo thiết bị</h3>
-        <p>{affected.map((d) => `${d.name} (${d.online ? 'trực tuyến' : 'ngoại tuyến'})`).join(' · ')}. Thiết bị ngoại tuyến sẽ hiển thị chờ áp dụng cùng hạn quyền cũ.</p>
+        <p>{affected.map((d) => `${d.name} (${d.online ? 'trực tuyến' : 'ngoại tuyến'})`).join(', ')}. Thiết bị ngoại tuyến sẽ hiển thị chờ áp dụng cùng hạn quyền cũ.</p>
       </div>
       <button className="btn danger" disabled={busy} onClick={() => void revoke()}>Xác nhận thu hồi</button>
       <button className="btn secondary" onClick={() => nav(-1)}>Quay lại</button>
@@ -162,7 +162,7 @@ export function FSync() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/permissions" />
-      <Header title={job ? 'Đồng bộ quyền đã thu hồi' : 'Trạng thái đồng bộ'} sub={job ? `${job.title} · Cập nhật ${hhmm(job.at)}` : 'Chưa có bản cập nhật quyền nào.'} />
+      <Header title={job ? 'Đồng bộ quyền đã thu hồi' : 'Trạng thái đồng bộ'} sub={job ? `${job.title}, Cập nhật ${hhmm(job.at)}` : 'Chưa có bản cập nhật quyền nào.'} />
       {job?.devices.map((d) => {
         const dev = devices.find((x) => x.id === d.deviceId)!;
         return (
@@ -171,7 +171,7 @@ export function FSync() {
             icon={d.deviceId === 'dev-hub' ? <Cpu size={18} /> : <Smartphone size={18} />}
             tileTone={d.status === 'applied' ? undefined : 'sand'}
             title={dev.name}
-            meta={d.status === 'applied' ? `Đã áp dụng phiên bản ${job.version}${d.at ? ' · ' + hhmm(d.at) : ''}` : dev.online ? 'Đang áp dụng…' : `Ngoại tuyến · Hạn quyền cũ ${d.oldExpiry ? hhmm(d.oldExpiry) : '-'}`}
+            meta={d.status === 'applied' ? `Đã áp dụng phiên bản ${job.version}${d.at ? ', ' + hhmm(d.at) : ''}` : dev.online ? 'Đang áp dụng...' : `Ngoại tuyến, Hạn quyền cũ ${d.oldExpiry ? hhmm(d.oldExpiry) : '-'}`}
             badge={<Badge tone={d.status === 'applied' ? undefined : 'warm'}>{d.status === 'applied' ? 'Đã áp dụng' : 'Chờ xác nhận'}</Badge>}
             chevron={false}
             right={d.deviceId !== 'dev-hub' && d.status !== 'applied' ? <Switch label={`${dev.name} trực tuyến`} checked={dev.online} onChange={(v) => setSyncDeviceOnline(dev.id, v)} /> : undefined}
@@ -181,7 +181,7 @@ export function FSync() {
       {job && <div className="card flat"><p>Trạng thái sẽ đổi khi có xác nhận từ thiết bị. Bật công tắc để mô phỏng thiết bị trực tuyến trở lại.</p></div>}
       {jobs.length > 1 && <div className="section-title">Các bản cập nhật trước</div>}
       {jobs.slice(1, 6).map((j) => (
-        <Row key={j.id} icon={<RefreshCw size={18} />} title={`${j.title} · phiên bản ${j.version}`} meta={`${hhmm(j.at)} · ${j.devices.filter((d) => d.status === 'applied').length}/${j.devices.length} đã áp dụng`} chevron={false} />
+        <Row key={j.id} icon={<RefreshCw size={18} />} title={`${j.title}, phiên bản ${j.version}`} meta={`${hhmm(j.at)}, ${j.devices.filter((d) => d.status === 'applied').length}/${j.devices.length} đã áp dụng`} chevron={false} />
       ))}
       <Link to="/f/permissions" className="btn secondary">Về quyền chia sẻ</Link>
     </Phone>
@@ -199,14 +199,14 @@ export function FSentinel() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/more" />
-      <Header title="Bảo mật Sentinel" sub="Nhà An · Trạng thái phạm vi của bạn" />
-      <Row icon={<Fingerprint size={18} />} title="Phiên và thiết bị tin cậy" meta={`1 phiên trên máy này · ${session.passkey?.kind === 'webauthn' ? 'passkey' : 'khóa thiết bị'} · từ ${hhmm(session.startedAt)}`} chevron={false} />
-      <Row icon={<ShieldCheck size={18} />} title="Quyền và thu hồi" meta={`Thế hệ quyền ${s.epoch()} · ${pending ? pending + ' thiết bị chờ áp dụng' : 'trạng thái áp dụng theo thiết bị'}`} to="/f/sync" />
-      <Row icon={<FileText size={18} />} tileTone="sand" title="Sự kiện bảo mật" meta={last ? `${last.summary} · ${hhmm(last.ts)}` : 'Chưa có'} to="/f/security-log" />
-      <Row icon={<Shield size={18} />} tileTone={st.state === 'normal' ? undefined : 'rose'} title="Trạng thái an ninh" meta={`${SECURITY_STATE_LABEL[st.state]} · ${st.signals.length} tín hiệu`} to="/ops/incident" />
+      <Header title="Bảo mật Sentinel" sub="Nhà An, Trạng thái phạm vi của bạn" />
+      <Row icon={<Fingerprint size={18} />} title="Phiên và thiết bị tin cậy" meta={`1 phiên trên máy này, ${session.passkey?.kind === 'webauthn' ? 'passkey' : 'khóa thiết bị'}, từ ${hhmm(session.startedAt)}`} chevron={false} />
+      <Row icon={<ShieldCheck size={18} />} title="Quyền và thu hồi" meta={`Thế hệ quyền ${s.epoch()}, ${pending ? pending + ' thiết bị chờ áp dụng' : 'trạng thái áp dụng theo thiết bị'}`} to="/f/sync" />
+      <Row icon={<FileText size={18} />} tileTone="sand" title="Sự kiện bảo mật" meta={last ? `${last.summary}, ${hhmm(last.ts)}` : 'Chưa có'} to="/f/security-log" />
+      <Row icon={<Shield size={18} />} tileTone={st.state === 'normal' ? undefined : 'rose'} title="Trạng thái an ninh" meta={`${SECURITY_STATE_LABEL[st.state]}, ${st.signals.length} tín hiệu`} to="/ops/incident" />
       <div className="card tint">
         <div className="hstack"><KeyRound size={18} color="#244C3E" /><h3 style={{ margin: 0 }}>Tác vụ nhạy cảm</h3></div>
-        <p style={{ marginTop: 6 }}>Mở khóa cửa, thu hồi quyền, duyệt lời mời và phục hồi yêu cầu khóa phê duyệt trên thiết bị (ECDSA P-256, không xuất được). Dấu khóa: <span className="mono">{approvalPub().slice(0, 18)}…</span></p>
+        <p style={{ marginTop: 6 }}>Mở khóa cửa, thu hồi quyền, duyệt lời mời và phục hồi yêu cầu khóa phê duyệt trên thiết bị (ECDSA P-256, không xuất được). Dấu khóa: <span className="mono">{approvalPub().slice(0, 18)}...</span></p>
       </div>
       <div className="card">
         <h3>Chuỗi bằng chứng</h3>
@@ -226,10 +226,10 @@ export function FSecurityLog() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/sentinel" />
-      <Header title="Sự kiện bảo mật" sub="Nhà An · Nhật ký nối chuỗi băm" />
+      <Header title="Sự kiện bảo mật" sub="Nhà An, Nhật ký nối chuỗi băm" />
       {list.length === 0 && <div className="empty">Chưa có sự kiện.</div>}
       {list.map((e) => (
-        <Row key={e.id} icon={e.decision === 'deny' ? <Shield size={18} /> : <Check size={18} />} tileTone={e.severity === 'critical' ? 'rose' : e.severity === 'warning' ? 'sand' : undefined} title={e.summary} meta={`${hhmm(e.ts)} · ${e.id} · ${e.kind}${e.epoch ? ' · epoch ' + e.epoch : ''}`} chevron={false} />
+        <Row key={e.id} icon={e.decision === 'deny' ? <Shield size={18} /> : <Check size={18} />} tileTone={e.severity === 'critical' ? 'rose' : e.severity === 'warning' ? 'sand' : undefined} title={e.summary} meta={`${hhmm(e.ts)}, ${e.id}, ${e.kind}${e.epoch ? ', epoch ' + e.epoch : ''}`} chevron={false} />
       ))}
       <Link to="/f/sentinel" className="btn secondary">Về Bảo mật Sentinel</Link>
     </Phone>
@@ -257,7 +257,7 @@ export function FSettings() {
       { apiKey: key, model: prefs.claudeModel },
     );
     setTesting(false);
-    setTestResult(r.provider === 'claude' ? { ok: true, text: `${r.model} · ${r.ms} ms · ${r.draft.messages.map((m) => m.text).join(' | ')}` } : { ok: false, text: r.fellBack ?? 'Không gọi được Claude' });
+    setTestResult(r.provider === 'claude' ? { ok: true, text: `${r.model}, ${r.ms} ms, ${r.draft.messages.map((m) => m.text).join(' | ')}` } : { ok: false, text: r.fellBack ?? 'Không gọi được Claude' });
   };
   return (
     <Phone tabs>
@@ -267,14 +267,14 @@ export function FSettings() {
         <h3>Dùng với tư cách</h3>
         <p>Đổi tài khoản thành viên để thấy quyền khác nhau (thiết bị dùng chung trong nhà).</p>
         <select className="input" value={me.id} onChange={(e) => { actAs(e.target.value); toast(`Đang dùng với tư cách ${memberName(e.target.value)}.`); }}>
-          {members.filter((m) => m.mode === 'family').map((m) => <option key={m.id} value={m.id}>{m.name} · {roleName(m.role)}</option>)}
+          {members.filter((m) => m.mode === 'family').map((m) => <option key={m.id} value={m.id}>{m.name}, {roleName(m.role)}</option>)}
         </select>
       </div>
       <div className="card stack">
         <div className="hstack"><Sparkles size={18} color="#244C3E" /><h3 style={{ margin: 0, flex: 1 }}>GenAI bằng Claude (tùy chọn)</h3><Switch label="Bật Claude" checked={prefs.claudeEnabled} onChange={(v) => set((s) => void (s.prefs.claudeEnabled = v))} /></div>
         <p>Mặc định HeartOS soạn lời mời bằng mẫu trên thiết bị. Bật mục này để dùng Claude với khóa API của chính bạn. Khóa chỉ lưu trên thiết bị và được gửi thẳng tới api.anthropic.com; chỉ dữ kiện tối thiểu (dịp, khung giờ, cách xưng hô, ngôn ngữ) được gửi, không gửi lịch hay ký ức.</p>
         <Field label="Khóa API Anthropic">
-          <input className="input mono" type="password" autoComplete="off" placeholder="sk-ant-…" value={key} onChange={(e) => setKey(e.target.value)} onBlur={() => set((s) => void (s.prefs.claudeKey = key.trim()))} />
+          <input className="input mono" type="password" autoComplete="off" placeholder="sk-ant-..." value={key} onChange={(e) => setKey(e.target.value)} onBlur={() => set((s) => void (s.prefs.claudeKey = key.trim()))} />
         </Field>
         <Field label="Mô hình">
           <select className="input" value={prefs.claudeModel} onChange={(e) => set((s) => void (s.prefs.claudeModel = e.target.value))}>
@@ -284,7 +284,7 @@ export function FSettings() {
           </select>
         </Field>
         <div className="hstack">
-          <button className="btn sm secondary" disabled={!key.trim() || testing} onClick={() => { set((s) => void (s.prefs.claudeKey = key.trim())); void test(); }}>{testing ? 'Đang thử…' : 'Thử soạn một lời mời'}</button>
+          <button className="btn sm secondary" disabled={!key.trim() || testing} onClick={() => { set((s) => void (s.prefs.claudeKey = key.trim())); void test(); }}>{testing ? 'Đang thử...' : 'Thử soạn một lời mời'}</button>
           {prefs.claudeKey && <button className="btn sm ghost" onClick={() => { set((s) => { s.prefs.claudeKey = ''; s.prefs.claudeEnabled = false; }); setKey(''); }}><Trash2 size={14} /> Xóa khóa</button>}
         </div>
         {testResult && <p className="small" style={{ color: testResult.ok ? '#244C3E' : '#9E3830' }}>{testResult.ok ? 'Claude trả lời: ' : 'Chưa dùng được Claude: '}{testResult.text}</p>}
@@ -312,7 +312,7 @@ export function FSettings() {
       <Row icon={<Sun size={18} />} title="Chữ lớn hơn" chevron={false} right={<Switch label="Chữ lớn hơn" checked={prefs.largeText} onChange={(v) => set((s) => void (s.prefs.largeText = v))} />} />
       <Row icon={<Languages size={18} />} title="Nút đọc to ở tiêu đề" chevron={false} right={<Switch label="Nút đọc to" checked={prefs.readAloud} onChange={(v) => set((s) => void (s.prefs.readAloud = v))} />} />
       <div className="card flat">
-        <KV items={[['Phiên bản', 'HeartOS 1.0.0'], ['Dữ liệu', 'Mã hóa AES-256-GCM trên thiết bị, khóa không xuất được'], ['Font', 'Inter · SIL OFL 1.1'], ['Đăng nhập', ago(useApp.getState().session.startedAt)]]} />
+        <KV items={[['Phiên bản', 'HeartOS 1.0.0'], ['Dữ liệu', 'Mã hóa AES-256-GCM trên thiết bị, khóa không xuất được'], ['Font', 'Inter, SIL OFL 1.1'], ['Đăng nhập', ago(useApp.getState().session.startedAt)]]} />
       </div>
       <button className="btn ghost" onClick={() => setConfirmReset(true)}><RefreshCw size={16} /> Đặt lại dữ liệu mẫu</button>
       <Sheet open={confirmReset} onClose={() => setConfirmReset(false)} title="Đặt lại dữ liệu mẫu?">

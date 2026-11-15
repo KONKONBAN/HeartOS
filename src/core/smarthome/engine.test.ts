@@ -18,10 +18,17 @@ function run(e: HomeEngine, c: ReturnType<typeof clock>, ms: number, step = 250)
 const AN = { id: 'u-an', name: 'An', role: 'admin' as const };
 const MINH = { id: 'u-minh', name: 'Minh', role: 'child' as const };
 
+
+function demo(now: () => number) {
+  const e = new HomeEngine(memoryJsonStore(), now);
+  e.reset(false);
+  return e;
+}
+
 describe('HomeEngine commands', () => {
   it('only changes device state after device ack', () => {
     const c = clock();
-    const e = new HomeEngine(memoryJsonStore(), c.now);
+    const e = demo(c.now);
     const cmd = e.sendCommand('light-living', 'set', { on: false }, AN);
     expect(cmd.status).toBe('queued');
     expect(e.device('light-living')!.state.on).toBe(true);
@@ -35,7 +42,7 @@ describe('HomeEngine commands', () => {
 
   it('keeps offline device commands pending, then expires', () => {
     const c = clock();
-    const e = new HomeEngine(memoryJsonStore(), c.now);
+    const e = demo(c.now);
     e.sendCommand('plug-hall', 'toggle', {}, AN);
     run(e, c, 7000);
     expect(e.s.commands[0].status).toBe('awaiting');
@@ -46,7 +53,7 @@ describe('HomeEngine commands', () => {
 
   it('enforces household roles and lock approval', () => {
     const c = clock();
-    const e = new HomeEngine(memoryJsonStore(), c.now);
+    const e = demo(c.now);
     expect(e.sendCommand('valve-main', 'set', { open: false }, MINH).status).toBe('rejected');
     expect(e.sendCommand('lock-door', 'set', { locked: false }, AN).status).toBe('rejected');
     expect(e.sendCommand('lock-door', 'set', { locked: false }, AN, 'user', 'approval-1').status).toBe('queued');
@@ -56,7 +63,7 @@ describe('HomeEngine commands', () => {
 describe('Guardian', () => {
   it('fusion of radar + thermal opens a verifying fall case', () => {
     const c = clock();
-    const e = new HomeEngine(memoryJsonStore(), c.now);
+    const e = demo(c.now);
     e.simulate('fall_hall');
     run(e, c, 25_000, 500);
     const inc = e.s.incidents.find((i) => i.kind === 'fall');
@@ -67,9 +74,9 @@ describe('Guardian', () => {
     expect(e.incident(inc!.id)!.priority).toBe('P1');
   });
 
-  it('SOS goes local → remote → helper', () => {
+  it('SOS goes local, remote, then helper', () => {
     const c = clock();
-    const e = new HomeEngine(memoryJsonStore(), c.now);
+    const e = demo(c.now);
     const inc = e.sos({ id: 'u-lan', name: 'Bà Lan', role: 'member' });
     expect(inc.id).toBe('HS-042');
     expect(inc.steps.local.state).toBe('done');
@@ -81,7 +88,7 @@ describe('Guardian', () => {
 
   it('SOS while offline marks remote channel unknown', () => {
     const c = clock();
-    const e = new HomeEngine(memoryJsonStore(), c.now);
+    const e = demo(c.now);
     e.simulate('internet_lost');
     const inc = e.sos({ id: 'u-lan', name: 'Bà Lan', role: 'member' });
     run(e, c, 3000);
@@ -101,9 +108,9 @@ describe('Guardian', () => {
 });
 
 describe('Power', () => {
-  it('ATS: battery → generator → mains', () => {
+  it('ATS: battery, generator, then mains', () => {
     const c = clock();
-    const e = new HomeEngine(memoryJsonStore(), c.now);
+    const e = demo(c.now);
     e.simulate('mains_lost');
     expect(e.s.power.ats).toBe('battery');
     run(e, c, 9000, 1000);

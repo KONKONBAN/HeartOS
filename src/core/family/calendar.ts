@@ -20,7 +20,7 @@ export const toMin = (hhmm: string) => {
 
 export const fromMin = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-export const fmtSlot = (s: Slot) => `${fromMin(s.start)}–${fromMin(s.end)}`;
+export const fmtSlot = (s: Slot) => `${fromMin(s.start)}-${fromMin(s.end)}`;
 
 function intersectTwo(a: Slot[], b: Slot[]): Slot[] {
   const out: Slot[] = [];

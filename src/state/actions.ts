@@ -2,8 +2,8 @@ import { commonSlots, fmtSlot, type MemberWindows, type Slot } from '../core/fam
 import { draftInvitation, parseIntent, type InviteFacts } from '../core/family/genai';
 import { buf, fromB64, randomId, toB64 } from '../core/sentinel/encoding';
 import type { ReadResult, TraceStep } from '../core/sentinel/types';
-import { blobs, getHome, getSentinel, initServices, signApproval } from './services';
-import { getApp, memberName, namesOf, seed, useApp } from './store';
+import { blobs, getHome, getSentinel, initServices, signApproval, syncDirectory } from './services';
+import { adultIds, emptyState, getApp, memberName, namesOf, seed, useApp } from './store';
 import type { Invitation, Member, Memory } from './types';
 
 const set = (fn: Parameters<ReturnType<typeof useApp.getState>['set']>[0]) => getApp().set(fn);
@@ -17,6 +17,7 @@ export async function bootstrap() {
   const app = getApp();
   await initServices(app.members);
   const s = getSentinel();
+  if (s.vault.list().some((o) => o.meta.tenant !== s.tenant)) await s.resetAll();
   const needsSeed = s.vault.list().length === 0 || s.H.freshlyCreated;
   if (needsSeed) {
     if (s.H.freshlyCreated && s.vault.list().length) {
@@ -28,14 +29,15 @@ export async function bootstrap() {
     }
     for (const m of app.memories) {
       const t = MEMORY_TEXT[m.id] ?? { transcript: '', caption: '' };
-      await s.protect({ subject: m.narrator, objectId: m.objectId, type: 'memory', label: `Ký ức · ${m.title}`, data: { title: m.title, transcript: t.transcript, caption: t.caption, audioKey: '' }, viewers: m.viewers, purposes: ['memory.view'] });
+      await s.protect({ subject: m.narrator, objectId: m.objectId, type: 'memory', label: `Ký ức, ${m.title}`, data: { title: m.title, transcript: t.transcript, caption: t.caption, audioKey: '' }, viewers: m.viewers, purposes: ['memory.view'] });
     }
     for (const c of app.contributions) {
       await s.protect({ subject: c.by, objectId: c.objectId, type: 'fund.entry', label: `Khoản tự ghi của ${memberName(c.by)}`, data: { amount: c.amount, note: 'Khoản tự ghi', by: c.by }, viewers: c.visibleTo.filter((v) => v !== c.by), purposes: ['fund.view'] });
     }
-    await s.protect({ subject: 'u-lan', objectId: 'loc-u-lan', type: 'location', label: 'Vị trí hỗ trợ của bà Lan', data: { place: 'Nhà An · phòng khách', lat: 10.7769, lng: 106.7009, note: 'Chỉ dùng khi bà gửi SOS' }, viewers: ['u-an', 'u-carer'], purposes: ['support.location'] });
-    await s.protect({ subject: 'u-an', objectId: 'cam-living', type: 'camera.policy', label: 'Chính sách xem camera phòng khách', data: { stream: 'rtsp://hub.local/living', masks: 'sofa, cửa phòng ngủ', maxSessionSec: 240 }, viewers: ['u-carer'], purposes: ['camera.view'] });
-    if (!s.recovery.list().length) await s.checkpoint('u-an');
+    if (app.household?.demo) await s.protect({ subject: 'u-lan', objectId: 'loc-u-lan', type: 'location', label: 'Vị trí hỗ trợ của bà Lan', data: { place: 'Nhà An, phòng khách', lat: 10.7769, lng: 106.7009, note: 'Chỉ dùng khi bà gửi SOS' }, viewers: ['u-an', 'u-carer'], purposes: ['support.location'] });
+    if (app.household?.demo) await s.protect({ subject: 'u-an', objectId: 'cam-living', type: 'camera.policy', label: 'Chính sách xem camera phòng khách', data: { stream: 'rtsp://hub.local/living', masks: 'sofa, cửa phòng ngủ', maxSessionSec: 240 }, viewers: ['u-carer'], purposes: ['camera.view'] });
+    const admin = app.members.find((m) => m.role === 'admin');
+    if (admin && !s.recovery.list().length) await s.checkpoint(admin.id);
   }
 }
 
@@ -95,7 +97,7 @@ export async function createInvitation(p: { hostId: string; occasion: string; re
     status: 'draft',
     createdAt: Date.now(),
     receipts: Object.fromEntries(p.recipients.map((r) => [r, 'pending'])),
-    history: [{ at: Date.now(), text: `Nhịp Nhà tìm thấy ${fmtSlot(rhythm.slot)} · ${result.provider === 'claude' ? 'Claude' : 'mẫu trên thiết bị'} soạn bản nháp` }],
+    history: [{ at: Date.now(), text: `Nhịp Nhà tìm thấy ${fmtSlot(rhythm.slot)}, ${result.provider === 'claude' ? 'Claude' : 'mẫu trên thiết bị'} soạn bản nháp` }],
   };
   set((s) => {
     s.invitations.unshift(inv);
@@ -161,7 +163,7 @@ export async function releaseInvitation(id: string): Promise<{ ok: boolean; reas
     const x = st.invitations.find((i) => i.id === id)!;
     x.status = 'delivered';
     x.deliveredAt = Date.now();
-    x.history.push({ at: Date.now(), text: 'Đã chuyển giao tới người nhận · chờ biên nhận' });
+    x.history.push({ at: Date.now(), text: 'Đã chuyển giao tới người nhận, chờ biên nhận' });
   });
   await s.log({ kind: 'note', actor: 'A', summary: `Phát hành lời mời "${inv.occasion}" sau khi kiểm lại quyền (epoch ${s.epoch()})`, decision: 'allow' });
   return { ok: true };
@@ -304,7 +306,7 @@ export async function addMemory(p: { by: string; title: string; kind: Memory['ki
     audioKey = sealed.rawKey;
   }
   const viewers = p.share ? p.viewers : [];
-  const res = await getSentinel().protect({ subject: p.by, objectId, type: 'memory', label: `Ký ức · ${p.title}`, data: { title: p.title, transcript: p.derivedAllowed ? p.transcript : '', caption: p.caption, audioKey }, viewers, purposes: ['memory.view'] });
+  const res = await getSentinel().protect({ subject: p.by, objectId, type: 'memory', label: `Ký ức, ${p.title}`, data: { title: p.title, transcript: p.derivedAllowed ? p.transcript : '', caption: p.caption, audioKey }, viewers, purposes: ['memory.view'] });
   if (!res.ok) return { ok: false, error: res.error };
   const mem: Memory = { id, title: p.title, kind: p.kind, narrator: p.by, createdAt: Date.now(), durationSec: p.durationSec, lang: 'vi', image: p.image, audioKey: audioRef, objectId, viewers, retention: p.retention, derivedAllowed: p.derivedAllowed, ritualId: p.ritualId, shared: p.share };
   set((s) => {
@@ -391,13 +393,13 @@ export async function changeRole(memberId: string, role: Member['role'], by: str
   const d = s.directory.get(memberId);
   if (d) s.directory.upsert({ ...d, role });
   s.R.bumpEpoch(s.tenant);
-  await s.log({ kind: 'policy.change', actor: 'G', severity: 'notice', summary: `${memberName(by)} đổi vai trò ${memberName(memberId)} → ${role}`, epoch: s.epoch() });
+  await s.log({ kind: 'policy.change', actor: 'G', severity: 'notice', summary: `${memberName(by)} đổi vai trò ${memberName(memberId)} thành ${role}`, epoch: s.epoch() });
   return { ok: true };
 }
 
 export function newInviteCode() {
   const part = () => randomId('', 2).slice(1).toUpperCase();
-  return `NHA-AN-${part()}${part()}`;
+  return `HEART-${part()}${part()}`;
 }
 
 export async function assistantSend(text: string, by: string) {
@@ -410,7 +412,7 @@ export async function assistantSend(text: string, by: string) {
   let action: { label: string; to: string } | undefined;
   if (intent.kind === 'invite') {
     const app = getApp();
-    const recips = app.members.filter((m) => m.id !== by && (m.id === 'u-lan' || m.id === 'u-linh')).map((m) => m.id);
+    const recips = adultIds(app.members, by);
     const r = await createInvitation({ hostId: by, occasion: intent.occasion, recipients: recips });
     if (r.ok) {
       reply = `Đã lấy giờ rảnh được chia sẻ. Xem lời mời lúc ${r.rhythm.slot ? fmtSlot(r.rhythm.slot) : ''} và kiểm tra ${recips.length} người nhận.${r.rhythm.denied.length ? ` Không đọc được lịch của ${namesOf(r.rhythm.denied.map((d) => d.memberId))}.` : ''}`;
@@ -459,39 +461,132 @@ export async function resetEverything() {
 
 export const EXPO_EMAIL = 'expo@heartos.local';
 
-export function startExpo() {
-  set((s) => {
-    s.session.signedIn = true;
-    s.session.expo = true;
-    s.session.email = EXPO_EMAIL;
-    s.session.householdId = 'nha-an';
-    s.session.mode = null;
-    s.session.actingAs = 'u-an';
-    s.session.startedAt = Date.now();
+const COLORS = ['#244C3E', '#753F30', '#6E4E20', '#3B6A8A', '#574F47', '#7A4A6E', '#2F5D50'];
+
+async function rebuildServices(demo: boolean) {
+  const app = getApp();
+  syncDirectory(app.members);
+  await getSentinel().resetAll();
+  getHome().reset(!demo);
+  await wipeRecordings();
+  await bootstrap();
+}
+
+export async function startExpo() {
+  const { claudeEnabled, claudeKey, claudeModel } = getApp().prefs;
+  const data = seed();
+  useApp.setState({
+    ...data,
+    prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel },
+    session: { ...data.session, signedIn: true, expo: true, email: EXPO_EMAIL, householdId: 'nha-an', mode: null, actingAs: 'u-an', startedAt: Date.now() },
   });
-  void getSentinel().log({ kind: 'session', actor: 'Client', summary: 'Bắt đầu phiên trải nghiệm Expo' });
+  await rebuildServices(true);
+  await getSentinel().log({ kind: 'session', actor: 'Client', summary: 'Bắt đầu phiên trải nghiệm Expo' });
 }
 
 export async function endExpo() {
   const { claudeEnabled, claudeKey, claudeModel } = getApp().prefs;
-  const fresh = seed().session;
-  getApp().resetAll();
-  set((s) => {
-    s.prefs.claudeEnabled = claudeEnabled;
-    s.prefs.claudeKey = claudeKey;
-    s.prefs.claudeModel = claudeModel;
-    s.session.signedIn = false;
-    s.session.expo = false;
-    s.session.email = fresh.email;
-    s.session.householdId = null;
-    s.session.mode = null;
-    s.session.actingAs = fresh.actingAs;
+  const data = emptyState();
+  useApp.setState({ ...data, prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel } });
+  await rebuildServices(false);
+  await getSentinel().log({ kind: 'session', actor: 'Client', summary: 'Kết thúc phiên Expo, đã xóa dữ liệu trải nghiệm' });
+}
+
+export interface NewMember {
+  name: string;
+  relation: string;
+  role: Member['role'];
+  phone: string;
+  lang: Member['lang'];
+  address: string;
+  selfRef: string;
+  mode?: Member['mode'];
+}
+
+function makeMember(p: NewMember, index: number): Member {
+  const name = p.name.trim();
+  return {
+    id: randomId('m', 6),
+    name,
+    short: (name.split(/\s+/).pop() ?? name).charAt(0).toUpperCase(),
+    relation: p.relation.trim(),
+    role: p.role,
+    mode: p.mode ?? 'family',
+    lang: p.lang,
+    phone: p.phone.trim(),
+    color: COLORS[index % COLORS.length],
+    address: p.address.trim() || 'bạn',
+    selfRef: p.selfRef.trim() || 'tôi',
+  };
+}
+
+export async function prepareJoin(household: { id: string; name: string; tz: string }, memberId: string) {
+  const prev = getApp();
+  const { claudeEnabled, claudeKey, claudeModel } = prev.prefs;
+  const data = emptyState({ ...prev.session, householdId: household.id, actingAs: memberId, mode: null, expo: false, signedIn: true });
+  useApp.setState({ ...data, prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel }, household: { ...household, demo: false, createdAt: Date.now() } });
+  await rebuildServices(false);
+}
+
+export async function createHousehold(p: { name: string; tz: string; me: NewMember }) {
+  const prev = getApp();
+  const { claudeEnabled, claudeKey, claudeModel } = prev.prefs;
+  const me = makeMember({ ...p.me, role: 'admin' }, 0);
+  const data = emptyState({ ...prev.session, householdId: null, mode: null, expo: false });
+  const id = randomId('h', 8);
+  useApp.setState({
+    ...data,
+    prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel },
+    session: { ...data.session, signedIn: true, householdId: id, actingAs: me.id, displayName: me.name },
+    household: { id, name: p.name.trim(), demo: false, createdAt: Date.now(), tz: p.tz },
+    members: [me],
+    calendars: [{ memberId: me.id, windows: [], viewers: [], shared: false, quietFrom: '21:00', version: 1 }],
   });
-  await getSentinel().resetAll();
-  getHome().reset();
-  await wipeRecordings();
-  await bootstrap();
-  await getSentinel().log({ kind: 'session', actor: 'Client', summary: 'Kết thúc phiên Expo, đã đặt lại dữ liệu mẫu' });
+  await rebuildServices(false);
+  await getSentinel().log({ kind: 'session', actor: 'Client', summary: `Tạo hộ ${p.name.trim()}, ${me.name} là quản trị` });
+  return me;
+}
+
+export async function addMember(p: NewMember, by: string) {
+  const app = getApp();
+  const m = makeMember(p, app.members.length);
+  set((s) => {
+    s.members.push(m);
+    s.calendars.push({ memberId: m.id, windows: [], viewers: [], shared: false, quietFrom: '21:00', version: 1 });
+  });
+  syncDirectory(getApp().members);
+  await getSentinel().protect({ subject: m.id, objectId: `cal-${m.id}`, type: 'calendar.freebusy', label: `Lịch rảnh/bận của ${m.name}`, data: { windows: [], quietFrom: '21:00', tz: 'GMT+7' }, viewers: [], purposes: ['rhythm.intersect'] });
+  await getSentinel().log({ kind: 'policy.change', actor: 'G', severity: 'notice', summary: `${memberName(by)} thêm thành viên ${m.name} (${m.relation || m.role})` });
+  return m;
+}
+
+export function updateMember(id: string, patch: Partial<Omit<Member, 'id' | 'role'>>) {
+  set((s) => {
+    const m = s.members.find((x) => x.id === id);
+    if (m) Object.assign(m, patch);
+  });
+  syncDirectory(getApp().members);
+}
+
+export async function removeMember(id: string, by: string) {
+  const app = getApp();
+  const m = app.members.find((x) => x.id === id);
+  if (!m || m.role === 'admin' && app.members.filter((x) => x.role === 'admin').length < 2) return false;
+  set((s) => {
+    s.members = s.members.filter((x) => x.id !== id);
+    s.calendars = s.calendars.filter((c) => c.memberId !== id);
+    for (const c of s.calendars) c.viewers = c.viewers.filter((v) => v !== id);
+  });
+  syncDirectory(getApp().members);
+  getSentinel().R.bumpEpoch(getSentinel().tenant);
+  await getSentinel().log({ kind: 'policy.revoke', actor: 'G', severity: 'notice', summary: `${memberName(by)} gỡ ${m.name} khỏi hộ, thu hồi mọi quyền` });
+  return true;
+}
+
+export function setHospitals(list: { id?: string; name: string; address: string; phone: string; note: string }[]) {
+  set((s) => {
+    s.hospitals = list.map((h) => ({ ...h, id: h.id ?? randomId('hos', 4) }));
+  });
 }
 
 export async function setCalendarShared(memberId: string, shared: boolean) {

@@ -57,23 +57,23 @@ export function FHome() {
       {draft || queued ? (
         <Link to={draft ? `/f/draft/${draft.id}` : `/f/queued/${queued!.id}`} className="hero" style={{ textDecoration: 'none' }}>
           <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
-            <span className="badge">GỢI Ý NHỊP NHÀ · {fmtSlot((draft ?? queued)!.slot).split('–')[0]}</span>
+            <span className="badge">GỢI Ý NHỊP NHÀ, {fmtSlot((draft ?? queued)!.slot).split('-')[0]}</span>
           </div>
           <div className="body">
             <h2>{(draft ?? queued)!.occasion}</h2>
-            <p>{draft ? 'Bản nháp GenAI đang chờ bạn duyệt.' : queued!.status === 'blocked' ? 'Cần duyệt lại, quyền chia sẻ đã thay đổi.' : 'Đã duyệt · đang chờ gửi.'}</p>
+            <p>{draft ? 'Bản nháp GenAI đang chờ bạn duyệt.' : queued!.status === 'blocked' ? 'Cần duyệt lại, quyền chia sẻ đã thay đổi.' : 'Đã duyệt, đang chờ gửi.'}</p>
             <div className="cta">{draft ? 'Xem bản nháp' : 'Xem trạng thái'} <span>›</span></div>
           </div>
         </Link>
       ) : (
         <button className="hero" onClick={startDraft} disabled={busy || !rhythm?.slot}>
           <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
-            <span className="badge">GỢI Ý NHỊP NHÀ{rhythm?.slot ? ' · ' + fmtSlot(rhythm.slot).split('–')[0] : ''}</span>
+            <span className="badge">GỢI Ý NHỊP NHÀ{rhythm?.slot ? ', ' + fmtSlot(rhythm.slot).split('-')[0] : ''}</span>
           </div>
           <div className="body">
             <h2>Bữa cơm cùng nhà</h2>
-            <p>{!rhythm ? 'Đang đọc lịch rảnh được chia sẻ…' : rhythm.slot ? `Tìm thấy ${Math.round((rhythm.slot.end - rhythm.slot.start) / 60)} giờ rảnh chung${rhythm.denied.length ? ` · thiếu lịch của ${namesOf(rhythm.denied.map((d) => d.memberId))}` : ''}.` : rhythm.reason}</p>
-            <div className="cta">{busy ? 'GenAI đang soạn…' : 'Xem bản nháp'} <span>›</span></div>
+            <p>{!rhythm ? 'Đang đọc lịch rảnh được chia sẻ...' : rhythm.slot ? `Tìm thấy ${Math.round((rhythm.slot.end - rhythm.slot.start) / 60)} giờ rảnh chung${rhythm.denied.length ? `, thiếu lịch của ${namesOf(rhythm.denied.map((d) => d.memberId))}` : ''}.` : rhythm.reason}</p>
+            <div className="cta">{busy ? 'GenAI đang soạn...' : 'Xem bản nháp'} <span>›</span></div>
           </div>
         </button>
       )}
@@ -86,8 +86,8 @@ export function FHome() {
         </Link>
       </div>
       <Row icon={<ShieldCheck size={18} />} title="An toàn tại nhà" meta={open.length ? `${open.length} ca đang mở` : `${staleRooms.length} vùng cần kiểm tra`} badge={open.length || staleRooms.length ? <Badge tone={open.some((i) => i.priority === 'P1') ? 'danger' : undefined}>Có cập nhật</Badge> : undefined} to="/f/safe" />
-      <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Nhà thông minh" meta={`${lightsOn} đèn đang bật · ${home.s.mode === 'home' ? 'Ở nhà' : home.s.mode === 'away' ? 'Vắng nhà' : 'Ban đêm'}`} to="/f/smart" />
-      {next && <Row icon={<Heart size={18} />} tileTone="peach" title="Nghi thức gia đình" meta={`${next.r.name} · ${fmtDate(next.at)}`} to="/f/rituals" />}
+      <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Nhà thông minh" meta={`${lightsOn} đèn đang bật, ${home.s.mode === 'home' ? 'Ở nhà' : home.s.mode === 'away' ? 'Vắng nhà' : 'Ban đêm'}`} to="/f/smart" />
+      {next && <Row icon={<Heart size={18} />} tileTone="peach" title="Nghi thức gia đình" meta={`${next.r.name}, ${fmtDate(next.at)}`} to="/f/rituals" />}
       <Row icon={<PiggyBank size={18} />} tileTone="sand" title="Quỹ Nếp Nhà" meta={goals[0]?.name} to="/f/fund" />
     </Phone>
   );
@@ -102,7 +102,7 @@ export function FNotices() {
       <Header title="Thông báo" sub="Từ hub tại nhà, Guardian và luật tự động." />
       {home.s.notices.length === 0 && <div className="empty">Chưa có thông báo.</div>}
       {home.s.notices.map((n) => (
-        <Row key={n.id} icon={<Bell size={18} />} tileTone={n.severity === 'critical' ? 'rose' : n.severity === 'warning' ? 'sand' : undefined} title={n.title} meta={`${n.body} · ${ago(n.at)}`} badge={!n.read ? <Badge tone="warm">Mới</Badge> : undefined} onClick={n.link ? () => nav(n.link!) : undefined} />
+        <Row key={n.id} icon={<Bell size={18} />} tileTone={n.severity === 'critical' ? 'rose' : n.severity === 'warning' ? 'sand' : undefined} title={n.title} meta={`${n.body}, ${ago(n.at)}`} badge={!n.read ? <Badge tone="warm">Mới</Badge> : undefined} onClick={n.link ? () => nav(n.link!) : undefined} />
       ))}
     </Phone>
   );
@@ -128,7 +128,7 @@ export function FFund() {
         <h3>{goal.name}</h3>
         <div style={{ fontSize: 22, fontWeight: 800, margin: '4px 0 8px' }}>{vnd(total)} / {vnd(goal.target)}</div>
         <div className="progress"><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
-        <p style={{ marginTop: 8, color: '#6E4E20' }}>Đã tự ghi {pct}% mục tiêu · Người quản quỹ: {memberName(goal.managerId)}</p>
+        <p style={{ marginTop: 8, color: '#6E4E20' }}>Đã tự ghi {pct}% mục tiêu, Người quản quỹ: {memberName(goal.managerId)}</p>
       </div>
       <div className="section-title">Sổ theo dõi</div>
       {contributions
@@ -138,8 +138,8 @@ export function FFund() {
             key={c.id}
             icon={<PiggyBank size={18} />}
             tileTone="sand"
-            title={`${memberName(c.by)} · Khoản tự ghi`}
-            meta={`${revealed[c.id] ?? 'Chi tiết được Sentinel bảo vệ'} · ${hhmm(c.at)} ${new Date(c.at).toLocaleDateString('vi-VN')}`}
+            title={`${memberName(c.by)}, Khoản tự ghi`}
+            meta={`${revealed[c.id] ?? 'Chi tiết được Sentinel bảo vệ'}, ${hhmm(c.at)} ${new Date(c.at).toLocaleDateString('vi-VN')}`}
             badge={<Badge tone="line">Xem: {namesOf(c.visibleTo)}</Badge>}
             right={!revealed[c.id] && <button className="btn xs soft" onClick={() => void reveal(c.id)}><Eye size={14} /> Mở</button>}
             chevron={false}

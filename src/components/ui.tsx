@@ -35,7 +35,7 @@ export function Back({ to, label = 'Quay lại' }: { to?: string; label?: string
 export function Sim({ sos, label }: { sos?: boolean; label?: string }) {
   const expo = useApp((s) => !!s.session.expo && s.session.signedIn);
   const text = label ?? (sos ? 'MÔ PHỎNG SOS' : 'MÔ PHỎNG');
-  return <span className={'sim' + (sos ? ' sos' : '')} title={expo ? 'Phiên trải nghiệm Expo, dữ liệu được đặt lại khi kết thúc' : 'Thiết bị và kênh từ xa được mô phỏng trên hub HeartOS'}>{expo && !label ? `EXPO · ${text}` : text}</span>;
+  return <span className={'sim' + (sos ? ' sos' : '')} title={expo ? 'Phiên trải nghiệm Expo, dữ liệu được đặt lại khi kết thúc' : 'Thiết bị và kênh từ xa được mô phỏng trên hub HeartOS'}>{expo && !label ? `EXPO, ${text}` : text}</span>;
 }
 
 export function TopBar({ back, backTo, right, brandTo }: { back?: boolean; backTo?: string; right?: ReactNode; brandTo?: string }) {
