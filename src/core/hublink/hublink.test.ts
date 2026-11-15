@@ -10,7 +10,7 @@ const snap = (epoch: number): DeviceSnapshot => ({
   sentinel: {
     tenant: 'nha-an',
     epoch,
-    security: { state: 'normal', source: 'healthy', exportBlocked: false, restricted: [], signals: 0 },
+    security: { state: 'normal', exportBlocked: false, restricted: [], signals: 0 },
     R: { tokens: 1, capacity: 1, rate: 1, quotaRemaining: 1, quota: 1, replays: 0, denials: 0, releasedBytes: 0, locked: false, outstanding: 0 },
     hsm: { activeVersion: 1, versions: 1, generate: 0, release: 0, refused: 0 },
     ve: { name: 've', version: '1', measurement: 'm', accepted: true, tcb: 7 },

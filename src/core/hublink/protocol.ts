@@ -111,7 +111,7 @@ export interface DeviceSnapshot {
   sentinel: {
     tenant: string;
     epoch: number;
-    security: { state: string; source: string; exportBlocked: boolean; restricted: string[]; signals: number };
+    security: { state: string; exportBlocked: boolean; restricted: string[]; signals: number };
     R: { tokens: number; capacity: number; rate: number; quotaRemaining: number; quota: number; replays: number; denials: number; releasedBytes: number; locked: boolean; outstanding: number };
     hsm: { activeVersion: number; versions: number; generate: number; release: number; refused: number };
     ve: { name: string; version: string; measurement: string; accepted: boolean; tcb: number };

@@ -9,7 +9,6 @@ import { Hsm } from './hsm';
 import { IncidentMachine } from './incident';
 import { Journal, type JournalInput } from './journal';
 import { RecoveryVault } from './recovery';
-import { changeFirmware, defaultSources, healthTest, sampleStream, tryOpenGate, type EntropySource, type StreamMode } from './source';
 import { StateService } from './state';
 import type { DirectoryEntry, ObjectMeta, Operation, ReadResult, StoredObject, TraceStep } from './types';
 import { CoreVault } from './vault';
@@ -64,7 +63,6 @@ export class Sentinel {
   vault!: CoreVault;
   recovery!: RecoveryVault;
   incident!: IncidentMachine;
-  sources: EntropySource[] = [];
   private client!: { priv: CryptoKey; pub: string; thumb: string };
   private listeners = new Set<() => void>();
   private ver = 0;
@@ -107,7 +105,7 @@ export class Sentinel {
     const kp = await genEcdhKey();
     const pub = await exportPub(kp.publicKey);
     this.client = { priv: kp.privateKey, pub, thumb: await thumbprint(pub) };
-    this.sources = json.get<EntropySource[]>(this.k('sentinel.sources')) ?? defaultSources();
+    json.del(this.k('sentinel.sources'));
     for (const sub of [this.journal, this.R, this.vault, this.recovery, this.incident]) sub.subscribe(() => this.bump());
     await this.log({ kind: 'session', actor: 'A', summary: `Sentinel khởi động · epoch ${this.R.epoch(this.tenant)} · KEK v${this.H.status(this.tenant).activeVersion}`, epoch: this.R.epoch(this.tenant) });
   }
@@ -373,55 +371,14 @@ export class Sentinel {
     return r;
   }
 
-  private saveSources() {
-    this.opts.json.set(this.k('sentinel.sources'), this.sources);
-    this.bump();
-  }
-
-  async runHealth(sourceId: string, mode: StreamMode) {
-    const src = this.sources.find((s) => s.id === sourceId);
-    if (!src) return undefined;
-    const rep = healthTest(sampleStream(mode), src.assumedHPerSample, mode, this.now());
-    src.lastHealth = rep;
-    if (!rep.ok && src.kind === 'research') src.status = src.status === 'approved' ? 'degraded' : src.status === 'closed' ? 'closed' : 'degraded';
-    const anyBad = this.sources.some((s) => s.lastHealth && !s.lastHealth.ok);
-    this.incident.setSource(anyBad ? 'degraded' : 'healthy');
-    this.saveSources();
-    await this.log({ kind: 'source.health', actor: 'R', severity: rep.ok ? 'info' : 'warning', summary: `Kiểm tra sức khỏe ${src.name}: ${rep.ok ? 'đạt' : 'lỗi, đóng nhánh, không phải tín hiệu xâm nhập'}`, data: { mode, rct: rep.rct.maxRun, apt: rep.apt.maxCount, dup: rep.replay.duplicateBlocks } });
-    return rep;
-  }
-
-  updateProfile(sourceId: string, patch: Partial<EntropySource>) {
-    this.sources = this.sources.map((s) => (s.id === sourceId ? { ...s, ...patch, profile: { ...s.profile, ...(patch.profile ?? {}) } } : s));
-    this.saveSources();
-  }
-
-  setFirmware(sourceId: string, fw: string) {
-    this.sources = this.sources.map((s) => (s.id === sourceId ? changeFirmware(s, fw) : s));
-    this.saveSources();
-  }
-
-  async openSourceGate(sourceId: string, by: { id: string; human: boolean; isAI?: boolean }) {
-    const src = this.sources.find((s) => s.id === sourceId);
-    if (!src) return { ok: false as const, reasons: ['Không có nguồn'] };
-    const r = tryOpenGate(src, by, this.now());
-    if (r.ok) {
-      this.sources = this.sources.map((s) => (s.id === sourceId ? r.source : s));
-      this.saveSources();
-    }
-    await this.log({ kind: 'source.gate', actor: by.isAI ? 'AI' : 'Human', severity: r.ok ? 'notice' : 'info', summary: `${r.ok ? 'Mở' : 'Giữ đóng'} cổng nguồn ${src.name}`, decision: r.ok ? 'allow' : 'deny', data: { reasons: r.ok ? '' : r.reasons.join(' | ') } });
-    return r;
-  }
-
   async resetAll() {
     this.journal.clear();
     this.R.reset();
     this.vault.replaceAll([]);
     this.recovery.clear();
     this.incident.reset();
-    this.sources = defaultSources();
-    this.saveSources();
     await this.H.rotate(this.tenant);
+    this.bump();
   }
 
   clientThumb() {

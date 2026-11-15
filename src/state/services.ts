@@ -4,12 +4,16 @@ import { exportPub, genSigningKey, signObject, verifyObject } from '../core/sent
 import { Sentinel } from '../core/sentinel/sentinel';
 import type { DirectoryEntry } from '../core/sentinel/types';
 import { HomeEngine } from '../core/smarthome/engine';
-import { indexedObjectStore, localJsonStore, type ObjectStore } from '../core/storage';
+import { encryptedJsonStore, openAtRest, type AtRest } from '../core/atrest';
+import { indexedObjectStore, memoryJsonStore, type JsonStore, type ObjectStore } from '../core/storage';
 
 export const TENANT = 'nha-an';
 
-export const json = localJsonStore('heartos:');
 export const blobs: ObjectStore = indexedObjectStore('heartos', 'objects');
+export let json: JsonStore = memoryJsonStore();
+
+let atRestKey: Promise<AtRest> | null = null;
+export const atRest = () => (atRestKey ??= openAtRest(blobs));
 
 let sentinel: Sentinel | null = null;
 let home: HomeEngine | null = null;
@@ -27,6 +31,7 @@ export function directoryFrom(members: { id: string; name: string; role: Directo
 export function initServices(members: Parameters<typeof directoryFrom>[0]): Promise<void> {
   if (ready) return ready;
   ready = (async () => {
+    json = await encryptedJsonStore('heartos:', await atRest());
     sentinel = await Sentinel.create({ json, objects: blobs, tenant: TENANT, directory: directoryFrom(members) });
     home = new HomeEngine(json, Date.now, (kind, summary, severity) => {
       void sentinel?.log({ kind, actor: 'A', summary, severity: severity ?? 'info' });

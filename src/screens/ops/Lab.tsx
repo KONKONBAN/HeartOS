@@ -1,12 +1,11 @@
 import { Bot, Check, Play, ShieldAlert, X, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Histogram, LineChart, SERIES } from '../../components/Charts';
+import { LineChart, SERIES } from '../../components/Charts';
 import { Badge, TraceView } from '../../components/ui';
 import { FORBIDDEN_REASON, type Proposal } from '../../core/sentinel/ai';
-import { SECURITY_STATE_HINT, SECURITY_STATE_LABEL, SOURCE_STATE_LABEL, type SecurityState } from '../../core/sentinel/incident';
+import { SECURITY_STATE_HINT, SECURITY_STATE_LABEL, type SecurityState } from '../../core/sentinel/incident';
 import { ASSUMPTIONS, CONFIG_PROFILE, INVARIANTS, PROPOSITIONS, THREATS, TRACEABILITY } from '../../core/sentinel/invariants';
-import { EXAMPLE_BB, TABLE_4_1, TABLE_4_1_PARAMS, eNew, hMin, log2ExtractorBound, maxOutputBits, pGuess, saturationTime, validJoint, type OutputParams } from '../../core/sentinel/math';
-import { HYPOTHESES, PROFILE_FIELDS, profileCompleteness, type StreamMode } from '../../core/sentinel/source';
+import { TABLE_4_1, TABLE_4_1_PARAMS, eNew, saturationTime, type OutputParams } from '../../core/sentinel/bounds';
 import { fmt } from '../../core/sentinel/state';
 import { runAll, runScenario, SCENARIO_LIST, type ScenarioResult } from '../../core/sentinel/threats';
 import type { ReadResult } from '../../core/sentinel/types';
@@ -220,22 +219,17 @@ export function OpsGate() {
 export function OpsMath() {
   const [p, setP] = useState<OutputParams>({ ...TABLE_4_1_PARAMS, B: 1 });
   const [horizon, setHorizon] = useState(60);
-  const [joint, setJoint] = useState<number[][]>(EXAMPLE_BB.sideInfoB.map((r) => [...r]));
-  const [k, setK] = useState(384);
-  const [epsExp, setEpsExp] = useState(64);
-  const [m, setM] = useState(256);
   const pts = (B: number) => Array.from({ length: horizon / 2 + 1 }, (_, i) => ({ x: i * 2, y: eNew({ ...p, B }, i * 2) }));
   const series = useMemo(() => [
     { name: 'B = 0', color: SERIES[0], points: pts(0) },
     { name: `B = ${p.B}`, color: SERIES[1], dash: true, points: pts(p.B) },
   ], [p, horizon]);
-  const vj = validJoint(joint);
   const num = (key: keyof OutputParams, label: string, step = 0.25) => (
     <label className="field" style={{ flex: 1, minWidth: 110 }}><span>{label}</span><input className="input" type="number" step={step} value={p[key]} onChange={(e) => setP({ ...p, [key]: Number(e.target.value) })} /></label>
   );
   return (
     <>
-      <OpsHead crumb="PHÒNG THÍ NGHIỆM / SUY LUẬN" badge="MÔ HÌNH · KHÔNG PHẢI SỐ ĐO" title="Cận đầu ra và min-entropy" sub="Biểu thức (3.4)–(3.10), (3.14)–(3.15), Bảng 4.1 và Phụ lục A, tham số giả định." />
+      <OpsHead crumb="PHÒNG THÍ NGHIỆM / SUY LUẬN" badge="MÔ HÌNH · KHÔNG PHẢI SỐ ĐO" title="Cận dữ liệu phát hành mới" sub="Mệnh đề K2 dưới giả định A3: hạn mức giải mã B + rT giới hạn lượng bản rõ mới ra khỏi vùng xử lý. Bảng 4.1, tham số giả định." />
       <div className="panel">
         <h2>E_new(T) ≤ min(D_rem, Q + min(L_rem, B + rT))</h2>
         <div className="hstack wrap">
@@ -249,121 +243,10 @@ export function OpsMath() {
         <LineChart series={series} xLabel="T (giây)" yLabel="E_new (MiB)" fmtY={(y) => y.toFixed(2).replace('.', ',')} refLine={{ y: p.Q + p.Lrem, label: `bão hòa Q + L_rem = ${(p.Q + p.Lrem).toString().replace('.', ',')}` }} />
         <p className="small muted">Bão hòa do L_rem sau T ≈ {saturationTime(p).toFixed(1).replace('.', ',')} s (B = {p.B}). Giảm thời gian chặn giảm lượng cấp mới nhưng không xóa bản rõ đã ra ngoài biên hay quyền đã tạo Q.</p>
       </div>
-      <div className="ops-cols">
-        <div className="panel">
-          <h2>Bảng 4.1 (tái lập, đơn vị MiB)</h2>
-          <table className="tbl"><thead><tr><th>T (giây)</th><th>B = 0</th><th>B = 1</th></tr></thead><tbody>{TABLE_4_1.map((r) => <tr key={r.T}><td>{r.T}</td><td>{r.b0.toFixed(2).replace('.', ',')}</td><td>{r.b1.toFixed(2).replace('.', ',')}</td></tr>)}</tbody></table>
-          <p className="small muted">D_rem = 50 MiB, Q = 0,5 MiB, L_rem = 8 MiB, r = 0,25 MiB/s.</p>
-        </div>
-        <div className="panel">
-          <h2>Min-entropy có điều kiện H_min(X|E)</h2>
-          <p className="small muted">Phân bố đồng thời P(X = x, E = e): hàng là x, cột là e.</p>
-          <div className="scroll-x">
-            <table className="tbl"><tbody>
-              {joint.map((row, x) => (
-                <tr key={x}><td className="mono">x{x}</td>{row.map((v, e) => <td key={e}><input className="input" style={{ minHeight: 34, width: 74, padding: 6 }} type="number" step={0.05} value={v} onChange={(ev) => setJoint(joint.map((r2, i) => (i === x ? r2.map((c, j) => (j === e ? Number(ev.target.value) : c)) : r2)))} /></td>)}</tr>
-              ))}
-            </tbody></table>
-          </div>
-          <div className="hstack wrap">
-            <button className="btn xs secondary" onClick={() => setJoint(EXAMPLE_BB.noSideInfo.map((r) => [...r]))}>Ví dụ (B,B), E rỗng</button>
-            <button className="btn xs secondary" onClick={() => setJoint(EXAMPLE_BB.sideInfoB.map((r) => [...r]))}>Ví dụ (B,B), E = B</button>
-            <button className="btn xs secondary" onClick={() => setJoint([[0.25], [0.25], [0.25], [0.25]])}>2 bit đều</button>
-          </div>
-          <div className="ops-grid">
-            <Metric label="p_guess(X|E)" value={vj.ok ? pGuess(joint).toFixed(3) : '-'} sub={vj.ok ? 'Σ_e max_x P(x,e)' : `Tổng = ${vj.total.toFixed(3)} ≠ 1`} />
-            <Metric tint label="H_min(X|E)" value={vj.ok ? `${hMin(joint).toFixed(3)} bit` : '-'} sub="−log₂ p_guess" />
-          </div>
-        </div>
-      </div>
       <div className="panel">
-        <h2>Bộ trích xuất two-universal: d ≤ ½·2^((m−k)/2), m ≤ k − 2·log₂(1/ε)</h2>
-        <div className="hstack wrap">
-          <label className="field" style={{ flex: 1 }}><span>k (bit)</span><input className="input" type="number" value={k} onChange={(e) => setK(Number(e.target.value))} /></label>
-          <label className="field" style={{ flex: 1 }}><span>ε = 2^−n, n =</span><input className="input" type="number" value={epsExp} onChange={(e) => setEpsExp(Number(e.target.value))} /></label>
-          <label className="field" style={{ flex: 1 }}><span>m (bit)</span><input className="input" type="number" value={m} onChange={(e) => setM(Number(e.target.value))} /></label>
-        </div>
-        <div className="ops-grid">
-          <Metric tint label="m tối đa cho ε" value={`${maxOutputBits(k, 2 ** -epsExp)} bit`} sub="điều kiện đủ (3.10)" />
-          <Metric label="Cận sai lệch d" value={`2^${log2ExtractorBound(k, m)}`} sub={log2ExtractorBound(k, m) <= -epsExp ? 'đạt ε' : 'chưa đạt ε'} />
-          <Metric label="Bảng A.1" value="k 384/512/640" sub="→ d 2^-65 / 2^-129 / 2^-193 với m = 256" />
-        </div>
-        <p className="small muted">k là tham số giả thiết; nhánh vận hành không ghi nhận entropy từ nguồn camera. Phép băm/nén xác định không tạo thêm bí mật: H_min(f(X)|E) ≤ H_min(X|E) (3.7).</p>
-      </div>
-    </>
-  );
-}
-
-export function OpsSources() {
-  const s = useSentinel();
-  const me = useMe();
-  const [mode, setMode] = useState<StreamMode>('normal');
-  const [msg, setMsg] = useState('');
-  return (
-    <>
-      <OpsHead crumb="PHÒNG THÍ NGHIỆM / NGUỒN" badge="CỔNG MẶC ĐỊNH ĐÓNG" title="Cổng phê duyệt nguồn ngẫu nhiên" sub="Nền RNG hệ điều hành là bắt buộc; nguồn nghiên cứu chỉ tham gia sau khi hồ sơ được xét duyệt (§3.13–3.14)." />
-      <div className="ops-grid">
-        <Metric tint label="Trạng thái nguồn" value={SOURCE_STATE_LABEL[s.incident.view().source]} sub="Tách khỏi trạng thái xâm nhập" />
-        <Metric label="Trạng thái an ninh" value={SECURITY_STATE_LABEL[s.incident.view().state]} sub="Lỗi nguồn không đẩy trạng thái này" />
-        <Metric label="Nguồn được dùng sinh khóa" value="RNG hệ điều hành" sub="crypto.getRandomValues · không seed thay thế" />
-      </div>
-      {msg && <div className="card sand"><p style={{ color: '#6E4E20' }}>{msg}</p></div>}
-      {s.sources.map((src) => {
-        const c = profileCompleteness(src.profile);
-        const h = src.lastHealth;
-        return (
-          <div key={src.id} className="panel">
-            <div className="hstack wrap">
-              <h2 style={{ flex: 1 }}>{src.name}{src.hypothesis ? ` · ${src.hypothesis}` : ''}</h2>
-              <Badge tone={src.status === 'approved' ? undefined : src.status === 'degraded' ? 'danger' : 'warm'}>{{ approved: 'Đã phê duyệt', closed: 'Cổng đóng', degraded: 'Suy giảm', halted: 'Dừng' }[src.status]}</Badge>
-            </div>
-            <p className="small muted" style={{ margin: 0 }}>{src.description}</p>
-            {src.kind === 'research' && (
-              <>
-                <div className="ops-cols">
-                  <div className="stack" style={{ gap: 8 }}>
-                    <div className="label">Kiểm tra sức khỏe (SP 800-90B · RCT/APT + phát hiện phát lại khung)</div>
-                    <div className="hstack wrap">
-                      <select className="input" style={{ maxWidth: 220, minHeight: 36 }} value={mode} onChange={(e) => setMode(e.target.value as StreamMode)}>
-                        <option value="normal">Luồng bình thường</option>
-                        <option value="stuck">Cảm biến bị kẹt</option>
-                        <option value="biased">Lệch phân bố</option>
-                        <option value="replay">Phát lại khung</option>
-                      </select>
-                      <button className="btn xs" onClick={() => void s.runHealth(src.id, mode)}><Play size={14} /> Chạy</button>
-                    </div>
-                    {h && (
-                      <>
-                        <Item t={`RCT: chuỗi lặp dài nhất ${h.rct.maxRun} / ngưỡng ${h.rct.cutoff}`} m={`H giả định = ${h.H} bit/mẫu, α = 2⁻²⁰`} right={<Badge tone={h.rct.pass ? undefined : 'danger'}>{h.rct.pass ? 'Đạt' : 'Lỗi'}</Badge>} />
-                        <Item t={`APT: đếm lớn nhất ${h.apt.maxCount} / ngưỡng ${h.apt.cutoff} (W = ${h.apt.window})`} right={<Badge tone={h.apt.pass ? undefined : 'danger'}>{h.apt.pass ? 'Đạt' : 'Lỗi'}</Badge>} />
-                        <Item t={`Khối trùng lặp: ${h.replay.duplicateBlocks}`} m="Khối 64 mẫu xuất hiện lại" right={<Badge tone={h.replay.pass ? undefined : 'danger'}>{h.replay.pass ? 'Đạt' : 'Lỗi'}</Badge>} />
-                        <Histogram values={h.histogram} labels={h.histogram.map((_, i) => `${i * 16}–${i * 16 + 15}`)} title="Phân bố mẫu theo 16 nhóm giá trị" />
-                        <p className="small muted" style={{ margin: 0 }}>Kiểm tra thống kê không chứng minh tính phù hợp mật mã; lỗi chỉ đóng nhánh nguồn này và tạo sự kiện riêng.</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="stack" style={{ gap: 8 }}>
-                    <div className="label">Hồ sơ nguồn (Phụ lục C) · {c.filled}/{c.total} trường</div>
-                    {PROFILE_FIELDS.map(([key, label, hint]) => (
-                      <label key={key} className="field"><span>{label}</span><input className="input" style={{ minHeight: 36, fontSize: 13 }} placeholder={hint} value={src.profile[key] ?? ''} onChange={(e) => s.updateProfile(src.id, { profile: { [key]: e.target.value } })} /></label>
-                    ))}
-                    <label className="hstack small"><input type="checkbox" checked={src.constructionEvaluated} onChange={(e) => s.updateProfile(src.id, { constructionEvaluated: e.target.checked })} /> Construction tích hợp đã được thẩm định</label>
-                    <label className="field"><span>Firmware / chế độ thu (đổi làm mất hiệu lực phê duyệt)</span><input className="input" style={{ minHeight: 36 }} value={src.firmware} onChange={(e) => s.setFirmware(src.id, e.target.value)} /></label>
-                    <div className="hstack wrap">
-                      <button className="btn xs" onClick={() => void s.openSourceGate(src.id, { id: me.id, human: true }).then((r) => setMsg(r.ok ? `Đã mở cổng cho ${src.name} (firmware ${src.firmware}).` : 'Giữ đóng: ' + r.reasons.join(' ')))}>Người có thẩm quyền mở cổng</button>
-                      <button className="btn xs secondary" onClick={() => void s.openSourceGate(src.id, { id: 'agent', human: false, isAI: true }).then((r) => setMsg(r.ok ? 'AI mở cổng (vi phạm)' : 'AI bị chặn: ' + r.reasons[0]))}><Bot size={14} /> AI thử mở cổng</button>
-                    </div>
-                  </div>
-                </div>
-                {src.hypothesis && <div className="card flat"><h3>{HYPOTHESES[src.hypothesis].title}</h3><p>{HYPOTHESES[src.hypothesis].text}</p></div>}
-              </>
-            )}
-          </div>
-        );
-      })}
-      <div className="panel">
-        <h2>Giả thuyết H3</h2>
-        <p className="small" style={{ margin: 0 }}>{HYPOTHESES.H3.text}</p>
+        <h2>Bảng 4.1 (tái lập, đơn vị MiB)</h2>
+        <table className="tbl"><thead><tr><th>T (giây)</th><th>B = 0</th><th>B = 1</th></tr></thead><tbody>{TABLE_4_1.map((r) => <tr key={r.T}><td>{r.T}</td><td>{r.b0.toFixed(2).replace('.', ',')}</td><td>{r.b1.toFixed(2).replace('.', ',')}</td></tr>)}</tbody></table>
+        <p className="small muted">D_rem = 50 MiB, Q = 0,5 MiB, L_rem = 8 MiB, r = 0,25 MiB/s.</p>
       </div>
     </>
   );
@@ -396,7 +279,7 @@ export function OpsIncident() {
           ))}
         </div>
         <p className="small" style={{ margin: 0 }}><b>{SECURITY_STATE_LABEL[st.state]}:</b> {SECURITY_STATE_HINT[st.state]}</p>
-        <p className="small muted" style={{ margin: 0 }}>Nguồn ngẫu nhiên: {SOURCE_STATE_LABEL[st.source]} · xuất hàng loạt {st.exportBlocked ? 'đang bị chặn' : 'bình thường'} · phiên bị hạn chế: {st.restrictedSessions.join(', ') || 'không'}</p>
+        <p className="small muted" style={{ margin: 0 }}>Xuất hàng loạt {st.exportBlocked ? 'đang bị chặn' : 'bình thường'} · phiên bị hạn chế: {st.restrictedSessions.join(', ') || 'không'}</p>
         <div className="hstack wrap">
           <button className="btn xs secondary" onClick={() => { s.incident.signal({ kind: 'policy_anomaly', evidence: [], note: 'Thay đổi chính sách bất thường (mô phỏng)', source: 'rule' }); setMsg('Đã bơm tín hiệu policy_anomaly.'); }}>Bơm tín hiệu bất thường</button>
           <button className="btn xs secondary" onClick={() => void s.read({ subject: 'u-linh', objectId: 'canary-ledger', purpose: 'none' }).then(() => setMsg('Đã thử đọc đối tượng mồi (nếu đã triển khai canary).'))}>Thử đọc canary</button>

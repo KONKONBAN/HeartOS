@@ -52,7 +52,7 @@ function snapshot(): DeviceSnapshot {
     sentinel: {
       tenant: s.tenant,
       epoch: s.epoch(),
-      security: { state: inc.state, source: inc.source, exportBlocked: inc.exportBlocked, restricted: inc.restrictedSessions, signals: inc.signals.length },
+      security: { state: inc.state, exportBlocked: inc.exportBlocked, restricted: inc.restrictedSessions, signals: inc.signals.length },
       R: { tokens: Math.round(R.bucket.tokens), capacity: R.bucket.capacity, rate: R.bucket.rate, quotaRemaining: Math.round(R.quotaRemaining), quota: R.bucket.quota, replays: R.stats.replays, denials: R.stats.denials, releasedBytes: R.stats.releasedBytes, locked: s.R.isLocked(s.tenant), outstanding: s.R.outstanding(s.tenant) },
       hsm: { activeVersion: hsm.activeVersion, versions: hsm.versions.length, generate: hsm.ops.generate, release: hsm.ops.release, refused: hsm.ops.refused },
       ve: { name: s.Ve.code.name, version: s.Ve.code.version, measurement: s.Ve.measurement, accepted: s.verifier.isAccepted(s.Ve.measurement), tcb: s.Ve.code.tcb },

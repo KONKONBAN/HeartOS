@@ -1,4 +1,4 @@
-import { Activity, ArrowLeft, Beaker, Calculator, CircleDot, Clock, Download, FileText, FlaskConical, KeyRound, LayoutDashboard, LineChart as LineIcon, Lock, RefreshCw, ShieldAlert, ShieldCheck, Shuffle } from 'lucide-react';
+import { Activity, ArrowLeft, Beaker, Calculator, CircleDot, Clock, Download, FileText, FlaskConical, KeyRound, LayoutDashboard, LineChart as LineIcon, Lock, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from '../../components/ui';
@@ -20,8 +20,7 @@ const NAV: { to: string; label: string; icon: ReactNode; grp?: string }[] = [
   { to: 'recovery', label: 'Sentinel · Phục hồi', icon: <Lock size={16} /> },
   { to: 'lab', label: 'Kịch bản T1–T7 & bất biến', icon: <FlaskConical size={16} />, grp: 'PHÒNG THÍ NGHIỆM SENTINEL' },
   { to: 'gate', label: 'Cổng cấp khóa & hạn mức', icon: <KeyRound size={16} /> },
-  { to: 'math', label: 'Cận đầu ra & entropy', icon: <Calculator size={16} /> },
-  { to: 'sources', label: 'Nguồn ngẫu nhiên', icon: <Shuffle size={16} /> },
+  { to: 'math', label: 'Cận dữ liệu phát hành (K2)', icon: <Calculator size={16} /> },
   { to: 'incident', label: 'Sự cố & tác tử AI', icon: <ShieldAlert size={16} /> },
 ];
 
@@ -276,7 +275,7 @@ export function OpsAudit() {
           <input className="input" style={{ maxWidth: 220, minHeight: 36 }} placeholder="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} />
           <select className="input" style={{ maxWidth: 180, minHeight: 36 }} value={kind} onChange={(e) => setKind(e.target.value)}>
             <option value="">Mọi loại</option>
-            {['grant', 'gate', 'vault', 'policy', 'incident', 'ai', 'source', 'recovery', 'smarthome', 'guardian', 'approval', 'session'].map((k) => <option key={k} value={k}>{k}</option>)}
+            {['grant', 'gate', 'vault', 'policy', 'incident', 'ai', 'recovery', 'smarthome', 'guardian', 'approval', 'session'].map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
           <button className="btn xs secondary" onClick={() => void s.journal.verify().then((r) => setVerify(r.ok ? `Nguyên vẹn (${r.checked})` : `Hỏng tại #${r.brokenAt}`))}><ShieldCheck size={14} /> Kiểm chuỗi</button>
           <button className="btn xs secondary" onClick={() => void s.journal.merkleRoot().then(setRoot)}><CircleDot size={14} /> Root Merkle</button>

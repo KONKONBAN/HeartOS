@@ -1,7 +1,6 @@
 import type { JsonStore } from '../storage';
 
 export type SecurityState = 'normal' | 'suspected' | 'isolation_ready' | 'isolated' | 'recovering';
-export type SourceState = 'healthy' | 'degraded' | 'halted';
 
 export type SignalKind = 'read_spike' | 'canary' | 'policy_anomaly' | 'attestation_fail' | 'replay' | 'tamper' | 'manual';
 
@@ -30,15 +29,8 @@ export const SECURITY_STATE_HINT: Record<SecurityState, string> = {
   recovering: 'Máy sạch, quyền mới, phạm vi lộ đã đánh giá. Người có thẩm quyền duyệt mở lại, không mở chỉ vì AI đánh giá an toàn.',
 };
 
-export const SOURCE_STATE_LABEL: Record<SourceState, string> = {
-  healthy: 'Nguồn ổn định',
-  degraded: 'Suy giảm nguồn',
-  halted: 'Dừng thao tác cần ngẫu nhiên mới',
-};
-
 export interface IncidentModel {
   state: SecurityState;
-  source: SourceState;
   signals: Signal[];
   history: { at: number; from: SecurityState; to: SecurityState; by: string; reason: string }[];
   restrictedSessions: string[];
@@ -52,13 +44,14 @@ export class IncidentMachine {
   private m: IncidentModel;
   private listeners = new Set<() => void>();
   constructor(private store: JsonStore, private now: () => number = Date.now, private key = 'sentinel.incident') {
-    this.m = store.get<IncidentModel>(key) ?? IncidentMachine.fresh();
+    const saved = store.get<IncidentModel & { source?: unknown }>(key);
+    if (saved) delete saved.source;
+    this.m = saved ?? IncidentMachine.fresh();
   }
 
   static fresh(): IncidentModel {
     return {
       state: 'normal',
-      source: 'healthy',
       signals: [],
       history: [],
       restrictedSessions: [],
@@ -149,11 +142,6 @@ export class IncidentMachine {
     this.m.exportBlocked = false;
     this.go('normal', by.id, 'Bỏ qua: ' + note);
     return { ok: true };
-  }
-
-  setSource(s: SourceState) {
-    this.m.source = s;
-    this.persist();
   }
 
   reset() {

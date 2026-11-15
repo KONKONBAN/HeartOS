@@ -5,7 +5,7 @@ import { systemNotify } from './lib/media';
 import { toast } from './lib/ui-store';
 import { bootstrap, endCamera, tickSync } from './state/actions';
 import { getHome, servicesReady } from './state/services';
-import { getApp, useApp } from './state/store';
+import { getApp, hydrateApp, useApp } from './state/store';
 import * as A from './screens/auth/Auth';
 import * as S from './screens/simple/Simple';
 import * as SM from './screens/simple/SimpleMore';
@@ -46,7 +46,6 @@ const OL = {
   OpsLab: lazy(() => lab().then((m) => ({ default: m.OpsLab }))),
   OpsGate: lazy(() => lab().then((m) => ({ default: m.OpsGate }))),
   OpsMath: lazy(() => lab().then((m) => ({ default: m.OpsMath }))),
-  OpsSources: lazy(() => lab().then((m) => ({ default: m.OpsSources }))),
   OpsIncident: lazy(() => lab().then((m) => ({ default: m.OpsIncident }))),
 };
 
@@ -109,7 +108,8 @@ export default function App() {
   const [error, setError] = useState<string>();
   useEffect(() => {
     if (ready) return;
-    bootstrap()
+    hydrateApp()
+      .then(bootstrap)
       .then(async () => {
         if (!isDesktop()) {
           await initHubLink(() => {
@@ -219,7 +219,6 @@ export default function App() {
           <Route path="lab" element={<OL.OpsLab />} />
           <Route path="gate" element={<OL.OpsGate />} />
           <Route path="math" element={<OL.OpsMath />} />
-          <Route path="sources" element={<OL.OpsSources />} />
           <Route path="incident" element={<OL.OpsIncident />} />
         </Route>
         <Route path="/admin" element={<AD.AdminLayout />}>
@@ -233,7 +232,6 @@ export default function App() {
           <Route path="vault" element={<O.OpsVault />} />
           <Route path="recovery" element={<O.OpsRecovery />} />
           <Route path="math" element={<OL.OpsMath />} />
-          <Route path="sources" element={<OL.OpsSources />} />
           <Route path="incident" element={<OL.OpsIncident />} />
           <Route path="replay" element={<O.OpsReplay />} />
           <Route path="trace" element={<O.OpsTrace />} />

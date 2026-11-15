@@ -11,7 +11,7 @@ export const INVARIANTS: InvariantDef[] = [
   { id: 'I2', title: 'Ứng dụng không tự mở rộng quyền', condition: 'Không nắm khóa ký, policy hoặc token quản trị.', enforcedAt: ['Khóa ký G không xuất được', 'Hsm.assertCaller · chỉ danh tính cổng', 'Vai trò tự khai bị bỏ qua'], assumptions: ['A1', 'A7'] },
   { id: 'I3', title: 'Ngân sách không tăng do replay hoặc đồng thời', condition: 'Kiểm tra và đặt chỗ nguyên tử trên toàn phạm vi.', enforcedAt: ['StateService.checkAndReserve · nonce + bucket trong một bước', 'Không hoàn bucket burst'], assumptions: ['A3'] },
   { id: 'I4', title: 'Thu hồi có hiệu lực theo epoch hiện hành', condition: 'Quản lý cache, phiên và yêu cầu đang xử lý.', enforcedAt: ['KeyGate · Eok so epoch grant với R', 'Grant TTL 60 giây', 'Kiểm lại quyền khi phát hành lời mời'], assumptions: ['A3', 'A9'] },
-  { id: 'I5', title: 'AI không thay cơ chế cấp quyền', condition: 'Bộ thực thi và quyền công cụ độc lập với nội dung mô hình.', enforcedAt: ['checkExecution · allowlist, phạm vi, TTL, hoàn tác', 'AI không giữ khóa, không mở cổng nguồn, không mở lại dịch vụ'], assumptions: ['A4'] },
+  { id: 'I5', title: 'AI không thay cơ chế cấp quyền', condition: 'Bộ thực thi và quyền công cụ độc lập với nội dung mô hình.', enforcedAt: ['checkExecution · allowlist, phạm vi, TTL, hoàn tác', 'AI không giữ khóa, không mở lại dịch vụ'], assumptions: ['A4'] },
   { id: 'I6', title: 'Quyền vận hành không phá bản phục hồi được giữ', condition: 'Miền quản trị và vật liệu phục hồi đáp ứng giả thiết.', enforcedAt: ['RecoveryVault.requestDelete · khóa lưu giữ + 2 người duyệt', 'KEK cũ chuyển chỉ-giải-mã, không hủy'], assumptions: ['A4'] },
   { id: 'I7', title: 'DEK và bản rõ xử lý giữ trong ranh giới đã chỉ định', condition: 'Không trả DEK cho host, proxy hoặc plugin ngoài vùng.', enforcedAt: ['Hsm chỉ trả bản bọc KEK / bọc cho khóa nhận', 'Enclave unwrap DEK không xuất được', 'Đầu ra niêm phong cho đích đã xác minh'], assumptions: ['A2', 'A5', 'A7', 'A8'] },
   { id: 'I8', title: 'Khóa nhận DEK gắn với môi trường và phiên được chấp nhận', condition: 'Xác minh chứng thực, tính mới và ngữ cảnh grant.', enforcedAt: ['Verifier.verify · chữ ký gốc, measurement, TCB, debug, thử thách', 'KeyGate · Aok so thumbprint khóa phiên với grant'], assumptions: ['A6'] },
@@ -24,7 +24,7 @@ export const ASSUMPTIONS: { id: string; text: string }[] = [
   { id: 'A1', text: 'Đối phương điều khiển A và host ngoài vùng (T3/T5); G, Ve, trình xác minh, K/HSM và R thực thi đúng đặc tả trong TCB đã công bố.' },
   { id: 'A2', text: 'Mọi đường phát hành dữ liệu được bảo vệ đi qua Ve; grant có chữ ký, ràng buộc chủ thể, tenant, đối tượng, thao tác, đích nhận, thời hạn và epoch.' },
   { id: 'A3', text: 'Hạn mức và chống dùng lại cập nhật nguyên tử toàn cục; B, r, Q, L_rem, D_rem, T cùng đơn vị; Q hữu hạn.' },
-  { id: 'A4', text: 'Nền RNG và thuật toán đáp ứng giả định; nguồn hóa lý chỉ qua cổng phê duyệt; quyền phục hồi và gốc cấp quyền tách biệt; AI không sửa các gốc.' },
+  { id: 'A4', text: 'Nền RNG hệ điều hành và thuật toán mật mã đáp ứng giả định; quyền phục hồi và gốc cấp quyền tách biệt; AI không sửa các gốc.' },
   { id: 'A5', text: 'Cơ chế cách ly enclave, firmware, HSM và chuỗi chứng thực đáp ứng mô hình an ninh nền tảng; kênh bên giới hạn theo hồ sơ.' },
   { id: 'A6', text: 'Bằng chứng gắn đúng khóa phiên với môi trường nhận; host không thay khóa nhận hoặc tái dùng bằng chứng cũ.' },
   { id: 'A7', text: 'HSM/KMS và cổng cấp khóa không trả DEK bản rõ ra ngoài ranh giới; quyền sửa key policy, allowlist, gốc xác minh không thuộc A.' },
@@ -50,8 +50,6 @@ export const THREATS = [
 ];
 
 export const TRACEABILITY = [
-  { claim: 'Nguồn có cận k', basis: 'Mô hình X, E và đường thu.', limit: 'Không suy từ dung lượng hoặc vẻ hỗn loạn.' },
-  { claim: 'Đầu ra gần đều', basis: 'Cận k, họ trích xuất và seed.', limit: 'Không áp dụng cho mọi hash hoặc seed tùy ý.' },
   { claim: 'K1 · Phạm vi phát hành', basis: 'A1–A2; G và Ve đúng đặc tả.', limit: 'Không thu hồi đầu ra đã được phát hành.' },
   { claim: 'K2 · Cận dữ liệu mới', basis: 'A3; hạn mức toàn cục và Q hữu hạn.', limit: 'Không bao phủ đường đi vòng hoặc bản rõ đã ở ngoài biên.' },
   { claim: 'K3 · Ranh giới HSM–enclave', basis: 'A1–A9; giữ TCB, cấp khóa và nhập xuất.', limit: 'Không bao phủ T7 hoặc tính sẵn sàng trước host gây dừng.' },

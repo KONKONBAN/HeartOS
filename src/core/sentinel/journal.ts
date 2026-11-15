@@ -22,8 +22,6 @@ export type JournalKind =
   | 'ai.proposal'
   | 'ai.executed'
   | 'ai.rejected'
-  | 'source.health'
-  | 'source.gate'
   | 'recovery.checkpoint'
   | 'recovery.step'
   | 'recovery.denied'

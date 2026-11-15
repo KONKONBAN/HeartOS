@@ -1,4 +1,4 @@
-import { randomBytes } from './encoding';
+import { randomBytes } from '../sentinel/encoding';
 import { aptCutoff, rctCutoff } from './math';
 
 export const PROFILE_FIELDS = [

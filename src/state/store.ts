@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { encryptedStateStorage } from '../core/atrest';
+import { atRest } from './services';
 import { immer } from 'zustand/middleware/immer';
 import type {
   CalendarShare,
@@ -140,6 +142,8 @@ export const useApp = create<AppState>()(
     {
       name: 'heartos-app',
       version: 1,
+      storage: createJSONStorage(() => encryptedStateStorage(atRest)),
+      skipHydration: true,
       partialize: (s) => {
         const { set: _a, setMode: _b, actAs: _c, signOut: _d, resetAll: _e, ...rest } = s;
         void _a; void _b; void _c; void _d; void _e;
@@ -150,6 +154,10 @@ export const useApp = create<AppState>()(
 );
 
 export const getApp = () => useApp.getState();
+
+export async function hydrateApp() {
+  if (!useApp.persist.hasHydrated()) await useApp.persist.rehydrate();
+}
 
 export function useMe(): Member {
   const id = useApp((s) => s.session.actingAs);

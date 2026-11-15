@@ -17,7 +17,7 @@ Bộ phần mềm gồm ba phần:
 - **Việc chung, Nghi thức, Ký Ức Số, Quỹ Nếp Nhà**.
 - **Guardian**: ghép radar LD2450 với ảnh nhiệt MLX90640 theo vùng để phát hiện ca nghi ngã cần xác minh. Luồng SOS đi từ báo động tại nhà, kênh từ xa, người hỗ trợ, so tuyến tới bệnh viện rồi chốt điểm bàn giao.
 - **SmartHome**: hub tại nhà, lệnh theo quyền trong hộ, trạng thái chỉ đổi khi thiết bị xác nhận, cảnh, luật tự động, ghép thiết bị, UPS/máy phát/ATS, chế độ mất Internet.
-- **ARGOLET Sentinel**: hiện thực mô hình trong luận văn "Nghiên cứu phát triển hệ thống bảo mật ARGOLET Sentinel" bằng WebCrypto.
+- **ARGOLET Sentinel**: hiện thực lớp bảo mật chính trong luận văn "Nghiên cứu phát triển hệ thống bảo mật ARGOLET Sentinel" bằng WebCrypto. Phần nguồn entropy đang nghiên cứu được chuẩn bị sẵn thành mô-đun riêng, chưa tích hợp.
 - Hai chế độ hiển thị: **Thân Quen** (chữ lớn, cho ông bà) và **Gia Đình**, cùng **Bàn vận hành** cho máy tính.
 
 Giao diện theo bản thiết kế "Giao diện HeartOS" (Bản xem thử 03) và sơ đồ hoạt động 8 khối: dữ liệu đầu vào, xử lý, phân tích và tạo sinh, xác minh và duyệt, kết quả, cùng hai chế độ Replay và Live.
@@ -83,12 +83,36 @@ Tùy chọn: `--port 7420`, `--data <thư mục>` (mặc định `~/.heartos-hub
 | Bằng chứng: chuỗi băm, root Merkle, bản giảm nhạy cảm cho AI | `Journal` | `journal.ts` |
 | Trạng thái sự cố (Hình 3.3), nguồn tách khỏi xâm nhập | `IncidentMachine` | `incident.ts` |
 | AI chỉ đề xuất, bộ thực thi độc lập (I5) | Luật cục bộ và `checkExecution` (allowlist, phạm vi, TTL, hoàn tác, người duyệt) | `ai.ts` |
-| Cổng phê duyệt nguồn, hồ sơ Phụ lục C, H1 đến H3, kiểm tra sức khỏe | RCT/APT theo SP 800-90B và phát hiện phát lại khung | `source.ts` |
-| p_guess, H_min, bộ trích xuất, cận đầu ra (3.4 đến 3.10, 3.14, 3.15), Bảng 4.1, A.1 | Hàm thuần, có test tái lập bảng | `math.ts` |
+| Cận dữ liệu phát hành mới K2, Bảng 4.1 | Hàm thuần, có test tái lập bảng | `bounds.ts` |
 | T1 đến T7, I1 đến I11, A1 đến A10, K1 đến K3, Phụ lục B, D | 12 kịch bản chạy trên sandbox bằng mã thật | `threats.ts`, `invariants.ts` |
 | Khóa phê duyệt trên thiết bị (mục 3.8.2) | ECDSA không xuất được, ký đúng nội dung hiển thị, đích, nonce, hạn và epoch | `state/services.ts`, `lib/ui-store.ts` |
 
+Mọi khóa, nonce và mã chống dùng lại lấy từ CSPRNG của hệ điều hành qua WebCrypto. Không thành phần nào của lớp bảo mật chính phụ thuộc vào nguồn entropy nghiên cứu.
+
 Dữ liệu được Sentinel bảo vệ trong ứng dụng: lịch rảnh/bận được chia sẻ, lời kể và bản ghi âm (mã hóa phong bì), chi tiết khoản góp quỹ, vị trí hỗ trợ khi SOS, chính sách xem camera. Thu hồi quyền làm tăng epoch, grant cũ bị cổng loại, lời mời đang chờ bị chặn ("Cần duyệt lại"), thiết bị ngoại tuyến hiện trạng thái chờ áp dụng.
+
+### Mã hóa dữ liệu khi lưu
+
+Toàn bộ dữ liệu ứng dụng lưu trên thiết bị (trạng thái ứng dụng, khóa API Claude, trạng thái R, nhật ký Sentinel, SmartHome, liên kết hub) được mã hóa AES-256-GCM trước khi ghi xuống localStorage (`src/core/atrest.ts`):
+
+- Khóa tạo một lần, không xuất được, giữ trong IndexedDB cùng chỗ với KEK của HSM.
+- Mỗi giá trị gắn AAD theo tên khóa lưu, nên bản mã của mục này không dán sang mục khác được.
+- Bản mã bị sửa hoặc không giải được thì bị bỏ, không làm ứng dụng lỗi.
+- Dữ liệu dạng rõ chỉ được nhận một lần khi nâng cấp từ bản cũ (lúc khóa vừa được tạo). Sau đó dữ liệu dạng rõ chèn từ ngoài vào bị từ chối.
+- Ghi tuần tự theo từng mục, luôn giữ bản mới nhất.
+
+## Mô-đun entropy ARGOLET (chuẩn bị sẵn, chưa tích hợp)
+
+Phần nguồn entropy hóa lý đang trong giai đoạn nghiên cứu nên được tách thành mô-đun riêng `src/core/entropy/`. Ứng dụng, phần mềm quản trị và APK hiện **không** nạp mô-đun này.
+
+| Tệp | Nội dung |
+|---|---|
+| `sources.ts` | Danh mục nguồn (camera + hỗn hợp chất lỏng H1, microplasma H2, giả thuyết H3), hồ sơ Phụ lục C, cổng phê duyệt (AI không mở được, hồ sơ phải đủ, construction phải được thẩm định, đổi firmware làm mất phê duyệt), kiểm tra sức khỏe RCT/APT theo SP 800-90B và phát hiện phát lại khung |
+| `math.ts` | p_guess, H_min, cận bộ trích xuất two-universal, Bảng A.1, ngưỡng RCT/APT |
+| `provider.ts` | Điểm cắm khi tích hợp: `EntropyProvider`, `gatedProvider` (chỉ đọc khi cổng mở, firmware khớp bản đã duyệt và mỗi lần đọc đều qua kiểm tra sức khỏe), `drawSeed` ghép bằng HKDF-SHA-256 với phần từ CSPRNG hệ điều hành luôn có mặt và dài bằng đầu ra |
+| `entropy.test.ts` | Kiểm thử bảng, kiểm tra sức khỏe, cổng nguồn và phép ghép |
+
+Nguyên tắc khi tích hợp sau này: nguồn nghiên cứu chỉ **bổ sung**, không thay CSPRNG hệ điều hành. Nguồn lỗi hoặc bị đóng thì `drawSeed` tự quay về CSPRNG hệ điều hành và báo lý do, nên lớp bảo mật chính không yếu đi vì nguồn nghiên cứu.
 
 ## Phát triển
 
@@ -99,7 +123,7 @@ npm install
 | Lệnh | Việc làm |
 |---|---|
 | `npm run dev` | Chạy bản phát triển, mở được từ điện thoại cùng mạng LAN |
-| `npm test` | 39 bài kiểm thử đơn vị |
+| `npm test` | 50 bài kiểm thử đơn vị |
 | `npm run typecheck` | Kiểm kiểu cho ứng dụng và phần máy tính |
 | `npm run build` | Build web vào `dist/` |
 | `npm run desktop:dev` | Mở phần mềm quản trị từ mã nguồn |
@@ -140,6 +164,7 @@ Mặc định lời mời được soạn bằng mẫu trên thiết bị. Trong
 - Cảm biến, thiết bị nhà, kênh SOS từ xa và nhà cung cấp dịch vụ là **mô phỏng** (có nhãn MÔ PHỎNG). SOS **không** gọi dịch vụ cấp cứu, màn SOS có nút gọi 115.
 - "Enclave" và "HSM" là ranh giới mô-đun trong ứng dụng với khóa không xuất được. Thuộc tính mật mã là thật nhưng không có cách ly phần cứng. Triển khai thật cần TEE/HSM theo hồ sơ cấu hình C (Phụ lục D).
 - Bản đồ tuyến là đồ thị minh họa. Nút "Mở bản đồ thật" mở Google Maps theo địa chỉ đã cấu hình.
-- Dữ liệu ứng dụng lưu trên thiết bị (localStorage và IndexedDB). Đồng bộ giữa các máy đi qua hub trong mạng LAN.
+- Dữ liệu ứng dụng lưu trên thiết bị và được mã hóa khi lưu. Đồng bộ giữa các máy đi qua hub trong mạng LAN.
+- Khóa mã hóa khi lưu nằm trong kho của ứng dụng trên thiết bị. Người chiếm quyền root của máy vẫn có thể đọc được; muốn chống trường hợp này cần thêm khóa ứng dụng bằng PIN hoặc sinh trắc học.
 
 Font Inter dùng giấy phép SIL Open Font License 1.1 (`src/assets/fonts/OFL.txt`).

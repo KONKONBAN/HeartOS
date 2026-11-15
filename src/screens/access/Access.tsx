@@ -206,7 +206,7 @@ export function FSentinel() {
       <Row icon={<Fingerprint size={18} />} title="Phiên và thiết bị tin cậy" meta={`1 phiên trên máy này · ${session.passkey?.kind === 'webauthn' ? 'passkey' : 'khóa thiết bị'} · từ ${hhmm(session.startedAt)}`} chevron={false} />
       <Row icon={<ShieldCheck size={18} />} title="Quyền và thu hồi" meta={`Thế hệ quyền ${s.epoch()} · ${pending ? pending + ' thiết bị chờ áp dụng' : 'trạng thái áp dụng theo thiết bị'}`} to="/f/sync" />
       <Row icon={<FileText size={18} />} tileTone="sand" title="Sự kiện bảo mật" meta={last ? `${last.summary} · ${hhmm(last.ts)}` : 'Chưa có'} to="/f/security-log" />
-      <Row icon={<Shield size={18} />} tileTone={st.state === 'normal' ? undefined : 'rose'} title="Trạng thái an ninh" meta={`${SECURITY_STATE_LABEL[st.state]} · nguồn ngẫu nhiên: ${st.source === 'healthy' ? 'ổn định' : 'suy giảm'}`} to="/ops/incident" />
+      <Row icon={<Shield size={18} />} tileTone={st.state === 'normal' ? undefined : 'rose'} title="Trạng thái an ninh" meta={`${SECURITY_STATE_LABEL[st.state]} · ${st.signals.length} tín hiệu`} to="/ops/incident" />
       <div className="card tint">
         <div className="hstack"><KeyRound size={18} color="#244C3E" /><h3 style={{ margin: 0 }}>Tác vụ nhạy cảm</h3></div>
         <p style={{ marginTop: 6 }}>Mở khóa cửa, thu hồi quyền, duyệt lời mời và phục hồi yêu cầu khóa phê duyệt trên thiết bị (ECDSA P-256, không xuất được). Dấu khóa: <span className="mono">{approvalPub().slice(0, 18)}…</span></p>
@@ -315,7 +315,7 @@ export function FSettings() {
       <Row icon={<Sun size={18} />} title="Chữ lớn hơn" chevron={false} right={<Switch label="Chữ lớn hơn" checked={prefs.largeText} onChange={(v) => set((s) => void (s.prefs.largeText = v))} />} />
       <Row icon={<Languages size={18} />} title="Nút đọc to ở tiêu đề" chevron={false} right={<Switch label="Nút đọc to" checked={prefs.readAloud} onChange={(v) => set((s) => void (s.prefs.readAloud = v))} />} />
       <div className="card flat">
-        <KV items={[['Phiên bản', 'HeartOS 1.0.0'], ['Dữ liệu', 'Lưu trên thiết bị (localStorage + IndexedDB)'], ['Font', 'Inter · SIL OFL 1.1'], ['Đăng nhập', ago(useApp.getState().session.startedAt)]]} />
+        <KV items={[['Phiên bản', 'HeartOS 1.0.0'], ['Dữ liệu', 'Mã hóa AES-256-GCM trên thiết bị, khóa không xuất được'], ['Font', 'Inter · SIL OFL 1.1'], ['Đăng nhập', ago(useApp.getState().session.startedAt)]]} />
       </div>
       <button className="btn ghost" onClick={() => setConfirmReset(true)}><RefreshCw size={16} /> Đặt lại dữ liệu mẫu</button>
       <Sheet open={confirmReset} onClose={() => setConfirmReset(false)} title="Đặt lại dữ liệu mẫu?">

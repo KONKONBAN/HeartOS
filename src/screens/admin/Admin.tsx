@@ -1,4 +1,4 @@
-import { Calculator, FileText, FlaskConical, FolderOpen, KeyRound, LayoutDashboard, Link2, Lock, MonitorSmartphone, RefreshCw, ShieldAlert, ShieldCheck, Shuffle, Smartphone, Trash2, Unplug } from 'lucide-react';
+import { Calculator, FileText, FlaskConical, FolderOpen, KeyRound, LayoutDashboard, Link2, Lock, MonitorSmartphone, RefreshCw, ShieldAlert, ShieldCheck, Smartphone, Trash2, Unplug } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { Badge, Logo, Seg, Sheet } from '../../components/ui';
@@ -23,8 +23,7 @@ const NAV: { to: string; label: string; icon: ReactNode; grp?: string }[] = [
   { to: '/admin/gate', label: 'Cổng cấp khóa', icon: <KeyRound size={16} /> },
   { to: '/admin/vault', label: 'Vault và khóa', icon: <ShieldCheck size={16} /> },
   { to: '/admin/recovery', label: 'Phục hồi', icon: <Lock size={16} /> },
-  { to: '/admin/math', label: 'Cận đầu ra và entropy', icon: <Calculator size={16} /> },
-  { to: '/admin/sources', label: 'Nguồn ngẫu nhiên', icon: <Shuffle size={16} /> },
+  { to: '/admin/math', label: 'Cận dữ liệu phát hành (K2)', icon: <Calculator size={16} /> },
   { to: '/admin/incident', label: 'Sự cố và AI', icon: <ShieldAlert size={16} /> },
   { to: '/admin/replay', label: 'Replay F.8', icon: <RefreshCw size={16} /> },
   { to: '/admin/audit-local', label: 'Nhật ký Sentinel cục bộ', icon: <FileText size={16} /> },
@@ -221,7 +220,7 @@ export function AdminDevice() {
         <>
           <div className="ops-grid">
             <Metric tint label="Thế hệ quyền" value={s.sentinel.epoch} sub={`Tenant ${s.sentinel.tenant}`} />
-            <Metric label="Trạng thái an ninh" value={SECURITY_STATE_LABEL[s.sentinel.security.state as SecurityState] ?? s.sentinel.security.state} sub={`Nguồn: ${s.sentinel.security.source === 'healthy' ? 'ổn định' : 'suy giảm'} · ${s.sentinel.security.signals} tín hiệu`} />
+            <Metric label="Trạng thái an ninh" value={SECURITY_STATE_LABEL[s.sentinel.security.state as SecurityState] ?? s.sentinel.security.state} sub={`${s.sentinel.security.signals} tín hiệu · xuất hàng loạt ${s.sentinel.security.exportBlocked ? 'bị chặn' : 'bình thường'}`} />
             <Metric label="Hạn mức giải mã" value={fmt(s.sentinel.R.tokens)} sub={`B ${fmt(s.sentinel.R.capacity)} · r ${fmt(s.sentinel.R.rate)}/s · còn ${fmt(s.sentinel.R.quotaRemaining)}`} />
             <Metric label="Đường đọc két" value={s.sentinel.R.locked ? 'Đang khóa' : 'Mở'} sub={`${s.sentinel.R.replays} lần phát lại bị chặn · ${s.sentinel.R.denials} từ chối`} />
           </div>

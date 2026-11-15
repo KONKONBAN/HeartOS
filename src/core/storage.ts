@@ -20,40 +20,6 @@ export function memoryJsonStore(): JsonStore {
   };
 }
 
-export function localJsonStore(prefix = 'heartos:'): JsonStore {
-  try {
-    const probe = prefix + '__probe';
-    localStorage.setItem(probe, '1');
-    localStorage.removeItem(probe);
-  } catch {
-    return memoryJsonStore();
-  }
-  return {
-    get(k) {
-      try {
-        const raw = localStorage.getItem(prefix + k);
-        return raw == null ? undefined : JSON.parse(raw);
-      } catch {
-        return undefined;
-      }
-    },
-    set(k, v) {
-      try {
-        localStorage.setItem(prefix + k, JSON.stringify(v));
-      } catch {
-        return;
-      }
-    },
-    del(k) {
-      try {
-        localStorage.removeItem(prefix + k);
-      } catch {
-        return;
-      }
-    },
-  };
-}
-
 export function memoryObjectStore(): ObjectStore {
   const m = new Map<string, unknown>();
   return {

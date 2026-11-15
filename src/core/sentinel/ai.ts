@@ -7,8 +7,6 @@ export type ActionKind =
   | 'deploy_canary'
   | 'block_egress'
   | 'seal_all'
-  | 'open_source_gate'
-  | 'assign_entropy_k'
   | 'modify_policy'
   | 'issue_grant'
   | 'delete_logs'
@@ -37,8 +35,6 @@ export interface Analysis {
 export const ALLOWED: ActionKind[] = ['revoke_session', 'limit_export', 'isolate_workload', 'deploy_canary', 'block_egress'];
 export const FORBIDDEN_REASON: Partial<Record<ActionKind, string>> = {
   seal_all: 'Seal toàn hệ thống dùng quy trình khẩn cấp tách biệt; AI không có quyền root.',
-  open_source_gate: 'AI không được tự mở cổng nguồn hoặc cấp nhãn QRNG (§3.14).',
-  assign_entropy_k: 'AI không được tự gán cận entropy k.',
   modify_policy: 'AI không tự sửa chính sách hoặc các gốc tin cậy (A4, I5).',
   issue_grant: 'AI không thay cơ chế cấp quyền (I5).',
   delete_logs: 'Không xóa log điều tra trước khi giữ bằng chứng.',
@@ -130,7 +126,7 @@ export function analyze(entries: Redacted[]): Analysis {
     );
   }
 
-  const injected = entries.find((e) => /ignore previous|bỏ qua chỉ dẫn|grant root|cấp quyền root|mở cổng nguồn/i.test(e.summary + JSON.stringify(e.data ?? {})));
+  const injected = entries.find((e) => /ignore previous|bỏ qua chỉ dẫn|grant root|cấp quyền root/i.test(e.summary + JSON.stringify(e.data ?? {})));
   if (injected) {
     proposals.push(
       mk({
