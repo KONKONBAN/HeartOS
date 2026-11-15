@@ -13,6 +13,8 @@ import type { Task } from '../../state/types';
 const statusBadge = (t: Task) =>
   t.status === 'done' ? <Badge>Đã hoàn thành</Badge> : t.status === 'accepted' ? <Badge>Đã nhận</Badge> : t.status === 'scheduled' ? <Badge tone="warm">Đã lên lịch</Badge> : <Badge tone="line">Chờ nhận</Badge>;
 
+
+const TASK_STATUS: Record<'open' | 'accepted' | 'scheduled' | 'done', string> = { open: 'chưa có người nhận', accepted: 'đã nhận việc', scheduled: 'đã lên lịch', done: 'đã xong' };
 export function FTasks() {
   const me = useMe();
   const tasks = useApp((s) => s.tasks);
@@ -90,7 +92,7 @@ export function FTask() {
           </Field>
           <div className="label">Ai thấy việc này</div>
           <Chips options={members.filter((m) => m.role !== 'carer').map((m) => ({ value: m.id, label: m.name }))} value={visibleTo} onChange={canEdit ? setVisibleTo : () => undefined} />
-          <div className="card flat"><p>{t.note || 'Không có ghi chú.'} · Trạng thái: {t.status === 'done' ? `đã xong lúc ${hhmm(t.doneAt ?? Date.now())}` : t.status}</p></div>
+          <div className="card flat"><p>{t.note || 'Không có ghi chú.'} · Trạng thái: {t.status === 'done' ? `đã xong lúc ${hhmm(t.doneAt ?? Date.now())}` : TASK_STATUS[t.status]}</p></div>
           {canEdit && <button className="btn" onClick={save}>Lưu việc chung</button>}
         </>
       )}

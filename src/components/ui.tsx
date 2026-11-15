@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Check, CircleAlert, Info, ShieldCheck, Volume2, X } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { Archive, Banknote, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Check, CircleAlert, Clock, Cpu, Globe, Heart, Info, KeyRound, Mail, MapPin, MessageSquareText, Monitor, PenLine, PiggyBank, ShieldCheck, Smartphone, Sparkles, User, Volume2, X, Zap, type LucideIcon } from 'lucide-react';
+import { isValidElement, useEffect, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 import type { TraceStep } from '../core/sentinel/types';
@@ -33,7 +33,9 @@ export function Back({ to, label = 'Quay lại' }: { to?: string; label?: string
 }
 
 export function Sim({ sos, label }: { sos?: boolean; label?: string }) {
-  return <span className={'sim' + (sos ? ' sos' : '')} title="Thiết bị và kênh từ xa được mô phỏng trên hub HeartOS">{label ?? (sos ? 'MÔ PHỎNG SOS' : 'MÔ PHỎNG')}</span>;
+  const expo = useApp((s) => !!s.session.expo && s.session.signedIn);
+  const text = label ?? (sos ? 'MÔ PHỎNG SOS' : 'MÔ PHỎNG');
+  return <span className={'sim' + (sos ? ' sos' : '')} title={expo ? 'Phiên trải nghiệm Expo, dữ liệu được đặt lại khi kết thúc' : 'Thiết bị và kênh từ xa được mô phỏng trên hub HeartOS'}>{expo && !label ? `EXPO · ${text}` : text}</span>;
 }
 
 export function TopBar({ back, backTo, right, brandTo }: { back?: boolean; backTo?: string; right?: ReactNode; brandTo?: string }) {
@@ -239,11 +241,53 @@ export function ModePicker({ mode }: { mode: 'simple' | 'family' }) {
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+const FIELD_ICONS: [RegExp, LucideIcon][] = [
+  [/^(Tài khoản|Người phụ trách|Người nhận việc|Người được hỏi thăm)/, User],
+  [/^Email/, Mail],
+  [/^(Tiêu đề|Tên việc|Tên nghi thức|Tên lời kể|Tên hiển thị|Dịp)/, PenLine],
+  [/^(Nhắc lúc|Giờ)/, Clock],
+  [/^(Ngày|Thứ)/, CalendarDays],
+  [/^Mục tiêu/, PiggyBank],
+  [/^Số tiền/, Banknote],
+  [/^Liên kết nghi thức/, Heart],
+  [/^Múi giờ/, Globe],
+  [/^(Mã mời|Mã ghép nối|Khóa API)/, KeyRound],
+  [/^Địa chỉ máy quản trị/, Monitor],
+  [/^Tên thiết bị/, Smartphone],
+  [/^Mô hình/, Sparkles],
+  [/^(Lời kể|Lời đã nhận dạng)/, MessageSquareText],
+  [/^Hạn lưu/, Archive],
+  [/^Vùng/, MapPin],
+  [/^Thiết bị/, Cpu],
+  [/^(Khi|Thì)$/, Zap],
+];
+
+function isBoxable(children: ReactNode) {
+  if (!isValidElement(children)) return false;
+  const t = children.type;
+  if (t === 'select' || t === 'textarea') return true;
+  if (t !== 'input') return false;
+  const type = (children.props as { type?: string }).type ?? 'text';
+  return !['range', 'checkbox', 'radio', 'file', 'color'].includes(type);
+}
+
+export function Field({ label, children, icon }: { label: string; children: ReactNode; icon?: ReactNode }) {
+  if (!isBoxable(children))
+    return (
+      <label className="field">
+        <span>{label}</span>
+        {children}
+      </label>
+    );
+  const Auto = FIELD_ICONS.find(([re]) => re.test(label))?.[1];
+  const ico = icon ?? (Auto ? <Auto size={18} /> : null);
   return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
+    <label className="field fbox">
+      {ico && <span className="fico">{ico}</span>}
+      <span className="fcol">
+        <span className="flabel">{label}</span>
+        {children}
+      </span>
     </label>
   );
 }

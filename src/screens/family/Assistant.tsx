@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { Badge, Field, Header, Row, Seg, TopBar } from '../../components/ui';
-import { speak, useSpeechInput, voiceSupport } from '../../lib/media';
+import { speak, useSpeechInput, useVoiceSupport } from '../../lib/media';
 import { toast } from '../../lib/ui-store';
 import { assistantSend } from '../../state/actions';
 import { useApp, useMe } from '../../state/store';
@@ -68,7 +68,7 @@ export function FLanguage() {
   const prefs = useApp((s) => s.prefs);
   const members = useApp((s) => s.members);
   const set = useApp((s) => s.set);
-  const v = voiceSupport();
+  const v = useVoiceSupport(prefs.voiceLang);
   const linh = members.find((m) => m.id === 'u-linh');
   return (
     <Phone tabs>
@@ -85,7 +85,7 @@ export function FLanguage() {
         <Seg value={prefs.voiceLang} onChange={(x) => set((s) => void (s.prefs.voiceLang = x))} options={[{ value: 'vi-VN', label: 'vi-VN' }, { value: 'en-US', label: 'en-US' }]} />
       </Field>
       <div className="card flat">
-        <p>Đọc to: {v.tts ? 'có' : 'không hỗ trợ'} · Nhận dạng giọng nói: {v.stt ? 'có' : 'không hỗ trợ'} · Giọng vi-VN cài trên máy: {v.voices}. Gói giọng ngoại tuyến tùy hệ điều hành.</p>
+        <p>Đọc to: {v.tts === null ? 'đang kiểm tra' : v.tts ? 'có' : 'không hỗ trợ'} · Nhận dạng giọng nói: {v.stt === null ? 'đang kiểm tra' : v.stt ? 'có' : 'chưa có trên máy'} · Giọng {prefs.voiceLang}: {v.voice === null ? 'đang kiểm tra' : v.voice ? 'đã cài' : 'chưa cài, vào cài đặt giọng đọc của máy để thêm'}.</p>
       </div>
       <button className="btn soft" onClick={() => speak(prefs.voiceLang === 'vi-VN' ? 'Mời cả nhà ăn cơm lúc bảy giờ tối nay.' : 'Dinner with the family at seven tonight.', prefs.voiceLang)}>
         <Volume2 size={18} /> Nghe thử

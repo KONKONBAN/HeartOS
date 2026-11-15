@@ -3,7 +3,7 @@ import { draftInvitation, parseIntent, type InviteFacts } from '../core/family/g
 import { buf, fromB64, randomId, toB64 } from '../core/sentinel/encoding';
 import type { ReadResult, TraceStep } from '../core/sentinel/types';
 import { blobs, getHome, getSentinel, initServices, signApproval } from './services';
-import { getApp, memberName, namesOf, useApp } from './store';
+import { getApp, memberName, namesOf, seed, useApp } from './store';
 import type { Invitation, Member, Memory } from './types';
 
 const set = (fn: Parameters<ReturnType<typeof useApp.getState>['set']>[0]) => getApp().set(fn);
@@ -445,11 +445,53 @@ export async function readSupportLocation(subject: string) {
   return getSentinel().read<{ place: string; lat: number; lng: number }>({ subject, objectId: 'loc-u-lan', purpose: 'support.location', fields: ['place', 'lat', 'lng'] });
 }
 
+async function wipeRecordings() {
+  for (const k of await blobs.keys()) if (k.startsWith('audio:')) await blobs.del(k);
+}
+
 export async function resetEverything() {
   getApp().resetAll();
   await getSentinel().resetAll();
   getHome().reset();
+  await wipeRecordings();
   await bootstrap();
+}
+
+export const EXPO_EMAIL = 'expo@heartos.local';
+
+export function startExpo() {
+  set((s) => {
+    s.session.signedIn = true;
+    s.session.expo = true;
+    s.session.email = EXPO_EMAIL;
+    s.session.householdId = 'nha-an';
+    s.session.mode = null;
+    s.session.actingAs = 'u-an';
+    s.session.startedAt = Date.now();
+  });
+  void getSentinel().log({ kind: 'session', actor: 'Client', summary: 'Bắt đầu phiên trải nghiệm Expo' });
+}
+
+export async function endExpo() {
+  const { claudeEnabled, claudeKey, claudeModel } = getApp().prefs;
+  const fresh = seed().session;
+  getApp().resetAll();
+  set((s) => {
+    s.prefs.claudeEnabled = claudeEnabled;
+    s.prefs.claudeKey = claudeKey;
+    s.prefs.claudeModel = claudeModel;
+    s.session.signedIn = false;
+    s.session.expo = false;
+    s.session.email = fresh.email;
+    s.session.householdId = null;
+    s.session.mode = null;
+    s.session.actingAs = fresh.actingAs;
+  });
+  await getSentinel().resetAll();
+  getHome().reset();
+  await wipeRecordings();
+  await bootstrap();
+  await getSentinel().log({ kind: 'session', actor: 'Client', summary: 'Kết thúc phiên Expo, đã đặt lại dữ liệu mẫu' });
 }
 
 export async function setCalendarShared(memberId: string, shared: boolean) {

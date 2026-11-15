@@ -194,7 +194,7 @@ export function FPower() {
         <Spark data={home.s.energy} />
       </div>
       <Row tone="tint" icon={<Check size={18} />} tileTone="white" title="Tải ưu tiên" meta="Hub, vùng cần thiết và đường SOS đã cấu hình. Khi chạy UPS, luật tự động cắt ổ cắm không thiết yếu." />
-      <div className="grid2">
+      <div className="stack">
         <button className="btn secondary" onClick={() => home.simulate(p.mains === 'on' ? 'mains_lost' : 'mains_restored')}>{p.mains === 'on' ? 'Mô phỏng mất điện' : 'Có điện lại'}</button>
         <button className="btn secondary" onClick={() => home.simulate(n.internet ? 'internet_lost' : 'internet_restored')}>{n.internet ? 'Mô phỏng mất Internet' : 'Có Internet lại'}</button>
       </div>
@@ -309,7 +309,7 @@ export function FSmartDevice() {
     if (c.status === 'rejected' || c.status === 'failed') toast(c.reason ?? 'Lệnh bị từ chối', 'warning');
   };
   const toggleKey = d.kind === 'lock' ? 'locked' : d.kind === 'valve' ? 'open' : 'on';
-  const on = !!d.state[toggleKey];
+  const on = d.kind === 'curtain' ? Number(d.state.position) > 0 : !!d.state[toggleKey];
   return (
     <Phone tabs>
       <TopBar back backTo="/f/smart" />
@@ -329,9 +329,9 @@ export function FSmartDevice() {
       )}
       {!allowed.ok && <Row tone="rose" icon={<Lock size={18} />} tileTone="white" title="Không có quyền điều khiển" meta={allowed.reason} />}
       {allowed.ok && !['camera'].includes(d.kind) && (
-        <button className={'btn' + (d.kind === 'lock' && on ? ' danger' : '')} disabled={!!pend} onClick={() => void send({ [toggleKey]: !on })}>
+        <button className={'btn' + (d.kind === 'lock' && on ? ' danger' : '')} disabled={!!pend} onClick={() => void send(d.kind === 'curtain' ? { position: on ? 0 : 100 } : { [toggleKey]: !on })}>
           {d.kind === 'lock' ? (on ? <Unlock size={18} /> : <Lock size={18} />) : <Power size={18} />}
-          {d.kind === 'lock' ? (on ? 'Mở khóa (cần xác nhận)' : 'Khóa cửa') : d.kind === 'valve' ? (on ? 'Khóa van' : 'Mở van') : on ? 'Gửi lệnh tắt' : 'Gửi lệnh bật'}
+          {d.kind === 'lock' ? (on ? 'Mở khóa (cần xác nhận)' : 'Khóa cửa') : d.kind === 'valve' ? (on ? 'Khóa van' : 'Mở van') : d.kind === 'curtain' ? (on ? 'Đóng rèm' : 'Mở rèm') : on ? 'Gửi lệnh tắt' : 'Gửi lệnh bật'}
         </button>
       )}
       {allowed.ok && d.kind === 'light' && (

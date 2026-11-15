@@ -26,6 +26,7 @@ export interface Session {
   signedIn: boolean;
   email: string;
   passkey?: { id: string; createdAt: number; kind: 'webauthn' | 'device-key' };
+  expo?: boolean;
   householdId: string | null;
   mode: UiMode | null;
   actingAs: string;

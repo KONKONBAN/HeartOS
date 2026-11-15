@@ -43,9 +43,9 @@ export function SHome() {
             <span className="badge">HÔM NAY · {fmtSlot(inv.slot).split('–')[0]}</span>
           </div>
           <div className="body">
-            <h2 style={{ fontSize: 22 }}>{inv.occasion}</h2>
-            <p style={{ fontSize: 15 }}>{accepted ? 'Bà đã xác nhận tham gia.' : `${memberName(inv.hostId)} mời bà ăn cơm tối.`}</p>
-            <div className="cta" style={{ fontSize: 16 }}>Xem lời mời <span>›</span></div>
+            <h2>{inv.occasion}</h2>
+            <p>{accepted ? 'Bà đã xác nhận tham gia.' : `${memberName(inv.hostId)} mời bà ăn cơm tối.`}</p>
+            <div className="cta">Xem lời mời <span>›</span></div>
           </div>
         </Link>
       ) : (
@@ -55,8 +55,8 @@ export function SHome() {
               <span className="badge">NGHI THỨC · {hhmm(nextRitual.at.getTime())}</span>
             </div>
             <div className="body">
-              <h2 style={{ fontSize: 22 }}>{nextRitual.r.name}</h2>
-              <p style={{ fontSize: 15 }}>{dayLong(nextRitual.at.getTime())}</p>
+              <h2>{nextRitual.r.name}</h2>
+              <p>{dayLong(nextRitual.at.getTime())}</p>
             </div>
           </div>
         )
@@ -230,10 +230,14 @@ export function SInvite() {
     <Phone simple>
       <TopBar back backTo="/s" />
       <Header title={inv.occasion} sub={`Lời mời từ ${memberName(inv.hostId)}`} read={msg?.text} />
-      <div className="card peach" style={{ padding: 20 }}>
-        <div className="small" style={{ fontWeight: 800, letterSpacing: '.06em', color: '#753F30' }}>{dayLong().toUpperCase()}</div>
-        <div style={{ fontSize: 32, fontWeight: 800, margin: '4px 0' }}>{fmtSlot(inv.slot)}</div>
-        <div style={{ fontSize: 16, color: '#753F30' }}>Tại {inv.place}</div>
+      <div className="hero peach">
+        <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
+          <span className="badge">{dayLong().toUpperCase()}</span>
+        </div>
+        <div className="body">
+          <h2>{fmtSlot(inv.slot)}</h2>
+          <p style={{ marginBottom: 0 }}>Tại {inv.place}</p>
+        </div>
       </div>
       <div className="card">
         <div className="label">Lời mời</div>
@@ -272,9 +276,9 @@ export function SMemory() {
             <span className="badge">LỜI KỂ CỦA {memberName(story.narrator).toUpperCase()}</span>
           </div>
           <div className="body">
-            <h2 style={{ fontSize: 22 }}>{story.title}</h2>
-            <p style={{ fontSize: 15 }}>Đoạn ghi âm · {Math.floor((story.durationSec ?? 0) / 60)} phút {(story.durationSec ?? 0) % 60} giây</p>
-            <div className="cta" style={{ fontSize: 16 }}>Mở lời kể <span>›</span></div>
+            <h2>{story.title}</h2>
+            <p>{story.audioKey && story.durationSec ? `Đoạn ghi âm · ${Math.floor(story.durationSec / 60)} phút ${story.durationSec % 60} giây` : story.audioKey ? 'Đoạn ghi âm' : 'Lời kể chép lại · bấm để nghe'}</p>
+            <div className="cta">Mở lời kể <span>›</span></div>
           </div>
         </Link>
       )}
@@ -318,19 +322,19 @@ export function SStory() {
             <div className="hstack">
               <PlayCircle size={26} color="#244C3E" />
               <div style={{ flex: 1 }}>
-                <b style={{ fontSize: 17 }}>Lời kể đã lưu</b>
-                <div className="muted">{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}` : '-'} · Tiếng Việt</div>
+                <b style={{ fontSize: 18 }}>{mem.audioKey ? 'Lời kể đã ghi âm' : 'Lời kể chép lại'}</b>
+                <div className="muted">{mem.audioKey && mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')} · ` : ''}Tiếng Việt</div>
               </div>
             </div>
             {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 10 }} /> : (
               <button className="btn soft sm" style={{ marginTop: 10 }} onClick={() => speak(data.transcript || data.caption)}>
-                <Volume2 size={18} /> Nghe lời kể (giọng đọc máy)
+                <Volume2 size={18} /> Nghe lời kể
               </button>
             )}
           </div>
           <div className="card">
             <div className="label">Chú thích</div>
-            <p className="quote" style={{ fontSize: 17 }}>{data.caption || data.transcript}</p>
+            <p className="quote" style={{ fontSize: 18 }}>{data.caption || data.transcript}</p>
             {data.transcript && data.caption !== data.transcript && <p style={{ marginTop: 8 }}>{data.transcript}</p>}
           </div>
         </>

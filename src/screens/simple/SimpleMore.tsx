@@ -1,6 +1,7 @@
-import { CalendarDays, Image, Languages, LogOut, MapPin, Phone as PhoneIcon, Siren, Sun, Type, Users, Volume2 } from 'lucide-react';
+import { CalendarDays, Image, Languages, MapPin, Phone as PhoneIcon, Siren, Sun, Type, Users, Volume2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { SignOutButton } from '../../components/SignOut';
 import { RouteMap } from '../../components/RouteMap';
 import { Badge, Header, Row, Sim, Steps, Switch, TopBar } from '../../components/ui';
 import { compareRoutes, FACILITIES } from '../../core/guardian/routes';
@@ -129,8 +130,6 @@ export function SMore() {
   const me = useMe();
   const prefs = useApp((s) => s.prefs);
   const set = useApp((s) => s.set);
-  const signOut = useApp((s) => s.signOut);
-  const nav = useNavigate();
   return (
     <Phone tabs simple>
       <TopBar back backTo="/s" />
@@ -140,15 +139,7 @@ export function SMore() {
       <Row icon={<Users size={22} />} tileTone="peach" title="Quyền của tôi" meta="Xem mình đang chia sẻ gì" to="/s/permissions" />
       <Row icon={<Type size={22} />} title="Chữ lớn hơn" meta="Phóng to chữ trên mọi màn hình" chevron={false} right={<Switch label="Chữ lớn hơn" checked={prefs.largeText} onChange={(v) => set((s) => void (s.prefs.largeText = v))} />} />
       <Row icon={<Volume2 size={22} />} title="Nút đọc to" meta="Hiện nút đọc to ở tiêu đề" chevron={false} right={<Switch label="Nút đọc to" checked={prefs.readAloud} onChange={(v) => set((s) => void (s.prefs.readAloud = v))} />} />
-      <button
-        className="btn secondary"
-        onClick={() => {
-          signOut();
-          nav('/welcome');
-        }}
-      >
-        <LogOut size={20} /> Đăng xuất
-      </button>
+      <SignOutButton size={20} />
     </Phone>
   );
 }

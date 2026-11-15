@@ -81,7 +81,7 @@ export function seed(): Omit<AppState, 'set' | 'setMode' | 'actAs' | 'signOut' |
       { id: 'r-story', name: 'Kể chuyện cùng ông bà', recurrence: { freq: 'monthly-last', weekday: 0, time: '19:00' }, participants: ['u-lan', 'u-minh', 'u-an'], skip: [], note: 'Mỗi tháng một kỷ niệm.', createdAt: now - 60 * 86400_000, memoryIds: ['m-kitchen'] },
     ],
     memories: [
-      { id: 'm-kitchen', title: 'Bếp của ngoại', kind: 'story', narrator: 'u-lan', createdAt: now - 5 * 86400_000, durationSec: 84, lang: 'vi', image: './media/grandma-album.jpg', objectId: 'mem-m-kitchen', viewers: ['u-an', 'u-linh'], retention: 'Theo lựa chọn của người kể', derivedAllowed: true, ritualId: 'r-story', shared: true },
+      { id: 'm-kitchen', title: 'Bếp của ngoại', kind: 'story', narrator: 'u-lan', createdAt: now - 5 * 86400_000, lang: 'vi', image: './media/grandma-album.jpg', objectId: 'mem-m-kitchen', viewers: ['u-an', 'u-linh'], retention: 'Theo lựa chọn của người kể', derivedAllowed: true, ritualId: 'r-story', shared: true },
       { id: 'm-sunday', title: 'Bữa cơm Chủ nhật', kind: 'photo', narrator: 'u-an', createdAt: now - 7 * 86400_000, lang: 'vi', image: './media/family-dinner.jpg', objectId: 'mem-m-sunday', viewers: ['u-lan', 'u-linh', 'u-minh'], retention: '5 năm', derivedAllowed: false, ritualId: 'r-sunday', shared: true },
     ],
     goals: [{ id: 'g-trip', name: 'Chuyến đi cùng ông bà', target: 2_000_000, managerId: 'u-an' }],

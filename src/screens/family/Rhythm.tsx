@@ -1,6 +1,6 @@
 import { CalendarClock, CalendarDays, Check, Heart, Lock, Moon, Pencil, Phone as PhoneIcon, Plus, ShieldAlert, Sparkles, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { Badge, Chips, Field, Header, Row, Seg, Sheet, Steps, TopBar, TraceView } from '../../components/ui';
 import { fmtSlot } from '../../core/family/calendar';
@@ -121,10 +121,10 @@ export function FCalendar() {
       <div className="card stack">
         {windows.map((w, i) => (
           <div key={i} className="hstack">
-            <input className="input" type="time" value={w.start} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))} />
+            <input className="input" type="time" style={{ flex: 1, minWidth: 0, padding: '0 8px' }} value={w.start} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))} />
             <span>–</span>
-            <input className="input" type="time" value={w.end} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
-            <button className="btn xs ghost" aria-label="Xóa khoảng" onClick={() => setWindows(windows.filter((_, j) => j !== i))}><Trash2 size={16} /></button>
+            <input className="input" type="time" style={{ flex: 1, minWidth: 0, padding: '0 8px' }} value={w.end} onChange={(e) => setWindows(windows.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
+            <button className="btn xs ghost" style={{ flexShrink: 0 }} aria-label="Xóa khoảng" onClick={() => setWindows(windows.filter((_, j) => j !== i))}><Trash2 size={16} /></button>
           </div>
         ))}
         <div className="hstack">
@@ -178,10 +178,14 @@ export function FDraft() {
     <Phone tabs>
       <TopBar back backTo="/f/rhythm" />
       <Header title="Duyệt lời mời" sub="GenAI soạn lời mời dựa trên lịch được chia sẻ." />
-      <div className="card peach">
-        <div className="small" style={{ fontWeight: 800, letterSpacing: '.06em', color: '#753F30' }}>{inv.status === 'snoozed' ? 'ĐÃ HOÃN' : 'CHỜ DUYỆT'} · HÔM NAY</div>
-        <div style={{ fontSize: 26, fontWeight: 800 }}>{fmtSlot(inv.slot)}</div>
-        <p style={{ color: '#753F30' }}>Khung giờ rảnh chung · {inv.tz}</p>
+      <div className="hero peach">
+        <div className="img" style={{ backgroundImage: 'url(./media/family-dinner.jpg)' }}>
+          <span className="badge">{inv.status === 'snoozed' ? 'ĐÃ HOÃN' : 'CHỜ DUYỆT'} · HÔM NAY</span>
+        </div>
+        <div className="body">
+          <h2>{fmtSlot(inv.slot)}</h2>
+          <p style={{ marginBottom: 0 }}>Khung giờ rảnh chung · {inv.tz}</p>
+        </div>
       </div>
       {inv.draft.messages.map((m) => (
         <div key={m.recipientId} className="card">
@@ -212,11 +216,11 @@ export function FDraft() {
         )}
       </div>
       <Row icon={<Pencil size={18} />} title="Sửa câu mời và người nhận" meta="Chọn ngôn ngữ theo từng người" to={`/f/compose/${inv.id}`} />
-      <div className="btnrow three">
+      <div className="btnrow">
         <button className="btn secondary" onClick={() => { setInvitationStatus(inv.id, 'snoozed'); nav('/f/rhythm'); }}>Hoãn</button>
         <button className="btn secondary" onClick={() => { setInvitationStatus(inv.id, 'dismissed'); nav('/f/rhythm'); }}>Bỏ qua</button>
-        <button className="btn" onClick={() => void approve()} disabled={okChecks !== inv.gen.checks.length}>Duyệt và xếp hàng gửi</button>
       </div>
+      <button className="btn" onClick={() => void approve()} disabled={okChecks !== inv.gen.checks.length}><Check size={18} /> Duyệt và xếp hàng gửi</button>
     </Phone>
   );
 }
@@ -291,6 +295,7 @@ export function FQueued() {
     return () => clearTimeout(t);
   }, [inv?.status, inv?.id]);
   if (!inv) return null;
+  if (inv.status === 'draft') return <Navigate to={`/f/draft/${inv.id}`} replace />;
   if (inv.status === 'blocked')
     return (
       <Phone tabs>

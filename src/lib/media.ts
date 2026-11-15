@@ -1,8 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
+import { toast } from './ui-store';
+
+const isNative = () => !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+
+const NO_VOICE = 'Điện thoại chưa có giọng đọc cho ngôn ngữ này. Vào Cài đặt, Ngôn ngữ, Chuyển văn bản thành giọng nói để cài thêm giọng tiếng Việt.';
 
 export function speak(text: string, lang = 'vi-VN') {
+  if (!text.trim()) return false;
+  if (isNative()) {
+    void import('@capacitor-community/text-to-speech')
+      .then(async ({ TextToSpeech }) => {
+        await TextToSpeech.stop().catch(() => undefined);
+        await TextToSpeech.speak({ text, lang, rate: 0.92 });
+      })
+      .catch(() => toast(NO_VOICE, 'warning', 7000));
+    return true;
+  }
   try {
-    if (!('speechSynthesis' in window)) return false;
+    if (!('speechSynthesis' in window)) {
+      toast('Trình duyệt này chưa hỗ trợ đọc to.', 'warning');
+      return false;
+    }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
@@ -12,13 +30,34 @@ export function speak(text: string, lang = 'vi-VN') {
     window.speechSynthesis.speak(u);
     return true;
   } catch {
+    toast('Không đọc to được trên thiết bị này.', 'warning');
     return false;
   }
 }
 
-export function voiceSupport() {
-  const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
-  return { tts: 'speechSynthesis' in window, stt: !!(w.SpeechRecognition || w.webkitSpeechRecognition), voices: 'speechSynthesis' in window ? window.speechSynthesis.getVoices().filter((v) => v.lang?.startsWith('vi')).length : 0 };
+export function useVoiceSupport(lang: string) {
+  const [state, setState] = useState<{ tts: boolean | null; stt: boolean | null; voice: boolean | null }>({ tts: null, stt: null, voice: null });
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      if (isNative()) {
+        const [{ TextToSpeech }, { SpeechRecognition }] = await Promise.all([import('@capacitor-community/text-to-speech'), import('@capacitor-community/speech-recognition')]);
+        const voice = await TextToSpeech.isLanguageSupported({ lang }).then((r) => r.supported).catch(() => false);
+        const stt = await SpeechRecognition.available().then((r) => r.available).catch(() => false);
+        if (live) setState({ tts: true, stt, voice });
+        return;
+      }
+      const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+      const tts = 'speechSynthesis' in window;
+      const voices = () => (tts ? window.speechSynthesis.getVoices().some((v) => v.lang?.toLowerCase().startsWith(lang.slice(0, 2))) : false);
+      if (live) setState({ tts, stt: !!(w.SpeechRecognition || w.webkitSpeechRecognition), voice: voices() });
+      if (tts) window.speechSynthesis.onvoiceschanged = () => live && setState((s) => ({ ...s, voice: voices() }));
+    })();
+    return () => {
+      live = false;
+    };
+  }, [lang]);
+  return state;
 }
 
 interface Recog {
@@ -37,7 +76,44 @@ export function useSpeechInput(lang: string) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState('');
   const ref = useRef<Recog | null>(null);
+  useEffect(() => () => {
+    if (isNative()) void import('@capacitor-community/speech-recognition').then(({ SpeechRecognition }) => SpeechRecognition.removeAllListeners()).catch(() => undefined);
+    else ref.current?.stop();
+  }, []);
+  const startNative = async () => {
+    try {
+      const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+      const { available } = await SpeechRecognition.available();
+      if (!available) {
+        setError('Điện thoại chưa có dịch vụ nhận dạng giọng nói. Bạn có thể nhập bằng bàn phím.');
+        return;
+      }
+      const perm = await SpeechRecognition.requestPermissions();
+      if (perm.speechRecognition !== 'granted') {
+        setError('Chưa cấp quyền micro. Bật quyền micro cho HeartOS trong Cài đặt của điện thoại.');
+        return;
+      }
+      await SpeechRecognition.removeAllListeners();
+      await SpeechRecognition.addListener('partialResults', (d) => {
+        if (d.matches?.[0]) setText(d.matches[0]);
+      });
+      await SpeechRecognition.addListener('listeningState', (d) => {
+        if (d.status === 'stopped') setListening(false);
+      });
+      setError('');
+      setListening(true);
+      const r = await SpeechRecognition.start({ language: lang, maxResults: 1, partialResults: true, popup: false });
+      if (r?.matches?.[0]) setText(r.matches[0]);
+    } catch (e) {
+      setListening(false);
+      setError('Lỗi nhận dạng: ' + ((e as Error).message || 'không rõ'));
+    }
+  };
   const start = () => {
+    if (isNative()) {
+      void startNative();
+      return;
+    }
     const w = window as unknown as { SpeechRecognition?: new () => Recog; webkitSpeechRecognition?: new () => Recog };
     const C = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!C) {
@@ -60,7 +136,10 @@ export function useSpeechInput(lang: string) {
     setListening(true);
     r.start();
   };
-  const stop = () => ref.current?.stop();
+  const stop = () => {
+    if (isNative()) void import('@capacitor-community/speech-recognition').then(({ SpeechRecognition }) => SpeechRecognition.stop()).catch(() => undefined);
+    else ref.current?.stop();
+  };
   return { text, setText, listening, error, start, stop };
 }
 

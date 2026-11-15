@@ -1,7 +1,8 @@
-import { Bell, Camera, Monitor, Check, ClipboardCopy, Cpu, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, LogOut, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
+import { Bell, Camera, Monitor, Check, ClipboardCopy, Cpu, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { SignOutButton } from '../../components/SignOut';
 import { Avatar, Badge, Field, Header, KV, Row, Seg, Sheet, Switch, TopBar } from '../../components/ui';
 import { draftInvitation } from '../../core/family/genai';
 import { SECURITY_STATE_LABEL } from '../../core/sentinel/incident';
@@ -17,9 +18,7 @@ const SCOPE_ICON: Record<PermScope, React.ReactNode> = { calendar: <Users size={
 
 export function FMore() {
   const me = useMe();
-  const signOut = useApp((s) => s.signOut);
   const s = useSentinel();
-  const nav = useNavigate();
   return (
     <Phone tabs>
       <TopBar />
@@ -32,9 +31,7 @@ export function FMore() {
       <Row icon={<Sun size={18} />} title="Đổi cách hiển thị" meta="Gia Đình / Thân Quen" to="/mode" />
       <Row icon={<Sparkles size={18} />} tileTone="sand" title="Cài đặt ứng dụng" meta="GenAI, thông báo, dùng với tư cách, dữ liệu mẫu" to="/f/settings" />
       {me.role === 'admin' && <Row icon={<LayoutDashboard size={18} />} tileTone="deep" title="Bàn vận hành Sentinel" meta="Live, Replay, nhật ký, vault, phục hồi, phòng thí nghiệm" to="/ops/live" />}
-      <button className="btn secondary" onClick={() => { signOut(); nav('/welcome'); }}>
-        <LogOut size={18} /> Đăng xuất
-      </button>
+      <SignOutButton />
     </Phone>
   );
 }

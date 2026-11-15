@@ -2,8 +2,9 @@ import { ChevronRight, Fingerprint, Home, KeyRound, Lock, Mail, Plus, Sun, Ticke
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
-import { Badge, Brand, Field, Header, Row, Steps, TopBar } from '../../components/ui';
+import { Badge, Field, Header, Row, Steps, TopBar } from '../../components/ui';
 import { toast } from '../../lib/ui-store';
+import { startExpo } from '../../state/actions';
 import { createPasskey, getSentinel, verifyPasskey } from '../../state/services';
 import { useApp } from '../../state/store';
 
@@ -25,6 +26,9 @@ export function Welcome() {
       </div>
       <button className="btn" onClick={() => nav('/signin')}>Đăng nhập</button>
       <button className="btn secondary" onClick={() => nav('/register')}>Tạo tài khoản</button>
+      <button className="btn ghost" onClick={() => { startExpo(); nav('/mode'); }}>
+        <Ticket size={18} /> Trải nghiệm tài khoản Expo
+      </button>
       <div className="card flat" style={{ marginTop: 6 }}>
         <p>Nhịp Nhà nối lịch, nghi thức và ký ức để gợi dịp gặp nhau. GenAI hỗ trợ soạn lời mời. Guardian hỗ trợ an toàn. ARGOLET Sentinel bảo vệ quyền và dữ liệu.</p>
       </div>
@@ -106,9 +110,9 @@ export function Register() {
       </Field>
       {!verified && (
         <div className="hstack">
-          <input className="input" inputMode="numeric" placeholder="Mã 6 số" value={code} onChange={(e) => setCode(e.target.value)} disabled={!sent} />
-          <button className="btn sm secondary" onClick={sendCode} disabled={!email.includes('@')}>{sent ? 'Gửi lại' : 'Gửi mã'}</button>
-          <button className="btn sm" disabled={!sent || code !== sent} onClick={() => setVerified(true)}>Xác minh</button>
+          <input className="input" style={{ flex: 1, minWidth: 0 }} inputMode="numeric" placeholder="Mã 6 số" value={code} onChange={(e) => setCode(e.target.value)} disabled={!sent} />
+          <button className="btn sm secondary" style={{ flexShrink: 0, whiteSpace: 'nowrap' }} onClick={sendCode} disabled={!email.includes('@')}>{sent ? 'Gửi lại' : 'Gửi mã'}</button>
+          <button className="btn sm" style={{ flexShrink: 0, whiteSpace: 'nowrap' }} disabled={!sent || code !== sent} onClick={() => setVerified(true)}>Xác minh</button>
         </div>
       )}
       <div className="card">
@@ -247,8 +251,8 @@ export function ModeSelect() {
       <button className="row peach" onClick={() => pick('simple')} style={{ padding: 18 }}>
         <span className="tile lg"><Sun size={22} color="#753F30" /></span>
         <span>
-          <div className="t" style={{ fontSize: 19 }}>Thân Quen</div>
-          <div className="m">Chữ lớn, gọi người thân và xem lịch nhanh.</div>
+          <div className="t" style={{ fontSize: 20 }}>Thân Quen</div>
+          <div className="m" style={{ fontSize: 16 }}>Chữ lớn, gọi người thân và xem lịch nhanh.</div>
           <div style={{ marginTop: 6 }}><Badge tone="white">Cho ông bà</Badge></div>
         </span>
         <ChevronRight size={18} className="chev" />
@@ -256,16 +260,13 @@ export function ModeSelect() {
       <button className="row tint" onClick={() => pick('family')} style={{ padding: 18 }}>
         <span className="tile lg"><Users size={22} color="#244C3E" /></span>
         <span>
-          <div className="t" style={{ fontSize: 19 }}>Gia Đình</div>
-          <div className="m">Lịch chung, ký ức, an toàn và cài đặt theo quyền.</div>
+          <div className="t" style={{ fontSize: 20 }}>Gia Đình</div>
+          <div className="m" style={{ fontSize: 16 }}>Lịch chung, ký ức, an toàn và cài đặt theo quyền.</div>
           <div style={{ marginTop: 6 }}><Badge tone="white">Cho ba mẹ và con em</Badge></div>
         </span>
         <ChevronRight size={18} className="chev" />
       </button>
       <Row icon={<Lock size={18} />} title="Quyền theo tài khoản" meta="Bạn có thể đổi cách hiển thị trong Cài đặt. Quyền xem và chia sẻ đi theo tài khoản." tone="tint" />
-      <div className="center small muted" style={{ marginTop: 'auto' }}>
-        <Brand />
-      </div>
     </Phone>
   );
 }

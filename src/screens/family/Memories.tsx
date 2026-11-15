@@ -1,4 +1,4 @@
-import { Camera, FileText, Image as ImageIcon, Lock, Mic, Plus, ShieldCheck, Square, Users } from 'lucide-react';
+import { Camera, FileText, Image as ImageIcon, Lock, Mic, Plus, ShieldCheck, Square, Users, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
@@ -6,7 +6,7 @@ import { Badge, Chips, Field, Header, KV, Row, Switch, TopBar, TraceView } from 
 import { summarizeStory } from '../../core/family/genai';
 import type { TraceStep } from '../../core/sentinel/types';
 import { dmy } from '../../lib/format';
-import { compressImage, useRecorder } from '../../lib/media';
+import { compressImage, speak, useRecorder } from '../../lib/media';
 import { toast } from '../../lib/ui-store';
 import { addMemory, openMemory, setMemoryViewers } from '../../state/actions';
 import { memberName, namesOf, useApp, useMe } from '../../state/store';
@@ -20,13 +20,13 @@ export function FMemories() {
       <TopBar />
       <Header title="Ký Ức Số" sub="Ảnh và lời kể được gia đình chọn chia sẻ." />
       {first && (
-        <Link to={`/f/memory/${first.id}`} className="hero" style={{ textDecoration: 'none' }}>
+        <Link to={`/f/memory/${first.id}`} className="hero peach" style={{ textDecoration: 'none' }}>
           <div className="img" style={{ backgroundImage: `url(${first.image ?? './media/grandma-album.jpg'})`, height: 150 }}>
             <span className="badge">ALBUM GIA ĐÌNH</span>
           </div>
           <div className="body">
             <h2>{first.title}</h2>
-            <p>{memberName(first.narrator)} kể · {first.kind === 'story' ? 'Bản thu và lời chép' : 'Ảnh'}</p>
+            <p>{memberName(first.narrator)} kể · {first.kind !== 'story' ? 'Ảnh' : first.audioKey ? 'Bản thu và lời chép' : 'Lời kể chép lại'}</p>
             <div className="cta">Mở ký ức <span>›</span></div>
           </div>
         </Link>
@@ -96,13 +96,21 @@ export function FMemory() {
       {err && <Row tone="rose" icon={<Lock size={18} />} tileTone="white" title="Không mở được bản gốc" meta={err} />}
       {data && (
         <>
-          {(mem.kind === 'story' || audio) && (
+          {mem.audioKey ? (
             <div className="card tint">
               <h3>Bản thu gốc</h3>
-              <p>{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')}` : '-'} · Tiếng Việt</p>
-              {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 8 }} /> : <p className="small" style={{ marginTop: 6 }}>Bản mẫu chưa có tệp âm thanh.</p>}
+              <p>{mem.durationSec ? `${String(Math.floor(mem.durationSec / 60)).padStart(2, '0')}:${String(mem.durationSec % 60).padStart(2, '0')} · ` : ''}Tiếng Việt</p>
+              {audio ? <audio controls src={audio} style={{ width: '100%', marginTop: 8 }} /> : <p className="small" style={{ marginTop: 6 }}>Đang giải mã bản thu…</p>}
             </div>
-          )}
+          ) : mem.kind === 'story' && (data.transcript || data.caption) ? (
+            <div className="card tint">
+              <h3>Lời kể chép lại</h3>
+              <p>Tiếng Việt · nghe bằng giọng đọc của máy</p>
+              <button className="btn soft sm" style={{ marginTop: 8 }} onClick={() => speak(String(data.transcript || data.caption))}>
+                <Volume2 size={18} /> Nghe lời chép
+              </button>
+            </div>
+          ) : null}
           <div className="card">
             <div className="hstack">
               <h3 style={{ flex: 1 }}>Lời chép đã duyệt</h3>

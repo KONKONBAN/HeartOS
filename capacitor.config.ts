@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     backgroundColor: '#FAF6EF',
   },
+  plugins: {
+    SystemBars: {
+      style: 'LIGHT',
+    },
+  },
 };
 
 export default config;
