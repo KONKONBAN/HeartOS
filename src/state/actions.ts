@@ -4,6 +4,7 @@ import { buf, fromB64, randomId, toB64 } from '../core/sentinel/encoding';
 import type { ReadResult, TraceStep } from '../core/sentinel/types';
 import { blobs, getHome, getSentinel, initServices, signApproval, syncDirectory } from './services';
 import { stopHa } from './ha';
+import { draftConfig } from './aiConfig';
 import { adultIds, emptyState, getApp, memberName, namesOf, seed, useApp } from './store';
 import type { Invitation, Member, Memory } from './types';
 
@@ -83,7 +84,7 @@ export async function createInvitation(p: { hostId: string; occasion: string; re
     recipients: recips.map((m) => ({ id: m.id, name: m.name, address: m.address, lang: m.lang })),
   };
   const prefs = app.prefs;
-  const result = await draftInvitation(facts, prefs.claudeEnabled && prefs.claudeKey ? { apiKey: prefs.claudeKey, model: prefs.claudeModel } : null);
+  const result = await draftInvitation(facts, draftConfig(prefs.ai));
   const id = randomId('inv', 4);
   const inv: Invitation = {
     id,
@@ -98,7 +99,7 @@ export async function createInvitation(p: { hostId: string; occasion: string; re
     status: 'draft',
     createdAt: Date.now(),
     receipts: Object.fromEntries(p.recipients.map((r) => [r, 'pending'])),
-    history: [{ at: Date.now(), text: `Nhịp Nhà tìm thấy ${fmtSlot(rhythm.slot)}, ${result.provider === 'claude' ? 'Claude' : 'mẫu trên thiết bị'} soạn bản nháp` }],
+    history: [{ at: Date.now(), text: `Nhịp Nhà tìm thấy ${fmtSlot(rhythm.slot)}, ${result.provider !== 'local' ? 'trợ lý AI' : 'mẫu trên thiết bị'} soạn bản nháp` }],
   };
   set((s) => {
     s.invitations.unshift(inv);
@@ -564,11 +565,11 @@ async function rebuildServices(demo: boolean) {
 }
 
 export async function startExpo() {
-  const { claudeEnabled, claudeKey, claudeModel } = getApp().prefs;
+  const { ai } = getApp().prefs;
   const data = seed();
   useApp.setState({
     ...data,
-    prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel },
+    prefs: { ...data.prefs, ai },
     session: { ...data.session, signedIn: true, expo: true, email: EXPO_EMAIL, householdId: 'nha-an', mode: null, actingAs: 'u-an', startedAt: Date.now() },
   });
   await rebuildServices(true);
@@ -576,9 +577,9 @@ export async function startExpo() {
 }
 
 export async function endExpo() {
-  const { claudeEnabled, claudeKey, claudeModel } = getApp().prefs;
+  const { ai } = getApp().prefs;
   const data = emptyState();
-  useApp.setState({ ...data, prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel } });
+  useApp.setState({ ...data, prefs: { ...data.prefs, ai } });
   await rebuildServices(false);
   await getSentinel().log({ kind: 'session', actor: 'Client', summary: 'Kết thúc phiên Expo, đã xóa dữ liệu trải nghiệm' });
 }
@@ -613,29 +614,29 @@ function makeMember(p: NewMember, index: number): Member {
 
 export async function leaveLocal() {
   const prev = getApp();
-  const { claudeEnabled, claudeKey, claudeModel } = prev.prefs;
+  const { ai } = prev.prefs;
   const data = emptyState({ ...prev.session, householdId: null, actingAs: '', mode: null, expo: false });
-  useApp.setState({ ...data, prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel } });
+  useApp.setState({ ...data, prefs: { ...data.prefs, ai } });
   await rebuildServices(false);
 }
 
 export async function prepareJoin(household: { id: string; name: string; tz: string }, memberId: string) {
   const prev = getApp();
-  const { claudeEnabled, claudeKey, claudeModel } = prev.prefs;
+  const { ai } = prev.prefs;
   const data = emptyState({ ...prev.session, householdId: household.id, actingAs: memberId, mode: null, expo: false, signedIn: true });
-  useApp.setState({ ...data, prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel }, household: { ...household, demo: false, createdAt: Date.now() } });
+  useApp.setState({ ...data, prefs: { ...data.prefs, ai }, household: { ...household, demo: false, createdAt: Date.now() } });
   await rebuildServices(false);
 }
 
 export async function createHousehold(p: { name: string; tz: string; me: NewMember }) {
   const prev = getApp();
-  const { claudeEnabled, claudeKey, claudeModel } = prev.prefs;
+  const { ai } = prev.prefs;
   const me = makeMember({ ...p.me, role: 'admin' }, 0);
   const data = emptyState({ ...prev.session, householdId: null, mode: null, expo: false });
   const id = randomId('h', 8);
   useApp.setState({
     ...data,
-    prefs: { ...data.prefs, claudeEnabled, claudeKey, claudeModel },
+    prefs: { ...data.prefs, ai },
     session: { ...data.session, signedIn: true, householdId: id, actingAs: me.id, displayName: me.name },
     household: { id, name: p.name.trim(), demo: false, createdAt: Date.now(), tz: p.tz },
     members: [me],
@@ -751,11 +752,11 @@ export async function regenerateInvitation(id: string, tone: 'warm' | 'short' | 
       return { id: m.id, name: m.name, address: m.address, lang: (cur?.lang ?? m.lang) as 'vi' | 'en' };
     }),
   };
-  const r = await draftInvitation(facts, app.prefs.claudeEnabled && app.prefs.claudeKey ? { apiKey: app.prefs.claudeKey, model: app.prefs.claudeModel } : null);
+  const r = await draftInvitation(facts, draftConfig(app.prefs.ai));
   set((s) => {
     const x = s.invitations.find((i) => i.id === id)!;
     x.draft = r.draft;
     x.gen = { provider: r.provider, model: r.model, checks: r.checks, fellBack: r.fellBack, ms: r.ms };
-    x.history.push({ at: Date.now(), text: `Tạo lại bản nháp (${tone}) bằng ${r.provider === 'claude' ? 'Claude' : 'mẫu trên thiết bị'}` });
+    x.history.push({ at: Date.now(), text: `Tạo lại bản nháp (${tone}) bằng ${r.provider !== 'local' ? 'trợ lý AI' : 'mẫu trên thiết bị'}` });
   });
 }

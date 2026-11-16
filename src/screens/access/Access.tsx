@@ -1,17 +1,17 @@
 import { Bell, Camera, Monitor, Server, Check, Cpu, LogOut, Phone as PhoneIcon, UserPlus, FileText, Fingerprint, Image, KeyRound, Languages, LayoutDashboard, MapPin, RefreshCw, Shield, ShieldCheck, Smartphone, Sparkles, Sun, Trash2, UserCog, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { Missing } from '../../components/Missing';
 import { SignOutButton } from '../../components/SignOut';
 import { Avatar, Badge, Field, Header, KV, Row, Seg, Sheet, Switch, TopBar } from '../../components/ui';
-import { draftInvitation } from '../../core/family/genai';
 import { SECURITY_STATE_LABEL } from '../../core/sentinel/incident';
 import { roleName } from '../../core/smarthome/engine';
 import { ago, hhmm } from '../../lib/format';
 import { requestApproval, toast } from '../../lib/ui-store';
 import { addMember, changeRole, regrantPermission, removeMember, resetEverything, revokePermission, setSyncDeviceOnline, updateMember } from '../../state/actions';
 import { leaveHousehold, useHubLink } from '../../state/hublink';
+import { providerOrder } from '../../state/aiConfig';
 import { approvalPub, useSentinel } from '../../state/services';
 import { memberName, namesOf, useApp, useDemo, useHouseholdName, useMe } from '../../state/store';
 import type { Member, PermScope } from '../../state/types';
@@ -349,26 +349,22 @@ export function FSettings() {
   const prefs = useApp((s) => s.prefs);
   const set = useApp((s) => s.set);
   const actAs = useApp((s) => s.actAs);
-  const [key, setKey] = useState(prefs.claudeKey);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const demo = useDemo();
   const homeName = useHouseholdName();
   const nav = useNavigate();
-  useEffect(() => {
-    setKey(prefs.claudeKey);
-  }, [prefs.claudeKey]);
-  const test = async () => {
-    setTesting(true);
-    setTestResult(null);
-    const r = await draftInvitation(
-      { occasion: 'Bữa cơm cùng nhà', slot: { start: 1140, end: 1200 }, tz: 'GMT+7', host: 'An', hostSelf: 'con', place: 'nhà An', tone: 'warm', recipients: [{ id: 'u-lan', name: 'Bà Lan', address: 'mẹ', lang: 'vi' }, { id: 'u-linh', name: 'Linh', address: 'em', lang: 'en' }] },
-      { apiKey: key, model: prefs.claudeModel },
-    );
-    setTesting(false);
-    setTestResult(r.provider === 'claude' ? { ok: true, text: `${r.model}, ${r.ms} ms, ${r.draft.messages.map((m) => m.text).join(' | ')}` } : { ok: false, text: r.fellBack ?? 'Không gọi được Claude' });
+  const aiOrder = providerOrder(prefs.ai);
+  const taps = useRef({ n: 0, at: 0 });
+  const tapVersion = () => {
+    const t = taps.current;
+    t.n = Date.now() - t.at < 3000 ? t.n + 1 : 1;
+    t.at = Date.now();
+    if (me.role !== 'admin') return;
+    if (t.n >= 7) {
+      t.n = 0;
+      nav('/f/ai-tech');
+    } else if (t.n >= 4) toast(`Còn ${7 - t.n} lần chạm để mở cài đặt kỹ thuật.`);
   };
   return (
     <Phone tabs>
@@ -381,26 +377,7 @@ export function FSettings() {
           {members.filter((m) => m.mode === 'family').map((m) => <option key={m.id} value={m.id}>{m.name}, {roleName(m.role)}</option>)}
         </select>
       </div>}
-      <div className="card stack">
-        <div className="hstack"><Sparkles size={18} color="#244C3E" /><h3 style={{ margin: 0, flex: 1 }}>GenAI bằng Claude (tùy chọn)</h3><Switch label="Bật Claude" checked={prefs.claudeEnabled} onChange={(v) => set((s) => void (s.prefs.claudeEnabled = v))} /></div>
-        <p>Mặc định HeartOS soạn lời mời bằng mẫu trên thiết bị. Bật mục này để dùng Claude với khóa API của chính bạn. Khóa chỉ lưu trên thiết bị và được gửi thẳng tới api.anthropic.com; chỉ dữ kiện tối thiểu (dịp, khung giờ, cách xưng hô, ngôn ngữ) được gửi, không gửi lịch hay ký ức.</p>
-        <Field label="Khóa API Anthropic">
-          <input className="input mono" type="password" autoComplete="off" placeholder="sk-ant-..." value={key} onChange={(e) => setKey(e.target.value)} onBlur={() => set((s) => void (s.prefs.claudeKey = key.trim()))} />
-        </Field>
-        <Field label="Mô hình">
-          <select className="input" value={prefs.claudeModel} onChange={(e) => set((s) => void (s.prefs.claudeModel = e.target.value))}>
-            <option value="claude-opus-5-5">Claude Opus 5.5 (mặc định)</option>
-            <option value="claude-sonnet-5-5">Claude Sonnet 5.5</option>
-            <option value="claude-haiku-5-5">Claude Haiku 5.5</option>
-          </select>
-        </Field>
-        <div className="hstack">
-          <button className="btn sm secondary" disabled={!key.trim() || testing} onClick={() => { set((s) => void (s.prefs.claudeKey = key.trim())); void test(); }}>{testing ? 'Đang thử' : 'Thử soạn một lời mời'}</button>
-          {prefs.claudeKey && <button className="btn sm ghost" onClick={() => { set((s) => { s.prefs.claudeKey = ''; s.prefs.claudeEnabled = false; }); setKey(''); }}><Trash2 size={14} /> Xóa khóa</button>}
-        </div>
-        {testResult && <p className="small" style={{ color: testResult.ok ? '#244C3E' : '#9E3830' }}>{testResult.ok ? 'Claude trả lời: ' : 'Chưa dùng được Claude: '}{testResult.text}</p>}
-        <p className="small muted">Bản nháp luôn qua kiểm schema và dữ kiện; nếu chưa đạt sẽ dùng mẫu sẵn. Yêu cầu bật dự phòng phía máy chủ (fallbacks) khi mô hình từ chối.</p>
-      </div>
+      <Row icon={<Sparkles size={18} />} tileTone="sand" title="Trợ lý AI" meta={aiOrder.length ? 'Đang bật, hiểu câu hỏi tự do và đề xuất việc cho cả nhà' : 'Đang dùng mẫu trên thiết bị'} to="/f/ai-settings" />
       <Row
         icon={<Bell size={18} />}
         title="Thông báo hệ thống"
@@ -423,7 +400,7 @@ export function FSettings() {
       <Row icon={<Sun size={18} />} title="Chữ lớn hơn" chevron={false} right={<Switch label="Chữ lớn hơn" checked={prefs.largeText} onChange={(v) => set((s) => void (s.prefs.largeText = v))} />} />
       <Row icon={<Languages size={18} />} title="Nút đọc to ở tiêu đề" chevron={false} right={<Switch label="Nút đọc to" checked={prefs.readAloud} onChange={(v) => set((s) => void (s.prefs.readAloud = v))} />} />
       <div className="card flat">
-        <KV items={[['Phiên bản', 'HeartOS 1.0.0'], ['Dữ liệu', 'Mã hóa AES-256-GCM trên thiết bị, khóa không xuất được'], ['Font', 'Inter, SIL OFL 1.1'], ['Đăng nhập', ago(useApp.getState().session.startedAt)]]} />
+        <KV items={[['Phiên bản', <span key="v" role="button" tabIndex={-1} onClick={tapVersion} style={{ cursor: 'default' }}>HeartOS 1.0.0</span>], ['Dữ liệu', 'Mã hóa AES-256-GCM trên thiết bị, khóa không xuất được'], ['Font', 'Inter, SIL OFL 1.1'], ['Đăng nhập', ago(useApp.getState().session.startedAt)]]} />
       </div>
       {demo ? <button className="btn ghost" onClick={() => setConfirmReset(true)}><RefreshCw size={16} /> Đặt lại dữ liệu mẫu</button> : <button className="btn ghost" onClick={() => setConfirmLeave(true)}><LogOut size={16} /> Rời hộ trên máy này</button>}
       <Sheet open={confirmLeave} onClose={() => setConfirmLeave(false)} title="Rời hộ trên máy này?">

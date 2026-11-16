@@ -1,6 +1,6 @@
 import { CalendarDays, Image, Languages, MapPin, MessageSquare, Phone as PhoneIcon, Siren, Sun, Type, Users, Volume2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { Missing } from '../../components/Missing';
 import { SignOutButton } from '../../components/SignOut';
@@ -137,7 +137,7 @@ export function SRoute() {
         <TopBar back backTo={`/s/sos/${inc.id}`} />
         <Header title="Nơi người thân đưa tới" sub={`${d.confirmedBy} đã chốt lúc ${hhmm(d.confirmedAt)}.`} />
         <Row tone="tint" icon={<MapPin size={22} />} tileTone="white" title={d.name} meta={`${d.address ?? ''}${d.gate ? `, ${d.gate}` : ''}`} chevron={false} />
-        {d.address && <a className="btn" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(d.address)}`} target="_blank" rel="noreferrer"><MapPin size={20} /> Mở chỉ đường</a>}
+        {d.address && <Link className="btn" to={`/s/maps?q=${encodeURIComponent(d.address)}`}><MapPin size={20} /> Mở chỉ đường</Link>}
         <button className="btn secondary" onClick={() => nav(`/s/sos/${inc.id}`)}>Về trạng thái SOS</button>
       </Phone>
     );

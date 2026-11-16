@@ -28,6 +28,16 @@ export interface Household {
   demo: boolean;
   createdAt: number;
   tz: string;
+  home?: { lat: number; lng: number; label: string };
+}
+
+export interface SavedPlace {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  savedAt: number;
 }
 
 export interface Hospital {
@@ -36,6 +46,8 @@ export interface Hospital {
   address: string;
   phone: string;
   note: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface Session {
@@ -194,13 +206,39 @@ export interface Prefs {
   voiceLang: 'vi-VN' | 'en-US';
   readAloud: boolean;
   largeText: boolean;
-  claudeEnabled: boolean;
-  claudeKey: string;
-  claudeModel: string;
+  ai: AiPrefs;
   notifications: boolean;
   quietFrom: string;
   haUrl?: string;
   haToken?: string;
+}
+
+export interface AiPrefs {
+  enabled: boolean;
+  provider: 'claude' | 'openai';
+  claudeKey: string;
+  claudeModel: string;
+  openaiKey: string;
+  openaiModel: string;
+  fallback: boolean;
+  shareSchedule: boolean;
+  shareHome: boolean;
+  shareLocation: boolean;
+  speak: boolean;
+  gateway: string;
+  gatewayCode: string;
+  gatewayToken: string;
+  deviceId: string;
+}
+
+export interface AiAction {
+  id: string;
+  kind: 'task' | 'device' | 'scene' | 'route' | 'call' | 'invite' | 'open';
+  title: string;
+  detail: string;
+  payload: Record<string, string | number | boolean | null>;
+  status: 'pending' | 'done' | 'dismissed' | 'failed';
+  note?: string;
 }
 
 export interface ChatMsg {
@@ -208,5 +246,24 @@ export interface ChatMsg {
   from: 'user' | 'assistant';
   text: string;
   at: number;
+  by?: string;
+  conv?: string;
+  provider?: 'claude' | 'openai' | 'local';
+  model?: string;
+  error?: boolean;
+  notice?: string;
   action?: { label: string; to: string };
+  actions?: AiAction[];
+}
+
+export interface AiConversation {
+  id: string;
+  ownerId: string;
+  startedAt: number;
+  updatedAt: number;
+  system: string;
+  provider: 'claude' | 'openai' | null;
+  history: unknown[];
+  notes: string[];
+  turns: number;
 }

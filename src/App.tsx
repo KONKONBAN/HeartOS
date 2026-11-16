@@ -15,6 +15,8 @@ import * as FR from './screens/family/Rhythm';
 import * as FT from './screens/family/Tasks';
 import * as FM from './screens/family/Memories';
 import * as FA from './screens/family/Assistant';
+import { FAiSettings, FAiTech } from './screens/family/AiSettings';
+import { FNewsletter, FSoften } from './screens/family/Caring';
 import * as SF from './screens/safety/Safety';
 import * as SG from './screens/safety/Guardian';
 import * as SD from './screens/safety/Devices';
@@ -105,6 +107,9 @@ function Root() {
 
 const g = (el: ReactNode, need: 'auth' | 'home' | 'mode' = 'mode') => <Guard need={need}>{el}</Guard>;
 
+const MapScreen = lazy(() => import('./screens/maps/Maps'));
+const maps = (simple?: boolean) => g(<Suspense fallback={<Splash error="Đang mở bản đồ" />}><MapScreen simple={simple} /></Suspense>);
+
 export default function App() {
   const [ready, setReady] = useState(servicesReady());
   const [error, setError] = useState<string>();
@@ -178,6 +183,13 @@ export default function App() {
         <Route path="/f/memory/:id" element={g(<FM.FMemory />)} />
         <Route path="/f/memory-new" element={g(<FM.FMemoryNew />)} />
         <Route path="/f/ai" element={g(<FA.FAi />)} />
+        <Route path="/f/ai-settings" element={g(<FAiSettings />)} />
+        <Route path="/f/ai-tech" element={g(<FAiTech />)} />
+        <Route path="/f/soften" element={g(<FSoften />)} />
+        <Route path="/f/newsletter" element={g(<FNewsletter />)} />
+        <Route path="/f/maps/*" element={maps()} />
+        <Route path="/s/maps/*" element={maps(true)} />
+        <Route path="/s/ai" element={g(<FA.SAi />)} />
         <Route path="/f/language" element={g(<FA.FLanguage />)} />
         <Route path="/f/voice" element={g(<FA.FVoice />)} />
 

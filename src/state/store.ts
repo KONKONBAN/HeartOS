@@ -4,6 +4,8 @@ import { encryptedStateStorage } from '../core/atrest';
 import { atRest } from './services';
 import { immer } from 'zustand/middleware/immer';
 import type {
+  AiConversation,
+  AiPrefs,
   CalendarShare,
   CameraSession,
   ChatMsg,
@@ -17,6 +19,7 @@ import type {
   Permission,
   Prefs,
   Ritual,
+  SavedPlace,
   Session,
   SyncDevice,
   SyncJob,
@@ -42,6 +45,9 @@ export interface AppState {
   cameraSessions: CameraSession[];
   prefs: Prefs;
   chat: ChatMsg[];
+  aiConvs: Record<string, AiConversation>;
+  places: SavedPlace[];
+  recentSearches: string[];
   seededAt: number;
   set: (fn: (s: AppState) => void) => void;
   setMode: (m: UiMode) => void;
@@ -59,7 +65,9 @@ const today = (h: number, m = 0, addDays = 0) => {
 
 export type AppData = Omit<AppState, 'set' | 'setMode' | 'actAs' | 'signOut' | 'resetAll'>;
 
-export const DEFAULT_PREFS: Prefs = { assistantLang: 'vi-VN', voiceLang: 'vi-VN', readAloud: false, largeText: false, claudeEnabled: false, claudeKey: '', claudeModel: 'claude-opus-5-5', notifications: false, quietFrom: '20:00' };
+export const DEFAULT_AI: AiPrefs = { enabled: true, provider: 'claude', claudeKey: '', claudeModel: 'claude-opus-5-5', openaiKey: '', openaiModel: 'gpt-6-astra', fallback: true, shareSchedule: true, shareHome: true, shareLocation: true, speak: false, gateway: '', gatewayCode: '', gatewayToken: '', deviceId: '' };
+
+export const DEFAULT_PREFS: Prefs = { assistantLang: 'vi-VN', voiceLang: 'vi-VN', readAloud: false, largeText: false, ai: { ...DEFAULT_AI }, notifications: false, quietFrom: '20:00' };
 
 export function emptyState(session?: Partial<Session>): AppData {
   const now = Date.now();
@@ -81,6 +89,9 @@ export function emptyState(session?: Partial<Session>): AppData {
     cameraSessions: [],
     prefs: { ...DEFAULT_PREFS },
     chat: [],
+    aiConvs: {},
+    places: [],
+    recentSearches: [],
     seededAt: now,
   };
 }
@@ -96,10 +107,10 @@ export function seed(): AppData {
   ];
   return {
     session: { signedIn: false, email: 'expo@heartos.local', householdId: null, mode: null, actingAs: 'u-an', startedAt: now },
-    household: { id: 'nha-an', name: 'Nhà An', demo: true, createdAt: now - 90 * 86400_000, tz: 'Asia/Ho_Chi_Minh' },
+    household: { id: 'nha-an', name: 'Nhà An', demo: true, createdAt: now - 90 * 86400_000, tz: 'Asia/Ho_Chi_Minh', home: { lat: 10.7769, lng: 106.7009, label: 'Nhà An' } },
     hospitals: [
-      { id: 'h-a', name: 'Cơ sở A', address: 'Bệnh viện gần nhà, cổng cấp cứu số 2', phone: '115', note: 'Cổng 2' },
-      { id: 'h-b', name: 'Cơ sở B', address: 'Bệnh viện khu vực, cổng số 1', phone: '115', note: 'Cổng 1' },
+      { id: 'h-a', name: 'Cơ sở A', address: 'Bệnh viện gần nhà, cổng cấp cứu số 2', phone: '115', note: 'Cổng 2', lat: 10.7814918, lng: 106.702831 },
+      { id: 'h-b', name: 'Cơ sở B', address: 'Bệnh viện khu vực, cổng số 1', phone: '115', note: 'Cổng 1', lat: 10.7653314, lng: 106.7022325 },
     ],
     members,
     calendars: [
@@ -143,6 +154,9 @@ export function seed(): AppData {
     cameraSessions: [],
     prefs: { ...DEFAULT_PREFS },
     chat: [],
+    aiConvs: {},
+    places: [],
+    recentSearches: [],
     seededAt: now,
   };
 }
@@ -181,11 +195,16 @@ export const useApp = create<AppState>()(
     })),
     {
       name: 'heartos-app',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
-        const old = persisted as Partial<AppData>;
+        let old = persisted as Partial<AppData>;
         if (version < 2 && old && Array.isArray(old.members) && old.members.length) {
-          return { ...old, household: { id: 'nha-an', name: 'Nhà An', demo: true, createdAt: Date.now(), tz: 'Asia/Ho_Chi_Minh' }, hospitals: seed().hospitals } as AppData;
+          old = { ...old, household: { id: 'nha-an', name: 'Nhà An', demo: true, createdAt: Date.now(), tz: 'Asia/Ho_Chi_Minh' }, hospitals: seed().hospitals };
+        }
+        if (version < 3 && old) {
+          const legacy = (old.prefs ?? {}) as Partial<Prefs> & { claudeEnabled?: boolean; claudeKey?: string; claudeModel?: string };
+          const { claudeEnabled, claudeKey, claudeModel, ...rest } = legacy;
+          old = { ...old, prefs: { ...DEFAULT_PREFS, ...rest, ai: { ...DEFAULT_AI, enabled: !!claudeEnabled && !!claudeKey, claudeKey: claudeKey ?? '', claudeModel: claudeModel ?? DEFAULT_AI.claudeModel } }, aiConvs: {}, places: old.places ?? [], recentSearches: old.recentSearches ?? [] };
         }
         return old as AppData;
       },

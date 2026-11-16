@@ -1,5 +1,6 @@
 import * as z from 'zod/v4';
 import { enTime, fromMin, viTime, type Slot } from './calendar';
+import { generate, type GenConfig } from '../ai/structured';
 
 export const InviteSchema = z.object({
   occasion: z.string().min(2).max(80),
@@ -37,7 +38,7 @@ export interface InviteFacts {
 
 export interface DraftResult {
   draft: InviteDraft;
-  provider: 'local' | 'claude';
+  provider: 'local' | 'claude' | 'openai';
   model?: string;
   checks: { name: string; ok: boolean; detail: string }[];
   fellBack?: string;
@@ -94,15 +95,16 @@ export function checkDraft(raw: unknown, f: InviteFacts): { ok: boolean; draft?:
   return { ok: checks.every((c) => c.ok), draft: d, checks };
 }
 
-export interface ClaudeConfig {
-  apiKey: string;
-  model: string;
-}
+export type DraftConfig = GenConfig;
 
-export async function claudeDraft(f: InviteFacts, cfg: ClaudeConfig): Promise<{ raw: unknown; model: string }> {
-  const [{ default: Anthropic }, { betaZodOutputFormat }] = await Promise.all([import('@anthropic-ai/sdk'), import('@anthropic-ai/sdk/helpers/beta/zod')]);
-  const client = new Anthropic({ apiKey: cfg.apiKey, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: 45_000 });
-  const facts = {
+const DRAFT_SYSTEM =
+  'You draft short, warm family invitations for a Vietnamese multi-generation household app. ' +
+  "Write one message per recipient in that recipient's language (vi = natural Vietnamese with full diacritics, addressing the recipient as given in addressAs; en = natural English). " +
+  'Each message must state the start time, stay under 160 characters, and invent no facts beyond the ones provided. Copy occasion and slot exactly. ' +
+  'Do not use the characters "·", "→", "…" or long dashes.';
+
+function draftFacts(f: InviteFacts) {
+  return {
     occasion: f.occasion,
     slot: { start: fromMin(f.slot.start), end: fromMin(f.slot.end), tz: f.tz },
     sender: { name: f.host, selfReference: f.hostSelf },
@@ -110,36 +112,27 @@ export async function claudeDraft(f: InviteFacts, cfg: ClaudeConfig): Promise<{ 
     tone: f.tone,
     recipients: f.recipients.map((r) => ({ recipientId: r.id, addressAs: r.address, lang: r.lang })),
   };
-  const msg = await client.beta.messages.parse({
-    model: cfg.model,
-    max_tokens: 2000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    output_config: { effort: 'low', format: betaZodOutputFormat(InviteSchema) },
-    system:
-      'You draft short, warm family invitations for a Vietnamese multi-generation household app. ' +
-      'Write one message per recipient in that recipient\'s language (vi = natural Vietnamese with full diacritics, addressing the recipient as given in addressAs; en = natural English). ' +
-      'Each message must state the start time, stay under 160 characters, and invent no facts beyond the ones provided. Copy occasion and slot exactly.',
-    messages: [{ role: 'user', content: `Facts (JSON):\n${JSON.stringify(facts)}` }],
-  });
-  if (msg.stop_reason === 'refusal') throw new Error('Claude từ chối yêu cầu.');
-  if (msg.stop_reason === 'max_tokens') throw new Error('Phản hồi bị cắt do giới hạn độ dài.');
-  return { raw: msg.parsed_output, model: msg.model };
 }
 
-export async function draftInvitation(f: InviteFacts, cfg?: ClaudeConfig | null): Promise<DraftResult> {
+export async function aiDraft(f: InviteFacts, cfg: DraftConfig): Promise<{ raw: unknown; model: string }> {
+  const r = await generate(cfg, { name: 'invitation', system: DRAFT_SYSTEM, user: `Facts (JSON):\n${JSON.stringify(draftFacts(f))}`, schema: InviteSchema, maxTokens: 2000 });
+  return { raw: r.data, model: r.model };
+}
+
+export async function draftInvitation(f: InviteFacts, cfg?: DraftConfig | null): Promise<DraftResult> {
   const t0 = performance.now();
   if (cfg?.apiKey) {
+    const name = cfg.managed ? 'trợ lý AI' : cfg.provider === 'openai' ? 'ChatGPT' : 'Claude';
     try {
-      const { raw, model } = await claudeDraft(f, cfg);
+      const { raw, model } = await aiDraft(f, cfg);
       const c = checkDraft(raw, f);
-      if (c.ok && c.draft) return { draft: c.draft, provider: 'claude', model, checks: c.checks, ms: Math.round(performance.now() - t0) };
+      if (c.ok && c.draft) return { draft: c.draft, provider: cfg.provider, model, checks: c.checks, ms: Math.round(performance.now() - t0) };
       const local = localDraft(f);
       const lc = checkDraft(local, f);
       return { draft: local, provider: 'local', checks: lc.checks, fellBack: 'Bản AI chưa đạt kiểm dữ kiện: ' + c.checks.filter((x) => !x.ok).map((x) => x.name).join(', ') + ', dùng mẫu sẵn.', ms: Math.round(performance.now() - t0) };
     } catch (e) {
       const local = localDraft(f);
-      return { draft: local, provider: 'local', checks: checkDraft(local, f).checks, fellBack: 'Không gọi được Claude (' + (e as Error).message + '), dùng mẫu sẵn trên thiết bị.', ms: Math.round(performance.now() - t0) };
+      return { draft: local, provider: 'local', checks: checkDraft(local, f).checks, fellBack: `Không gọi được ${name} (${(e as Error).message}), dùng mẫu sẵn trên thiết bị.`, ms: Math.round(performance.now() - t0) };
     }
   }
   const local = localDraft(f);

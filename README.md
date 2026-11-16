@@ -13,7 +13,9 @@ Bộ phần mềm gồm ba phần:
 ## Tính năng chính
 
 - **Nhịp Nhà**: đọc khoảng rảnh/bận mà từng người đã chia sẻ (qua Sentinel), cắt theo giờ yên tĩnh và tìm khung giờ chung.
-- **GenAI**: soạn lời mời theo từng người nhận và ngôn ngữ, kiểm schema và dữ kiện, chờ người dùng duyệt, kiểm lại quyền khi phát hành.
+- **Trợ lý AI**: hỏi tự do bằng chữ hoặc giọng nói. Trợ lý xem việc, lịch, thiết bị, tìm địa điểm và tính đường, rồi đề xuất việc, lệnh thiết bị, cảnh, chỉ đường, cuộc gọi, lời mời dưới dạng thẻ chờ người dùng bấm duyệt. Chạy bằng Claude hoặc ChatGPT qua máy chủ HeartOS AI, khách không thấy tên nhà cung cấp.
+- **GenAI theo sơ đồ hoạt động**: soạn lời mời, lựa lời khi bất đồng, tóm tắt lời kể thành bản nháp ký ức, bản tin gia đình hằng tuần, gợi ý thấu cảm Nhịp Nhà (gọi hỏi thăm, bữa cơm, nếp nhà). Mọi bản nháp qua kiểm lược đồ JSON, kiểm tiếng Việt có dấu, chưa đạt thì dùng mẫu trên thiết bị, người dùng xem và sửa trước khi gửi.
+- **Bản đồ và chỉ đường**: bản đồ vector OpenStreetMap cập nhật hằng tuần, nhãn tiếng Việt, lớp vệ tinh và 3D, tìm địa điểm, danh mục quanh đây, chỉ đường xe máy, ô tô, đi bộ, xe đạp với tuyến thay thế, dẫn đường từng bước có giọng nói, tự tìm đường mới khi đi lệch, dùng được khi mất mạng với vùng đã lưu.
 - **Việc chung, Nghi thức, Ký Ức Số, Quỹ Nếp Nhà**.
 - **Hộ gia đình thật**: mỗi nhà tự tạo hộ, thêm người thân, người thân tham gia từ điện thoại riêng bằng mã của hub. Việc, lời mời, ký ức, quỹ, quyền chia sẻ và ca SOS đồng bộ qua hub trong mạng nhà.
 - **Thiết bị qua Home Assistant**: đèn, ổ cắm, rèm, điều hòa, khóa, van, còi, cảm biến cửa/khói/khí/nước, nút SOS, camera, UPS, radar LD2450 và cảm biến nhiệt MLX90640. Lệnh theo quyền trong hộ, trạng thái chỉ đổi khi thiết bị xác nhận.
@@ -144,7 +146,7 @@ Dữ liệu được Sentinel bảo vệ trong ứng dụng: lịch rảnh/bận
 
 ### Mã hóa dữ liệu khi lưu
 
-Toàn bộ dữ liệu ứng dụng lưu trên thiết bị (trạng thái ứng dụng, khóa API Claude, trạng thái R, nhật ký Sentinel, SmartHome, liên kết hub) được mã hóa AES-256-GCM trước khi ghi xuống localStorage (`src/core/atrest.ts`):
+Toàn bộ dữ liệu ứng dụng lưu trên thiết bị (trạng thái ứng dụng, mã thiết bị trợ lý AI, trạng thái R, nhật ký Sentinel, SmartHome, liên kết hub) được mã hóa AES-256-GCM trước khi ghi xuống localStorage (`src/core/atrest.ts`):
 
 - Khóa tạo một lần, không xuất được, giữ trong IndexedDB cùng chỗ với KEK của HSM.
 - Mỗi giá trị gắn AAD theo tên khóa lưu, nên bản mã của mục này không dán sang mục khác được.
@@ -174,7 +176,7 @@ npm install
 | Lệnh | Việc làm |
 |---|---|
 | `npm run dev` | Chạy bản phát triển, mở được từ điện thoại cùng mạng LAN |
-| `npm test` | 63 bài kiểm thử đơn vị |
+| `npm test` | 88 bài kiểm thử đơn vị (thêm 20 hành trình thật khi đặt NET=1) |
 | `npm run typecheck` | Kiểm kiểu cho ứng dụng và phần máy tính |
 | `npm run build` | Build web vào `dist/` |
 | `npm run desktop:dev` | Mở phần mềm quản trị từ mã nguồn |
@@ -206,9 +208,29 @@ APK nằm ở `android/app/build/outputs/apk/release/app-release.apk`. Cần JDK
 
 Trên Linux chỉ build được bản portable và zip cho Windows. Bộ cài NSIS cần chạy `npm run desktop:dist` trên Windows (hoặc có Wine), bản dmg cần chạy trên macOS.
 
-## GenAI (tùy chọn)
+## Trợ lý AI và GenAI
 
-Mặc định lời mời được soạn bằng mẫu trên thiết bị. Trong **Thêm > Cài đặt ứng dụng** có thể bật Claude bằng khóa API của chính người dùng. Khóa lưu trên thiết bị, ứng dụng gọi thẳng `api.anthropic.com` qua SDK chính thức với structured output theo schema zod. Chỉ dữ kiện tối thiểu được gửi đi. Bản nháp vẫn phải qua bước kiểm dữ kiện, chưa đạt thì dùng mẫu.
+Ứng dụng gọi Claude (SDK `@anthropic-ai/sdk`, mặc định `claude-opus-5-5`, có dự phòng phía máy chủ khi mô hình từ chối) và ChatGPT (SDK `openai`, Responses API) qua **máy chủ HeartOS AI** trong thư mục `server/`. Khóa API chỉ nằm trên máy chủ, không nằm trong APK. Hướng dẫn triển khai xem `server/README.md`.
+
+- Build bản bán ra với `VITE_AI_GATEWAY=https://ai.ten-mien-cua-ban.vn` để khách cài là dùng được ngay.
+- Máy trưng bày hoặc kỹ thuật viên: Thêm, Cài đặt ứng dụng, chạm 7 lần vào "HeartOS 1.0.0" bằng tài khoản quản trị để mở Cài đặt kỹ thuật, nhập địa chỉ máy chủ. Mục này cũng cho nhập khóa API trực tiếp để thử, không dùng cho máy bán.
+- Chưa có máy chủ thì trợ lý dùng mẫu trên thiết bị, vẫn hiểu các câu đơn giản (soạn lời mời, nhắc việc, mở SOS).
+- Lịch sử hội thoại với Claude được giữ nguyên thứ tự chỉ thêm vào cuối, ngữ cảnh từng lượt nằm trong tin nhắn người dùng, nên khối suy nghĩ của mô hình không bị vô hiệu.
+- Người dùng chọn dữ liệu trợ lý được dùng: việc và lịch, thiết bị và an toàn, vị trí hiện tại.
+
+## Bản đồ và chỉ đường
+
+| Phần | Dịch vụ mặc định | Đổi bằng |
+| --- | --- | --- |
+| Bản đồ vector | OpenFreeMap (dữ liệu OpenStreetMap, cập nhật hằng tuần) | `src/core/maps/config.ts` |
+| Ảnh vệ tinh | Esri World Imagery | `VITE_SATELLITE_TILES`, `VITE_SATELLITE_ATTRIBUTION` |
+| Chỉ đường | Valhalla (FOSSGIS), dự phòng OSRM | `src/core/maps/config.ts` |
+| Tìm địa điểm | Photon, dự phòng Nominatim | `src/core/maps/config.ts` |
+
+- Hướng dẫn rẽ do HeartOS tự viết bằng tiếng Việt từ loại thao tác của máy chủ chỉ đường (rẽ, rẽ nhẹ, quay đầu, vòng xoay có số lối ra, nhập làn, lên và rời phà, nơi đến bên trái hoặc phải).
+- Khi mất mạng: vùng quanh nhà được tự tải về (bán kính khoảng 6 km), người dùng tải thêm vùng đang xem trong Lớp bản đồ, Bản đồ ngoại tuyến. Tuyến đã tìm được lưu lại để dùng khi mất mạng, đang dẫn đường thì vẫn tiếp tục theo GPS. Chưa có tuyến thì hiện hướng và khoảng cách đường chim bay.
+- Kiểm thử: `src/core/maps/maps.test.ts` (giải mã tuyến, câu hướng dẫn, bám tuyến, phát hiện đi lệch, nhắc giọng nói). `NET=1 NODE_USE_ENV_PROXY=1 npx vitest run src/core/maps/route.net.test.ts` chạy 20 hành trình thật ở Sài Gòn, Hà Nội, Đà Nẵng với 4 cách đi, mô phỏng GPS đi hết tuyến.
+- Các dịch vụ công cộng ở trên có chính sách dùng hợp lý. Khi số khách lớn nên tự dựng Valhalla, Photon và kho bản đồ, hoặc dùng gói trả phí. Ảnh vệ tinh Esri cho mục đích thương mại cần tài khoản ArcGIS Location Platform (có gói miễn phí), đặt địa chỉ ảnh kèm khóa vào `VITE_SATELLITE_TILES`.
 
 ## Giới hạn
 
@@ -216,7 +238,7 @@ Mặc định lời mời được soạn bằng mẫu trên thiết bị. Trong
 - SOS tới điện thoại người thân qua hub chỉ đến được khi ứng dụng trên máy đó đang mở và cùng mạng nhà (chưa có thông báo đẩy khi ứng dụng tắt). Kênh luôn đến được là tin nhắn SMS soạn sẵn kèm vị trí và nút gọi điện. HeartOS **không** tự gọi cấp cứu, màn SOS có nút gọi 115.
 - Nhà mẫu chỉ có trong tài khoản Expo. Máy đã có hộ thật thì không hiện nút Expo để tránh xóa nhầm dữ liệu.
 - "Enclave" và "HSM" là ranh giới mô-đun trong ứng dụng với khóa không xuất được. Thuộc tính mật mã là thật nhưng không có cách ly phần cứng. Triển khai thật cần TEE/HSM theo hồ sơ cấu hình C (Phụ lục D).
-- Danh sách bệnh viện do từng nhà tự nhập. Nút chỉ đường mở Google Maps theo địa chỉ đã nhập.
+- Danh sách bệnh viện do từng nhà tự nhập hoặc thêm từ bản đồ. Chỉ đường cần mạng để tìm tuyến lần đầu.
 - Dữ liệu ứng dụng lưu trên thiết bị và được mã hóa khi lưu. Đồng bộ giữa các máy đi qua hub trong mạng LAN.
 - Khóa mã hóa khi lưu nằm trong kho của ứng dụng trên thiết bị. Người chiếm quyền root của máy vẫn có thể đọc được; muốn chống trường hợp này cần thêm khóa ứng dụng bằng PIN hoặc sinh trắc học.
 

@@ -224,7 +224,7 @@ export function FDraft() {
       ))}
       <div className="card flat">
         <div className="hstack">
-          <Badge tone={inv.gen.provider === 'claude' ? 'dark' : undefined}>{inv.gen.provider === 'claude' ? `Claude, ${inv.gen.model}` : 'Mẫu trên thiết bị'}</Badge>
+          <Badge tone={inv.gen.provider !== 'local' ? 'dark' : undefined}>{inv.gen.provider !== 'local' ? 'Trợ lý AI' : 'Mẫu trên thiết bị'}</Badge>
           <Badge tone={okChecks === inv.gen.checks.length ? undefined : 'danger'}>Kiểm dữ kiện {okChecks}/{inv.gen.checks.length}</Badge>
           <span className="spacer" />
           <button className="btn xs ghost" onClick={() => setShowChecks((v) => !v)}>{showChecks ? 'Ẩn' : 'Chi tiết'}</button>

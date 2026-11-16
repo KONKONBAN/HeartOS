@@ -1,7 +1,8 @@
-import { Bell, Check, Eye, Heart, Lightbulb, PiggyBank, Plus, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import { Bell, Check, Eye, Heart, Lightbulb, PiggyBank, Plus, ShieldCheck, Sparkles, UserRound, Map as MapIcon, MessageCircleHeart, Newspaper } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { CareSuggestions } from './Caring';
 import { Badge, Field, Header, ModePicker, Row, Seg, TopBar } from '../../components/ui';
 import { fmtSlot } from '../../core/family/calendar';
 import { fmtDate, nextOccurrence } from '../../core/family/recurrence';
@@ -100,9 +101,19 @@ export function FHome() {
           <Check size={18} /> Việc chung
         </Link>
       </div>
+      <div className="grid2">
+        <Link to="/f/maps" className="btn secondary" style={{ minHeight: 48 }}>
+          <MapIcon size={18} /> Bản đồ
+        </Link>
+        <Link to="/f/soften" className="btn secondary" style={{ minHeight: 48 }}>
+          <MessageCircleHeart size={18} /> Lựa lời
+        </Link>
+      </div>
+      <CareSuggestions />
       <Row icon={<ShieldCheck size={18} />} title="An toàn tại nhà" meta={open.length ? `${open.length} ca đang mở` : `${staleRooms.length} vùng cần kiểm tra`} badge={open.length || staleRooms.length ? <Badge tone={open.some((i) => i.priority === 'P1') ? 'danger' : undefined}>Có cập nhật</Badge> : undefined} to="/f/safe" />
       <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Nhà thông minh" meta={home.real && !home.s.devices.length ? 'Chưa kết nối thiết bị, kết nối Home Assistant' : `${lightsOn} đèn đang bật, ${home.s.mode === 'home' ? 'Ở nhà' : home.s.mode === 'away' ? 'Vắng nhà' : 'Ban đêm'}`} to="/f/smart" />
       {next && <Row icon={<Heart size={18} />} tileTone="peach" title="Nghi thức gia đình" meta={`${next.r.name}, ${fmtDate(next.at)}`} to="/f/rituals" />}
+      <Row icon={<Newspaper size={18} />} tileTone="peach" title="Bản tin gia đình" meta="Trợ lý tóm tắt tuần qua để gửi cả nhà" to="/f/newsletter" />
       <Row icon={<PiggyBank size={18} />} tileTone="sand" title="Quỹ Nếp Nhà" meta={goals[0]?.name ?? 'Tạo mục tiêu chung của gia đình'} to="/f/fund" />
     </Phone>
   );

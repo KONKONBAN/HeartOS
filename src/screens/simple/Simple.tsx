@@ -1,4 +1,4 @@
-import { CalendarDays, Check, Clock, Mic, Phone as PhoneIcon, PlayCircle, Siren, Square, Volume2 } from 'lucide-react';
+import { Bot, CalendarDays, Check, Clock, Map as MapIcon, Mic, Phone as PhoneIcon, PlayCircle, Siren, Square, Volume2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
@@ -74,6 +74,8 @@ export function SHome() {
         )
       )}
       <Row icon={<CalendarDays size={22} />} tileTone="peach" title="Lịch hôm nay" meta={todaySummary} to="/s/today" />
+      <Row icon={<Bot size={22} />} tileTone="peach" title="Hỏi trợ lý" meta="Nói một câu, trợ lý trả lời và đọc to" to="/s/ai" />
+      <Row icon={<MapIcon size={22} />} tileTone="peach" title="Bản đồ, đường về nhà" meta="Chỉ đường đi bộ hoặc xe máy, có giọng nói" to="/s/maps" />
       <Row tone="rose" icon={<Siren size={22} />} tileTone="white" title="Cần giúp ngay" meta={home.s.real ? (contacts.length ? `Gửi SOS cho ${namesOf(contacts.map((m) => m.id))}` : 'Gửi SOS và gọi cấp cứu 115') : `Gửi SOS cho ${namesOf(home.s.helpers.map((h) => h.id))}`} to="/s/help" />
     </Phone>
   );

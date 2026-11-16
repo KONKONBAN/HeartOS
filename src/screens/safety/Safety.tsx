@@ -148,7 +148,7 @@ export function FIncident() {
           ]}
         />
       </div>
-      {inc.kind === 'sos' && <Row icon={<MapPin size={18} />} title={inc.location ? 'Vị trí khi gửi SOS' : 'Vị trí hỗ trợ (qua Sentinel)'} meta={loc || 'Đang mở'} chevron={false} right={inc.location ? <a className="btn xs secondary" href={`https://maps.google.com/?q=${inc.location.lat},${inc.location.lng}`} target="_blank" rel="noreferrer">Bản đồ</a> : undefined} />}
+      {inc.kind === 'sos' && <Row icon={<MapPin size={18} />} title={inc.location ? 'Vị trí khi gửi SOS' : 'Vị trí hỗ trợ (qua Sentinel)'} meta={loc || 'Đang mở'} chevron={false} right={inc.location ? <Link className="btn xs secondary" to={`/f/maps/dir?to=${inc.location.lat.toFixed(6)},${inc.location.lng.toFixed(6)}&name=${encodeURIComponent(`Chỗ ${inc.personName ?? 'người thân'} gửi SOS`)}`}>Chỉ đường</Link> : undefined} />}
       {home.s.real && inc.status !== 'closed' && inc.kind === 'sos' && (
         <div className="card rose stack">
           <h3 style={{ margin: 0 }}>Báo cho người thân</h3>
@@ -329,14 +329,14 @@ export function FHospitals() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/safe" />
-      <Header title="Bệnh viện gần nhà" sub="Nơi đưa người thân tới khi cần. Chỉ đường bằng bản đồ của điện thoại." />
+      <Header title="Bệnh viện gần nhà" sub="Nơi đưa người thân tới khi cần. Chỉ đường ngay trên bản đồ HeartOS, kể cả khi mất mạng nếu đã lưu vùng." />
       {list.length === 0 && <div className="empty">Chưa có bệnh viện nào. Thêm ít nhất một nơi có khoa cấp cứu gần nhà.</div>}
       {list.map((h) => (
         <div key={h.id} className="card stack">
           <div className="hstack"><Building2 size={18} color="#244C3E" /><h3 style={{ margin: 0, flex: 1 }}>{h.name}</h3>{me.role === 'admin' && <button className="btn xs ghost" aria-label={`Xóa ${h.name}`} onClick={() => setHospitals(list.filter((x) => x.id !== h.id))}><Trash2 size={16} /></button>}</div>
           <p style={{ margin: 0 }}>{h.address}{h.note ? `, ${h.note}` : ''}</p>
           <div className="btnrow">
-            <a className="btn sm secondary" href={directionsLink(h.address)} target="_blank" rel="noreferrer"><Navigation size={16} /> Chỉ đường</a>
+            <Link className="btn sm secondary" to={hospitalRoute(h)}><Navigation size={16} /> Chỉ đường</Link>
             {h.phone ? <a className="btn sm secondary" href={`tel:${h.phone}`}><PhoneIcon size={16} /> Gọi</a> : <span />}
           </div>
         </div>
@@ -363,8 +363,10 @@ export function FHospitals() {
   );
 }
 
-function directionsLink(address: string) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+function hospitalRoute(h: { name: string; address: string; lat?: number; lng?: number }, from?: { lat: number; lng: number }) {
+  const origin = from ? `&from=${from.lat.toFixed(6)},${from.lng.toFixed(6)}&fromName=${encodeURIComponent('Chỗ gửi SOS')}` : '';
+  if (h.lat !== undefined && h.lng !== undefined) return `/f/maps/dir?to=${h.lat.toFixed(6)},${h.lng.toFixed(6)}&name=${encodeURIComponent(h.name)}&addr=${encodeURIComponent(h.address)}${origin}`;
+  return `/f/maps?q=${encodeURIComponent(h.address || h.name)}`;
 }
 
 export function RealRoutes() {
@@ -385,7 +387,7 @@ export function RealRoutes() {
             <div className="hstack"><Building2 size={18} color="#244C3E" /><h3 style={{ margin: 0, flex: 1 }}>{h.name}</h3>{chosen && <Badge>Đã chốt</Badge>}</div>
             <p style={{ margin: 0 }}>{h.address}{h.note ? `, ${h.note}` : ''}</p>
             <div className="btnrow">
-              <a className="btn sm secondary" href={inc?.location ? `https://www.google.com/maps/dir/?api=1&origin=${inc.location.lat},${inc.location.lng}&destination=${encodeURIComponent(h.address)}` : directionsLink(h.address)} target="_blank" rel="noreferrer"><Navigation size={16} /> Chỉ đường</a>
+              <Link className="btn sm secondary" to={hospitalRoute(h, inc?.location)}><Navigation size={16} /> Chỉ đường</Link>
               {!chosen && inc && inc.status !== 'closed' ? <button className="btn sm" onClick={() => home.setDestination(inc.id, h, { id: me.id, name: me.name, role: me.role })}><Check size={16} /> Chốt nơi này</button> : h.phone ? <a className="btn sm secondary" href={`tel:${h.phone}`}><PhoneIcon size={16} /> Gọi</a> : <span />}
             </div>
           </div>

@@ -1,10 +1,11 @@
-import { Camera, FileText, Image as ImageIcon, Lock, Mic, Plus, ShieldCheck, Square, Users, Volume2 } from 'lucide-react';
+import { Camera, FileText, Image as ImageIcon, Lock, Mic, Plus, ShieldCheck, Sparkles, Square, Users, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { Missing } from '../../components/Missing';
 import { Badge, Chips, Field, Header, KV, Row, Switch, TopBar, TraceView } from '../../components/ui';
-import { summarizeStory } from '../../core/family/genai';
+import { summarizeStoryAI } from '../../core/family/caring';
+import { genConfig } from '../../state/genai';
 import type { TraceStep } from '../../core/sentinel/types';
 import { dmy } from '../../lib/format';
 import { compressImage, speak, useRecorder } from '../../lib/media';
@@ -171,6 +172,8 @@ export function FMemoryNew() {
   const [title, setTitle] = useState('Bữa cơm tháng 11');
   const [caption, setCaption] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [summarizing, setSummarizing] = useState(false);
+  const [storyNote, setStoryNote] = useState('');
   const [ritualId, setRitualId] = useState(params.get('ritual') ?? '');
   const [viewers, setViewers] = useState<string[]>(() => members.filter((m) => m.id !== me.id && m.role !== 'carer').map((m) => m.id));
   const [derived, setDerived] = useState(true);
@@ -242,9 +245,27 @@ export function FMemoryNew() {
         <textarea className="input" placeholder="Ví dụ: Ngày đó, cả nhà quây quần bên bếp" value={transcript} onChange={(e) => setTranscript(e.target.value)} />
       </Field>
       {transcript.length > 20 && (
-        <button className="btn xs ghost" style={{ alignSelf: 'flex-start' }} onClick={() => { const s = summarizeStory(transcript); setCaption(s.summary); if (title === 'Bữa cơm tháng 11') setTitle(s.title); }}>
-          Gợi ý tiêu đề và chú thích (trên thiết bị)
+        <button
+          className="btn xs ghost"
+          style={{ alignSelf: 'flex-start' }}
+          disabled={summarizing}
+          onClick={async () => {
+            setSummarizing(true);
+            const r = await summarizeStoryAI(await genConfig(), { transcript, narrator: me.name, lang: me.lang });
+            setSummarizing(false);
+            setCaption(r.data.caption);
+            setTitle(r.data.title);
+            setStoryNote(r.ai ? 'Trợ lý AI đã tóm tắt lời kể thành bản nháp. Hãy đọc lại và sửa trước khi lưu.' : r.fellBack ?? 'Đã gợi ý tiêu đề và chú thích bằng mẫu trên thiết bị.');
+          }}
+        >
+          <Sparkles size={14} /> {summarizing ? 'Trợ lý đang tóm tắt' : 'Tóm tắt lời kể thành bản nháp'}
         </button>
+      )}
+      {storyNote && <p className="small" style={{ margin: 0, color: 'var(--sand-ink)' }}>{storyNote}</p>}
+      {caption && (
+        <Field label="Chú thích">
+          <textarea className="input" value={caption} onChange={(e) => setCaption(e.target.value)} />
+        </Field>
       )}
       <Field label="Liên kết nghi thức">
         <select className="input" value={ritualId} onChange={(e) => setRitualId(e.target.value)}>
