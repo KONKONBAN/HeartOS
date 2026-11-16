@@ -176,7 +176,7 @@ npm install
 | Lệnh | Việc làm |
 |---|---|
 | `npm run dev` | Chạy bản phát triển, mở được từ điện thoại cùng mạng LAN |
-| `npm test` | 88 bài kiểm thử đơn vị (thêm 20 hành trình thật khi đặt NET=1) |
+| `npm test` | 113 bài kiểm thử đơn vị (thêm 20 hành trình thật khi đặt NET=1) |
 | `npm run typecheck` | Kiểm kiểu cho ứng dụng và phần máy tính |
 | `npm run build` | Build web vào `dist/` |
 | `npm run desktop:dev` | Mở phần mềm quản trị từ mã nguồn |
@@ -233,6 +233,7 @@ Trên Linux chỉ build được bản portable và zip cho Windows. Bộ cài N
 | Chỉ đường | Valhalla (FOSSGIS), dự phòng OSRM | `src/core/maps/config.ts` |
 | Tìm địa điểm | Photon, dự phòng Nominatim | `src/core/maps/config.ts` |
 
+- Khi dẫn đường: bản đồ xoay theo hướng đường phía trước và nghiêng 3D, mũi tên vị trí màu xanh chỉ hướng đang đi, đoạn đã đi chuyển màu xám, mũi tên rẽ màu trắng vẽ ngay tại ngã rẽ tiếp theo (trong vòng 450 m), tên đường đang đi hiện ở dưới, phóng to dần khi tới gần chỗ rẽ.
 - Hướng dẫn rẽ do HeartOS tự viết bằng tiếng Việt từ loại thao tác của máy chủ chỉ đường (rẽ, rẽ nhẹ, quay đầu, vòng xoay có số lối ra, nhập làn, lên và rời phà, nơi đến bên trái hoặc phải).
 - Khi mất mạng: vùng quanh nhà được tự tải về (bán kính khoảng 6 km), người dùng tải thêm vùng đang xem trong Lớp bản đồ, Bản đồ ngoại tuyến. Tuyến đã tìm được lưu lại để dùng khi mất mạng, đang dẫn đường thì vẫn tiếp tục theo GPS. Chưa có tuyến thì hiện hướng và khoảng cách đường chim bay.
 - Kiểm thử: `src/core/maps/maps.test.ts` (giải mã tuyến, câu hướng dẫn, bám tuyến, phát hiện đi lệch, nhắc giọng nói). `NET=1 NODE_USE_ENV_PROXY=1 npx vitest run src/core/maps/route.net.test.ts` chạy 20 hành trình thật ở Sài Gòn, Hà Nội, Đà Nẵng với 4 cách đi, mô phỏng GPS đi hết tuyến.
