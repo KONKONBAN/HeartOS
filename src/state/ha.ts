@@ -191,7 +191,13 @@ export function initHa() {
   const { prefs, household } = getApp();
   if (client || !household || household.demo || !prefs.haUrl || !prefs.haToken) return;
   setStatus({ state: 'connecting' });
-  attach(new HaClient(prefs.haUrl, prefs.haToken, transport));
+  const c = new HaClient(prefs.haUrl, prefs.haToken, transport);
+  attach(c);
+  c.check()
+    .then((info) => {
+      if (client === c) setStatus({ version: info.version, location: info.location });
+    })
+    .catch(() => undefined);
 }
 
 export function syncHaNow() {

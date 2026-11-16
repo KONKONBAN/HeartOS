@@ -344,6 +344,10 @@ function FCameraReal() {
       </Phone>
     );
   const start = async () => {
+    if (admin) {
+      await ensureCameraPolicy(d.id, d.name, me.id);
+      setViewers((v) => v ?? cameraViewers(d.id));
+    }
     const r = await startCamera(d.id, me.id);
     setTrace(r.trace);
     setErr(r.ok ? '' : r.error);

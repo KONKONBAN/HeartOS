@@ -52,7 +52,7 @@ export function FSafe() {
       )}
       <Row icon={<Siren size={18} />} tileTone="rose" title="Sự cố đang theo dõi" meta="SOS và tín hiệu nghi ngã" badge={<Badge tone={open.length ? 'danger' : undefined}>{open.length} ca</Badge>} to="/f/incidents" />
       <Row icon={<MapIcon size={18} />} tileTone="sand" title="Bản đồ vùng quan sát" meta={!home.s.rooms.length ? 'Chưa có phòng nào, thêm thiết bị để hiện sơ đồ' : stale.length ? `${stale.map((r) => r.name).join(', ')} chưa có dữ liệu mới` : 'Mọi vùng có tín hiệu gần đây'} to="/f/map" />
-      <Row icon={<Radar size={18} />} title="Guardian radar-nhiệt trực tiếp" meta={home.s.devices.some((d) => d.kind === 'radar') ? 'LD2450 2D, MLX90640 32×24, điểm ghép' : 'Chưa có cảm biến radar, kết nối qua Home Assistant'} to="/f/guardian" />
+      <Row icon={<Radar size={18} />} title="Guardian radar-nhiệt trực tiếp" meta={!home.s.devices.some((d) => d.kind === 'radar') ? 'Chưa có cảm biến radar, kết nối qua Home Assistant' : home.s.real ? 'Radar và cảm biến nhiệt, theo dõi ngã theo phòng' : 'LD2450 2D, MLX90640 32×24, điểm ghép'} to="/f/guardian" />
       {camera && <Row icon={<Camera size={18} />} title="Camera được cấp quyền" meta="Xem theo vùng và thời hạn" to={`/f/camera/${encodeURIComponent(camera.id)}`} />}
       <Row icon={<Power size={18} />} title="Thiết bị và điện dự phòng" meta={home.s.real ? 'Home Assistant, cảm biến, UPS và mạng' : 'Hub, cảm biến, UPS và mạng'} to="/f/devices" />
       <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Thiết bị thông minh" meta="Đèn, ổ cắm, cảnh và luật tự động" to="/f/smart" />

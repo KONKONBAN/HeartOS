@@ -131,7 +131,9 @@ async function apply(cmd: AdminCommand): Promise<{ ok: boolean; message: string 
       const p = getApp().permissions.find((x) => x.id === cmd.params.permissionId);
       if (!p) return { ok: false, message: 'Không có quyền này' };
       if (p.status === 'revoked') return { ok: true, message: 'Quyền đã được thu hồi trước đó' };
-      await revokePermission(p.id, 'u-an', `Lệnh từ ${by}`);
+      const app = getApp();
+      const actor = app.members.find((m) => m.id === app.session.actingAs && m.role === 'admin')?.id ?? app.members.find((m) => m.role === 'admin')?.id ?? p.ownerId;
+      await revokePermission(p.id, actor, `Lệnh từ ${by}`);
       return { ok: true, message: `Đã thu hồi ${p.title}, thế hệ quyền ${s.epoch()}` };
     }
     case 'set_bucket': {

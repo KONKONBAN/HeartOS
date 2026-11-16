@@ -313,6 +313,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .no-flex-gap .hstack > * + *, .no-flex-gap .btn > * + *, .no-flex-gap .modepick > * + * { margin-left: 8px; }
 .no-flex-gap .back > * + *, .no-flex-gap .date > * + * { margin-left: 6px; }
 .no-flex-gap .badge > * + * { margin-left: 4px; }
+.no-flex-gap .btn > svg, .no-flex-gap .chip > svg { margin-right: 8px; flex: none; }
+.no-flex-gap .btn > svg + *, .no-flex-gap .chip > svg + * { margin-left: 0; }
+.no-flex-gap .btn.xs > svg:only-child { margin-right: 0; }
+.no-flex-gap .badge > svg { margin-right: 4px; }
 .no-flex-gap .ops-head > * + * { margin-left: 12px; }
 .no-flex-gap .chips > * { margin: 0 6px 6px 0; }
 .no-flex-gap .field.fbox > * + * { margin-left: 12px; }

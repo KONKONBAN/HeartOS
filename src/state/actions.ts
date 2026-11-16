@@ -365,10 +365,21 @@ export function cameraObjectId(deviceId: string) {
   return getApp().household?.demo ? 'cam-living' : `cam-${deviceId.replace(/[^a-z0-9_-]/gi, '-')}`;
 }
 
-export async function ensureCameraPolicy(deviceId: string, name: string, ownerId: string) {
+const cameraPolicyJobs = new Map<string, Promise<string>>();
+
+export function ensureCameraPolicy(deviceId: string, name: string, ownerId: string) {
+  const objectId = cameraObjectId(deviceId);
+  if (getSentinel().vault.meta(objectId)) return Promise.resolve(objectId);
+  const running = cameraPolicyJobs.get(objectId);
+  if (running) return running;
+  const job = createCameraPolicy(deviceId, name, ownerId).finally(() => cameraPolicyJobs.delete(objectId));
+  cameraPolicyJobs.set(objectId, job);
+  return job;
+}
+
+async function createCameraPolicy(deviceId: string, name: string, ownerId: string) {
   const s = getSentinel();
   const objectId = cameraObjectId(deviceId);
-  if (s.vault.meta(objectId)) return objectId;
   const app = getApp();
   const admins = app.members.filter((m) => m.role === 'admin' && m.id !== ownerId).map((m) => m.id);
   await s.protect({ subject: ownerId, objectId, type: 'camera.policy', label: `Chính sách xem ${name}`, data: { entity: deviceId, masks: 'theo cấu hình trên camera', maxSessionSec: 240 }, viewers: admins, purposes: ['camera.view'] });

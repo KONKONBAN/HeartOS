@@ -29,6 +29,14 @@ export function SHome() {
   const home = useHome();
   const sosOpen = home.openIncidents().find((i) => i.kind === 'sos');
   const contacts = supportContacts(me.id);
+  const allTasks = useApp((s) => s.tasks);
+  const invites = useApp((s) => s.invitations);
+  const todayTasks = allTasks.filter((t) => (t.assignee === me.id || t.target === me.id) && t.status !== 'done' && isToday(t.remindAt));
+  const callsToday = todayTasks.filter((t) => t.kind === 'call').length;
+  const meals = invites.filter((i) => i.status === 'delivered' && i.recipients.includes(me.id) && i.receipts[me.id] !== 'declined').length;
+  const ritualsToday = rituals.filter((r) => r.participants.includes(me.id) && isToday(nextOccurrence(r.recurrence, new Date(new Date().setHours(0, 0, 0, 0)), r.skip).getTime())).length;
+  const todayParts = [meals && `${meals} bữa cơm`, ritualsToday && `${ritualsToday} buổi sum họp`, callsToday && `${callsToday} cuộc gọi`, todayTasks.length - callsToday && `${todayTasks.length - callsToday} việc nhà`].filter(Boolean);
+  const todaySummary = todayParts.length ? capFirst(todayParts.join(', ')) : 'Hôm nay chưa có việc gì';
   const callees = members.filter((m) => m.id !== me.id && m.phone && m.role !== 'carer' && m.role !== 'child');
   const nextRitual = rituals
     .filter((r) => r.participants.includes(me.id))
@@ -65,7 +73,7 @@ export function SHome() {
           </div>
         )
       )}
-      <Row icon={<CalendarDays size={22} />} tileTone="peach" title="Lịch hôm nay" meta="Một bữa cơm, một cuộc gọi" to="/s/today" />
+      <Row icon={<CalendarDays size={22} />} tileTone="peach" title="Lịch hôm nay" meta={todaySummary} to="/s/today" />
       <Row tone="rose" icon={<Siren size={22} />} tileTone="white" title="Cần giúp ngay" meta={home.s.real ? (contacts.length ? `Gửi SOS cho ${namesOf(contacts.map((m) => m.id))}` : 'Gửi SOS và gọi cấp cứu 115') : `Gửi SOS cho ${namesOf(home.s.helpers.map((h) => h.id))}`} to="/s/help" />
     </Phone>
   );
