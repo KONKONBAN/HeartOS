@@ -41,6 +41,7 @@ const INTERACTIVE = 'button,a,input,select,textarea,label,summary,[role=button],
 
 export function noteNav(path: string) {
   const now = Date.now();
+  if (!/^\/(s|f)(\/|$)/.test(path)) return;
   if (navs[navs.length - 1]?.path === path) return;
   navs.push({ path, at: now });
   while (navs.length && now - navs[0].at > 120_000) navs.shift();

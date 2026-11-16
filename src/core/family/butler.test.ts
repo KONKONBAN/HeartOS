@@ -184,5 +184,7 @@ describe('Gia Đình chỉ hỏi khi bấm qua lại giữa hai màn hình', () 
     expect(navLoop(browse, now, true)).toBe(false);
     const ping = ['/f', '/f/tasks', '/f', '/f/tasks', '/f', '/f/tasks'].map((path, i) => ({ path, at: now - 50_000 + i * 8000 }));
     expect(navLoop(ping, now, true)).toBe(true);
+    const afterLogin = [{ path: '/welcome', at: now - 58_000 }, { path: '/mode', at: now - 55_000 }, ...ping];
+    expect(navLoop(afterLogin, now, true)).toBe(true);
   });
 });

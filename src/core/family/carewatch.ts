@@ -50,10 +50,11 @@ const near = (a: TapEvent, b: TapEvent) => Math.hypot(a.x - b.x, a.y - b.y) <= 6
 export function navLoop(navs: NavEvent[], now: number, strict = false) {
   const recent = navs.filter((n) => now - n.at <= NAV_WINDOW);
   if (recent.length < 6) return false;
+  const unique = (list: NavEvent[]) => new Set(list.map((n) => n.path)).size;
+  if (strict) return unique(recent.slice(-6)) <= 2;
   const counts = new Map<string, number>();
   for (const n of recent) counts.set(n.path, (counts.get(n.path) ?? 0) + 1);
-  if (strict) return counts.size <= 2;
-  return counts.size <= 3 || [...counts.values()].some((c) => c >= 4);
+  return unique(recent.slice(-6)) <= 3 || [...counts.values()].some((c) => c >= 4);
 }
 
 export function deadTapBurst(taps: TapEvent[], now: number) {
