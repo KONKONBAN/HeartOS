@@ -99,6 +99,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
   const [dl, setDl] = useState<{ done: number; total: number } | null>(null);
   const [used, setUsed] = useState<number | null>(null);
   const [routeNote, setRouteNote] = useState('');
+  const [retry, setRetry] = useState(0);
   const geo = useGeo(true);
   const fix = geo.fix;
   const [bearing, setBearing] = useState(0);
@@ -365,7 +366,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
       return;
     }
     if (!o) return;
-    if (from === 'me' && routes.length && routes[0].mode === mode && haversine(routes[0].coords[0], o) < 60 && sameDest(routes, dest)) return;
+    if (from === 'me' && !routeNote && routes.length && routes[0].mode === mode && haversine(routes[0].coords[0], o) < 60 && sameDest(routes, dest)) return;
     o = o as LngLat;
     const ac = new AbortController();
     setRouteBusy(true);
@@ -406,7 +407,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
       })
       .finally(() => !ac.signal.aborted && setRouteBusy(false));
     return () => ac.abort();
-  }, [view, dest?.id, mode, mapReady, from === 'me' ? (fix ? 'fix' : 'nofix') : from.id, waitingFix, online]);
+  }, [view, dest?.id, mode, mapReady, from === 'me' ? (fix ? 'fix' : 'nofix') : from.id, waitingFix, online, retry]);
 
   function sameDest(list: Route[], d: Place) {
     const end = list[0].coords[list[0].coords.length - 1];
@@ -468,7 +469,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
       if (!muted) speak(spoken(p.next, cue.far ? p.toNext : 0), getApp().prefs.voiceLang);
     }
     offCount.current = p.offRoute ? offCount.current + 1 : 0;
-    if (offCount.current >= 2 && Date.now() - lastReroute.current > 15_000 && dest) {
+    if (offCount.current >= 2 && Date.now() - lastReroute.current > 15_000 && dest && navigator.onLine) {
       lastReroute.current = Date.now();
       setRerouting(true);
       if (!muted) speak('Đang tìm đường mới.', getApp().prefs.voiceLang);
@@ -975,7 +976,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
               {routeErr && !routeBusy && routeErr !== 'offline' && (
                 <div className="route-err">
                   <p>Chưa tìm được đường đi. {routeErr}</p>
-                  <button className="btn sm secondary" onClick={() => { setRouteErr(''); setMode(mode); setRoutes([]); }}>Thử lại</button>
+                  <button className="btn sm secondary" onClick={() => { setRouteErr(''); setRoutes([]); setRetry((n) => n + 1); }}>Thử lại</button>
                 </div>
               )}
               {routeErr === 'offline' && !routeBusy && dest && origin && (
