@@ -724,3 +724,15 @@ a.row:active, button.row:active { background-color: #f4eee6; }
 @media (prefers-reduced-motion: reduce) {
   .voice-orb .ring, .voice-orb .dots i { animation: none !important; }
 }
+
+/* Dẫn đường kiểu Google Maps: mũi tên vị trí, tên đường đang đi */
+.nav-puck { width: 64px; height: 64px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.nav-puck svg { display: block; }
+.nav-street { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 6; max-width: 72%; padding: 8px 16px; border-radius: 999px; background: #fff; color: #202124; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(60, 64, 67, .3); pointer-events: none; }
+.pill { gap: 8px; }
+.pill:focus { outline: none; }
+.pill:focus-visible { box-shadow: 0 0 0 3px rgba(26, 115, 232, .35); }
+.pill.primary:active, .pill:active { filter: brightness(.94); }
+@supports not selector(:focus-visible) {
+  button:focus, a:focus, [role="button"]:focus, input:focus, textarea:focus, select:focus { outline: none; }
+}

@@ -1,10 +1,10 @@
-import { ArrowLeft, ArrowUpDown, Bike, Bookmark, BookmarkCheck, Box, Building2, Car, Clock, CloudDownload, CloudOff, Compass, Crosshair, Footprints, Home as HomeIcon, Layers, ListOrdered, LocateFixed, MapPin, Mic, Moon, Navigation, Phone as PhoneIcon, Search, Share2, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Bike, Bookmark, BookmarkCheck, Box, Building2, Car, Clock, CloudDownload, CloudOff, Compass, Crosshair, Footprints, Home as HomeIcon, Layers, ListOrdered, LocateFixed, MapPin, Mic, Moon, Navigation, Navigation2, Phone as PhoneIcon, Search, Share2, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { endpoints, tilesVersion } from '../../core/maps/config';
 import { clearOffline, downloadArea, findSavedRoutes, homeBox, homeCached, listAreas, markHomeCached, offlineSupported, removeArea, saveRoutes, storageUsed, tilesFor, type OfflineArea } from '../../core/maps/offline';
 import { useOnline } from '../../lib/net';
-import { bearing as geoBearing, compassWord, fmtClock, fmtDistance, fmtDuration, haversine, latLngText, parseLatLng, type LngLat } from '../../core/maps/geo';
+import { bearing as geoBearing, compassWord, headingAlong, fmtClock, fmtDistance, fmtDuration, haversine, latLngText, parseLatLng, type LngLat } from '../../core/maps/geo';
 import { progress, voiceCue, type NavProgress } from '../../core/maps/navigate';
 import { getRoutes, MODES, spoken, type Route, type TravelMode } from '../../core/maps/route';
 import { CHIPS, nearbyCategory, reverseGeocode, searchPlaces, type CategoryChip, type Place } from '../../core/maps/search';
@@ -128,6 +128,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
   const [muted, setMuted] = useState(false);
   const [rerouting, setRerouting] = useState(false);
   const spokenKeys = useRef(new Set<string>());
+  const lastHeading = useRef(0);
   const startAfter = useRef(false);
   const offCount = useRef(0);
   const lastReroute = useRef(0);
@@ -423,13 +424,15 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
     }
     ctrl.current?.setResults([]);
     ctrl.current?.setSelected(dest);
-    ctrl.current?.setRoutes(view === 'nav' && navRoute ? [navRoute] : routes, view === 'nav' ? 0 : selRoute, from === 'me' ? null : [from.lng, from.lat], (r, idx) => `<b>${fmtDuration(r.duration)}</b>${idx === 0 && routes.length > 1 ? '<span>Nhanh nhất</span>' : ''}`);
+    ctrl.current?.setRoutes(view === 'nav' && navRoute ? [navRoute] : routes, view === 'nav' ? 0 : selRoute, from === 'me' ? null : [from.lng, from.lat], view === 'nav' ? () => '' : (r, idx) => `<b>${fmtDuration(r.duration)}</b>${idx === 0 && routes.length > 1 ? '<span>Nhanh nhất</span>' : ''}`);
   }, [routes, selRoute, view, mapReady, dest?.id]);
 
   useEffect(() => {
     if (view !== 'nav') {
       setNavProg(null);
       spokenKeys.current.clear();
+      ctrl.current?.setNavigation(null);
+      ctrl.current?.setPuck(null, 0);
       return;
     }
     if (!navRoute) {
@@ -451,10 +454,14 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
     if (view !== 'nav' || !navRoute || !fix) return;
     const p = progress(navRoute, fix.at, fix.accuracy, navProg?.segment ?? 0);
     setNavProg(p);
+    const turnAt = p.next ? navRoute.cum[Math.min(p.next.start, navRoute.cum.length - 1)] : null;
+    ctrl.current?.setNavigation({ route: navRoute, along: p.along, turnAt });
+    const heading = p.offRoute ? fix.heading ?? lastHeading.current : headingAlong(navRoute.coords, navRoute.cum, p.along, 25);
+    lastHeading.current = heading;
+    ctrl.current?.setPuck(p.offRoute ? fix.at : p.snapped, heading);
     if (follow) {
-      const ahead = navRoute.coords[Math.min(navRoute.coords.length - 1, p.segment + 2)];
-      const b = fix.heading ?? (ahead ? bearingOf(p.snapped, ahead) : 0);
-      ctrl.current?.follow(p.offRoute ? fix.at : p.snapped, b, { top: 160, bottom: 220 });
+      const zoom = navRoute.mode === 'walk' ? 18.3 : p.toNext < 150 ? 18.1 : p.toNext < 500 ? 17.6 : 17.1;
+      ctrl.current?.follow(p.offRoute ? fix.at : p.snapped, heading, { top: Math.round(window.innerHeight * 0.42), bottom: 110 }, zoom);
     }
     if (p.arrived) {
       if (!spokenKeys.current.has('arrive')) {
@@ -814,6 +821,9 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
         </button>
       </div>
 
+      {view === 'nav' && navRoute && navProg && !navProg.arrived && follow && navRoute.steps[navProg.stepIndex]?.street && (
+        <div className="nav-street">{navRoute.steps[navProg.stepIndex].street}</div>
+      )}
       {view === 'nav' && navRoute && (
         <div className="nav-bottom">
           {navProg?.arrived ? (
@@ -875,7 +885,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
                   <Navigation size={17} /> Chỉ đường
                 </button>
                 <button className="pill" onClick={() => goDirections(selected, true)}>
-                  <Navigation size={17} style={{ transform: 'rotate(45deg)' }} /> Bắt đầu
+                  <Navigation2 size={17} fill="currentColor" strokeWidth={1.5} /> Bắt đầu
                 </button>
                 <button className="pill" onClick={() => toggleSave(selected)}>
                   {isSaved(selected) ? <BookmarkCheck size={17} /> : <Bookmark size={17} />} {isSaved(selected) ? 'Đã lưu' : 'Lưu'}
@@ -998,7 +1008,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
                   </div>
                   <div className="route-actions">
                     <button className="pill primary big" disabled={from !== 'me'} onClick={() => nav(`${base}/nav?${sp.toString()}`)}>
-                      <Navigation size={18} style={{ transform: 'rotate(45deg)' }} /> Bắt đầu
+                      <Navigation2 size={19} fill="currentColor" strokeWidth={1.5} /> Bắt đầu
                     </button>
                     <button className="pill big" onClick={() => setShowSteps(!showSteps)}>
                       <ListOrdered size={18} /> {showSteps ? 'Ẩn các bước' : 'Các bước'}
@@ -1045,12 +1055,6 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
       )}
     </div>
   );
-}
-
-function bearingOf(a: LngLat, b: LngLat) {
-  const y = Math.sin(((b[0] - a[0]) * Math.PI) / 180) * Math.cos((b[1] * Math.PI) / 180);
-  const x = Math.cos((a[1] * Math.PI) / 180) * Math.sin((b[1] * Math.PI) / 180) - Math.sin((a[1] * Math.PI) / 180) * Math.cos((b[1] * Math.PI) / 180) * Math.cos(((b[0] - a[0]) * Math.PI) / 180);
-  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
 function PlaceRow({ p, onClick, here }: { p: Place; onClick: () => void; here?: LngLat }) {

@@ -94,6 +94,22 @@ export function pointAlong(line: LngLat[], cum: number[], meters: number): LngLa
   return line[line.length - 1];
 }
 
+export function sliceAlong(line: LngLat[], cum: number[], from: number, to: number): LngLat[] {
+  const total = cum[cum.length - 1] ?? 0;
+  const a = Math.max(0, Math.min(from, total));
+  const b = Math.max(a, Math.min(to, total));
+  const out: LngLat[] = [pointAlong(line, cum, a)];
+  for (let i = 0; i < line.length; i++) if (cum[i] > a && cum[i] < b) out.push(line[i]);
+  out.push(pointAlong(line, cum, b));
+  return out;
+}
+
+export function headingAlong(line: LngLat[], cum: number[], at: number, ahead = 20): number {
+  const total = cum[cum.length - 1] ?? 0;
+  const from = Math.min(at, Math.max(0, total - ahead));
+  return bearing(pointAlong(line, cum, from), pointAlong(line, cum, Math.min(total, from + ahead)));
+}
+
 export function bboxOf(points: LngLat[]): [LngLat, LngLat] {
   let w = Infinity;
   let s = Infinity;

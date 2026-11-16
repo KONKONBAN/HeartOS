@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fixture from './fixtures/valhalla-hcm.json';
-import { bearing, compassWord, cumulative, decodePolyline, fmtDistance, fmtDuration, haversine, parseLatLng, snapToLine, type LngLat } from './geo';
+import { bearing, compassWord, cumulative, decodePolyline, fmtDistance, fmtDuration, haversine, headingAlong, parseLatLng, sliceAlong, snapToLine, type LngLat } from './geo';
 import { progress, voiceCue } from './navigate';
 import { cacheKey, tilesFor } from './offline';
 import { cleanStreets, describe as describeTurn, getRoutes, spoken, type Route, type RouteStep, type Turn } from './route';
@@ -256,5 +256,33 @@ describe('bản đồ ngoại tuyến', () => {
   it('khóa lưu không phụ thuộc phiên bản dữ liệu để dùng được khi mất mạng', () => {
     expect(cacheKey('https://tiles.openfreemap.org/planet/20261101_080013_pt/14/13048/7698.pbf')).toBe(cacheKey('hos://tiles.openfreemap.org/planet/20261201_090000_pt/14/13048/7698.pbf'));
     expect(cacheKey('https://tiles.openfreemap.org/planet/20261101_080013_pt/14/1/2.pbf')).not.toBe(cacheKey('https://tiles.openfreemap.org/planet/20261101_080013_pt/14/1/3.pbf'));
+  });
+});
+
+describe('vẽ dẫn đường kiểu Google Maps', () => {
+  const line: LngLat[] = [
+    [106.7, 10.77],
+    [106.7, 10.771],
+    [106.701, 10.771],
+  ];
+  const cum = cumulative(line);
+  it('cắt đoạn đã đi và đoạn còn lại khớp nhau tại vị trí hiện tại', () => {
+    const at = cum[1] * 0.5;
+    const done = sliceAlong(line, cum, 0, at);
+    const rest = sliceAlong(line, cum, at, cum[2]);
+    expect(done[0]).toEqual(line[0]);
+    expect(done[done.length - 1]).toEqual(rest[0]);
+    expect(rest[rest.length - 1]).toEqual(line[2]);
+    expect(haversine(done[0], done[done.length - 1])).toBeCloseTo(at, 0);
+  });
+  it('mũi tên rẽ bao quanh điểm rẽ', () => {
+    const arrow = sliceAlong(line, cum, cum[1] - 30, cum[1] + 24);
+    expect(arrow).toContainEqual(line[1]);
+    expect(bearing(arrow[arrow.length - 2], arrow[arrow.length - 1])).toBeCloseTo(90, 0);
+  });
+  it('hướng xe theo tuyến: đi lên phía bắc rồi rẽ sang đông', () => {
+    expect(headingAlong(line, cum, 10)).toBeCloseTo(0, 0);
+    expect(headingAlong(line, cum, cum[1] + 10)).toBeCloseTo(90, 0);
+    expect(headingAlong(line, cum, cum[2])).toBeCloseTo(90, 0);
   });
 });
