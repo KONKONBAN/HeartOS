@@ -75,6 +75,7 @@ function Runtime() {
   useEffect(() => {
     const home = getHome();
     seen.current = home.s.notices[0]?.id ?? null;
+    if (getApp().household?.demo) (window as unknown as { __heartosSim?: (ev: string) => void }).__heartosSim = (ev) => getHome().simulate(ev as never);
     const id = window.setInterval(() => {
       home.tick();
       tickSync();

@@ -6,7 +6,7 @@ import { RouteMap } from '../../components/RouteMap';
 import { Badge, Field, Header, KV, Row, Seg, Sheet, Sim, Steps, Switch, TopBar } from '../../components/ui';
 import { compareRoutes, FACILITIES, mapsLink, type FloodState } from '../../core/guardian/routes';
 import type { HomeIncident } from '../../core/smarthome/types';
-import type { SimEvent } from '../../core/smarthome/engine';
+import { FALL_ESCALATE_MS, type SimEvent } from '../../core/smarthome/engine';
 import { ago, hhmm } from '../../lib/format';
 import { toast } from '../../lib/ui-store';
 import { readSupportLocation, sendSOS, setHospitals, smsLink, sosMessage, supportContacts } from '../../state/actions';
@@ -94,7 +94,14 @@ export function FIncident() {
   const nav = useNavigate();
   const inc = home.incident(id!);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [okOpen, setOkOpen] = useState(false);
+  const [, setTick] = useState(0);
   const [loc, setLoc] = useState<string>('');
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
   useEffect(() => {
     if (!inc || inc.kind !== 'sos') return;
     if (inc.location) return setLoc(`${inc.location.lat.toFixed(5)}, ${inc.location.lng.toFixed(5)}, sai số khoảng ${Math.round(inc.location.accuracy)} m`);
@@ -109,14 +116,21 @@ export function FIncident() {
       </Phone>
     );
   const actor = { id: me.id, name: me.name, role: me.role };
+  const canAct = home.canCoordinate(actor);
   const person = members.find((m) => m.id === inc.personId);
   const contacts = supportContacts(inc.personId ?? '');
+  const emergency = inc.kind === 'smoke' ? { n: '114', label: 'Gọi cứu hỏa 114' } : { n: '115', label: 'Gọi cấp cứu 115' };
+  const left = Math.max(0, Math.ceil((inc.createdAt + FALL_ESCALATE_MS - Date.now()) / 1000));
   if (inc.status === 'verifying')
     return (
       <Phone tabs>
         <TopBar back backTo="/f/incidents" />
         <Header title="Tín hiệu nghi ngã" sub={`${home.room(inc.room).name}, Nhận ${hhmm(inc.createdAt)}, ${inc.id}`} />
         <Row tone="peach" icon={<Activity size={18} />} tileTone="white" title="Đang xác minh" meta="Quan sát từ radar và nhiệt. Chưa đủ bằng chứng để kết luận." />
+        <div className="countdown" role="timer" aria-live="polite">
+          <b>{String(Math.floor(left / 60)).padStart(2, '0')}:{String(left % 60).padStart(2, '0')}</b>
+          <span>{left > 0 ? 'Nếu chưa ai xác minh, Guardian sẽ tự bật còi và báo cả nhà' : 'Đang báo cả nhà'}</span>
+        </div>
         <div className="card">
           <div className="label">Bằng chứng của ca</div>
           <div className="list">
@@ -127,10 +141,24 @@ export function FIncident() {
         </div>
         <Row icon={<Radar size={18} />} title="Xem vùng và độ mới" meta={`${home.room(inc.room).name}, Quan sát mới lúc ${hhmm(home.room(inc.room).lastSignal)}`} to="/f/guardian" />
         {person?.phone ? <a className="btn secondary" href={`tel:${person.phone}`}><PhoneIcon size={18} /> Gọi {person.name} để hỏi</a> : members.filter((m) => m.phone && m.id !== me.id).slice(0, 2).map((m) => <a key={m.id} className="btn secondary" href={`tel:${m.phone}`}><PhoneIcon size={18} /> Gọi {m.name}</a>)}
-        <div className="btnrow">
-          <button className="btn secondary" onClick={() => { home.verifyFall(inc.id, 'false_alarm', actor); toast('Đã đóng ca: không có sự cố.'); nav('/f/incidents'); }}>Không sao</button>
-          <button className="btn danger" onClick={() => home.verifyFall(inc.id, 'needs_help', actor)}>Cần hỗ trợ</button>
-        </div>
+        {canAct ? (
+          <div className="btnrow">
+            <button className="btn secondary" onClick={() => setOkOpen(true)}>Không sao</button>
+            <button className="btn danger" onClick={() => home.verifyFall(inc.id, 'needs_help', actor)}>Cần hỗ trợ</button>
+          </div>
+        ) : (
+          <>
+            <div className="card sand"><p>Con hãy gọi ngay cho người lớn trong nhà. Nếu thấy ông bà bị ngã, bấm Cần hỗ trợ.</p></div>
+            <button className="btn danger" onClick={() => home.verifyFall(inc.id, 'needs_help', actor)}>Cần hỗ trợ</button>
+          </>
+        )}
+        <Sheet open={okOpen} onClose={() => setOkOpen(false)} title="Xác nhận không có sự cố">
+          <p className="small muted" style={{ margin: 0 }}>Chỉ chọn khi bạn đã liên lạc được hoặc nhìn thấy người trong phòng an toàn. Guardian ghi lại lựa chọn này.</p>
+          {['Đã gọi điện, người nhà vẫn ổn', 'Tôi đang ở nhà và đã kiểm tra phòng', 'Người nhà tự báo là ổn'].map((r) => (
+            <button key={r} className="btn secondary" onClick={() => { home.verifyFall(inc.id, 'false_alarm', actor, r); setOkOpen(false); toast('Đã đóng ca: không có sự cố.'); nav('/f/incidents'); }}>{r}</button>
+          ))}
+          <button className="btn danger" onClick={() => { home.verifyFall(inc.id, 'needs_help', actor, 'Chưa liên lạc được'); setOkOpen(false); }}>Chưa liên lạc được, báo cả nhà</button>
+        </Sheet>
         <Link to="/f/incidents" className="btn ghost">Về các ca đang mở</Link>
       </Phone>
     );
@@ -149,31 +177,39 @@ export function FIncident() {
         />
       </div>
       {inc.kind === 'sos' && <Row icon={<MapPin size={18} />} title={inc.location ? 'Vị trí khi gửi SOS' : 'Vị trí hỗ trợ (qua Sentinel)'} meta={loc || 'Đang mở'} chevron={false} right={inc.location ? <Link className="btn xs secondary" to={`/f/maps/dir?to=${inc.location.lat.toFixed(6)},${inc.location.lng.toFixed(6)}&name=${encodeURIComponent(`Chỗ ${inc.personName ?? 'người thân'} gửi SOS`)}`}>Chỉ đường</Link> : undefined} />}
-      {home.s.real && inc.status !== 'closed' && inc.kind === 'sos' && (
+      {inc.status !== 'closed' && (inc.kind === 'sos' || inc.kind === 'smoke' || inc.kind === 'fall') && (
         <div className="card rose stack">
           <h3 style={{ margin: 0 }}>Báo cho người thân</h3>
           {contacts.length === 0 && <p style={{ margin: 0 }}>Chưa có người thân nào có số điện thoại. Thêm số trong Thành viên để gửi tin nhắn SOS.</p>}
-          {contacts.length > 0 && <a className="btn danger" href={smsLink(contacts.map((m) => m.phone), sosMessage(inc))} onClick={() => home.markFamilyNotified(inc.id, me.name)}><MessageSquare size={18} /> Gửi tin nhắn SOS kèm vị trí</a>}
+          {contacts.length > 0 && home.s.real && <a className="btn danger" href={smsLink(contacts.map((m) => m.phone), sosMessage(inc))} onClick={() => home.markFamilyNotified(inc.id, me.name)}><MessageSquare size={18} /> Gửi tin nhắn SOS kèm vị trí</a>}
           {contacts.length > 0 && (
             <div className={contacts.length > 1 ? 'grid2' : 'stack'}>
               {contacts.slice(0, 4).map((m) => <a key={m.id} className="btn secondary" href={`tel:${m.phone}`}><PhoneIcon size={16} /> {contacts.length > 1 ? m.name : `Gọi ${m.name}`}</a>)}
             </div>
           )}
           {me.id !== inc.personId && inc.steps.helper.state !== 'done' && <button className="btn" onClick={() => home.acceptHelp(inc.id, { id: me.id, name: me.name })}><UserCheck size={18} /> Tôi đang tới</button>}
-          <a className="btn secondary" href="tel:115"><PhoneIcon size={16} /> Gọi cấp cứu 115</a>
+          <a className="btn secondary" href={`tel:${emergency.n}`}><PhoneIcon size={16} /> {emergency.label}</a>
         </div>
       )}
       {inc.destination && <Row tone="tint" icon={<MapPin size={18} />} tileTone="white" title={`Đích bàn giao: ${inc.destination.name ?? FACILITIES.find((f) => f.id === inc.destination!.facilityId)?.name}${inc.destination.gate ? ', ' + inc.destination.gate : ''}`} meta={`ETA ${inc.destination.etaMin} phút tại ${hhmm(inc.destination.computedAt)}, ${inc.destination.confirmedBy} chốt`} />}
-      {inc.status !== 'closed' && (
+      {inc.status !== 'closed' && canAct && (
         <>
           <div className="grid2">
             <button className="btn secondary" onClick={() => setAssignOpen(true)}><UserCheck size={18} /> Giao việc</button>
             <Link to={`/f/routes/${inc.id}`} className="btn secondary"><MapIcon size={18} /> Tuyến hỗ trợ</Link>
           </div>
-          {inc.assignee && inc.steps.handover.state !== 'done' && <button className="btn" onClick={() => home.markHandover(inc.id, actor)}><Check size={18} /> Xác nhận có mặt và bàn giao</button>}
-          <button className="btn ghost" onClick={() => { home.closeIncident(inc.id, inc.steps.handover.state === 'done' ? 'Đã bàn giao xong' : 'Người điều phối đóng ca', actor); nav('/f/incidents'); }}>Đóng ca</button>
+          {inc.assignee && inc.steps.helper.state === 'active' && inc.assignee === me.name && <button className="btn" onClick={() => home.acceptHelp(inc.id, { id: me.id, name: me.name })}><UserCheck size={18} /> Tôi nhận việc, đang tới</button>}
+          {inc.assignee && inc.steps.helper.state === 'done' && inc.steps.handover.state !== 'done' && (inc.assignee === me.name || me.role === 'admin') && <button className="btn" onClick={() => home.markHandover(inc.id, actor)}><Check size={18} /> Xác nhận có mặt và bàn giao</button>}
+          <button className="btn ghost" onClick={() => setCloseOpen(true)}>Đóng ca</button>
         </>
       )}
+      {inc.status !== 'closed' && !canAct && <div className="card sand"><p>Con hãy gọi cho người lớn trong nhà. Chỉ người lớn mới đóng được ca này.</p></div>}
+      <Sheet open={closeOpen} onClose={() => setCloseOpen(false)} title="Đóng ca này?">
+        <p className="small muted" style={{ margin: 0 }}>{inc.steps.handover.state === 'done' ? 'Người hỗ trợ đã có mặt và bàn giao.' : 'Chưa có ai xác nhận có mặt. Chỉ đóng khi chắc chắn người nhà đã an toàn.'} Chọn lý do để cả nhà cùng biết.</p>
+        {['Đã an toàn, có người ở bên', 'Báo nhầm, không có sự cố', 'Đã đưa tới bệnh viện', 'Đã xử lý xong tại nhà'].map((r) => (
+          <button key={r} className="btn secondary" onClick={() => { if (home.closeIncident(inc.id, r, actor)) { toast(`Đã đóng ca: ${r}.`); setCloseOpen(false); nav('/f/incidents'); } else toast('Bạn chưa có quyền đóng ca này.', 'warning'); }}>{r}</button>
+        ))}
+      </Sheet>
       <div className="card flat">
         <div className="label">Dòng thời gian</div>
         <div className="list">
@@ -185,7 +221,7 @@ export function FIncident() {
       <Sheet open={assignOpen} onClose={() => setAssignOpen(false)} title="Giao việc hỗ trợ">
         <p className="small muted" style={{ margin: 0 }}>Ca {inc.id}, Người điều phối có quyền. Có mặt, kết quả kiểm tra và bàn giao là các mốc riêng.</p>
         {members.filter((m) => m.role === 'admin' || m.role === 'member' || m.role === 'carer').filter((m) => m.id !== inc.personId).map((m) => (
-          <Row key={m.id} icon={<Users size={18} />} title={m.name} meta={m.relation} onClick={() => { home.acceptHelp(inc.id, { id: m.id, name: m.name }); setAssignOpen(false); }} />
+          <Row key={m.id} icon={<Users size={18} />} title={m.id === me.id ? `${m.name} (tôi tự nhận)` : m.name} meta={m.relation} onClick={() => { home.assignHelper(inc.id, { id: m.id, name: m.name }, actor); setAssignOpen(false); toast(m.id === me.id ? 'Bạn đã nhận việc hỗ trợ.' : `Đã nhờ ${m.name}, chờ xác nhận.`); }} />
         ))}
       </Sheet>
     </Phone>
@@ -402,6 +438,7 @@ const SIMS: { ev: SimEvent; label: string; icon: React.ReactNode; tone?: 'rose' 
   { ev: 'sos_bedroom', label: 'Nhấn nút SOS đầu giường', icon: <Siren size={18} />, tone: 'rose' },
   { ev: 'fall_hall', label: 'Người ngã ở hành lang', icon: <Activity size={18} />, tone: 'rose' },
   { ev: 'fall_bedroom', label: 'Người ngã ở phòng ngủ', icon: <Activity size={18} />, tone: 'rose' },
+  { ev: 'fall_recover', label: 'Người ngã tự đứng dậy được', icon: <UserCheck size={18} /> },
   { ev: 'person_hall', label: 'Có người đi qua hành lang', icon: <Radar size={18} /> },
   { ev: 'smoke', label: 'Khói/CO ở bếp', icon: <Flame size={18} />, tone: 'rose' },
   { ev: 'smoke_clear', label: 'Hết khói', icon: <Flame size={18} /> },

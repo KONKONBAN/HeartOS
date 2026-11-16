@@ -62,7 +62,7 @@ export interface HomeState {
   notices: Notice[];
   edges: RoadEdge[];
   pairing?: PairingSession;
-  timers: { at: number; kind: 'remote_ack' | 'helper_ack' | 'pairing_expire' | 'kettle_off'; ref: string }[];
+  timers: { at: number; kind: 'remote_ack' | 'helper_ack' | 'pairing_expire' | 'kettle_off' | 'fall_escalate' | 'help_remind'; ref: string }[];
   nextIncident: number;
   energy: { at: number; w: number }[];
   helpers: { id: string; name: string }[];
@@ -78,6 +78,7 @@ export type SimEvent =
   | 'smoke_clear'
   | 'fall_hall'
   | 'fall_bedroom'
+  | 'fall_recover'
   | 'person_hall'
   | 'sos_living'
   | 'sos_bedroom'
@@ -88,6 +89,8 @@ export type SimEvent =
   | 'laundry_restore';
 
 const SYSTEM: Actor = { id: 'hub', name: 'HeartOS Hub', role: 'system' };
+export const FALL_ESCALATE_MS = 90_000;
+export const HELP_REMIND_MS = 3 * 60_000;
 const ESSENTIAL_W = 42;
 
 const deviceW: Partial<Record<DeviceKind, (s: Device['state']) => number>> = {
@@ -110,6 +113,7 @@ export class HomeEngine {
   private cmdSeq = 0;
   private bridge: HomeBridge | null = null;
   private stillSince: Record<string, number | undefined> = {};
+  private lastMove: Record<string, number> = {};
   private lastPos: Record<string, { x: number; y: number } | undefined> = {};
 
   constructor(
@@ -296,6 +300,7 @@ export class HomeEngine {
       const main = targets[0];
       const prevPos = this.lastPos[room];
       const moved = !main || !prevPos || Math.hypot(main.x - prevPos.x, main.y - prevPos.y) > 150;
+      if (main && (main.speed >= 25 || (prevPos && Math.hypot(main.x - prevPos.x, main.y - prevPos.y) > 250))) this.lastMove[room] = t;
       if (main && main.speed < 8 && !moved) this.stillSince[room] ??= t;
       else if (!main || main.speed >= 8 || moved) this.stillSince[room] = main && main.speed < 8 ? t : undefined;
       this.lastPos[room] = main ? { x: main.x, y: main.y } : undefined;
@@ -316,6 +321,7 @@ export class HomeEngine {
       if (d.kind === 'smoke' && rise('smoke')) this.openIncident('smoke', 'P1', d.room, { kind: 'smoke', at: t, summary: `${d.name} báo khói/khí`, ref: d.id });
       if (d.kind === 'leak' && rise('wet')) this.openIncident('leak', 'P2', d.room, { kind: 'leak', at: t, summary: `${d.name} phát hiện nước`, ref: d.id });
       if (d.kind === 'sos' && rise('pressed')) this.openIncident('sos', 'P1', d.room, { kind: 'button', at: t, summary: `Nút SOS ${d.name} được nhấn`, ref: d.id });
+      if (d.kind === 'radar' && (rise('motion') || rise('presence'))) this.lastMove[d.room] = t;
       if (d.kind === 'door' && rise('open') && this.s.mode === 'away') this.notify(`${d.name} mở khi vắng nhà`, `Phòng ${this.room(d.room).name}, lúc ${new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}.`, 'warning', '/f/devices');
     }
     for (const c of this.s.commands) {
@@ -331,6 +337,23 @@ export class HomeEngine {
       }
     }
     this.emit(true);
+  }
+
+  movedSince(room: string, since: number) {
+    return (this.lastMove[room] ?? 0) > since;
+  }
+
+  stillLying(room: string) {
+    if (!this.s.real) return this.people.some((p) => p.room === room && p.posture === 'lying');
+    const since = this.stillSince[room];
+    return !!since && this.now() - since > 20_000 && (this.radar[room]?.length ?? 0) > 0;
+  }
+
+  addEvidence(id: string, ev: Evidence) {
+    const inc = this.incident(id);
+    if (!inc) return;
+    inc.evidence.push(ev);
+    this.emit();
   }
 
   fallWatch(room: string) {
@@ -550,16 +573,18 @@ export class HomeEngine {
       if (siren) this.sendCommand(siren.id, 'set', { on: true }, SYSTEM, 'guardian');
       this.notify(inc.title, kind === 'sos' ? (siren ? 'Đã bật còi tại nhà. Gửi tin nhắn SOS kèm vị trí cho người thân.' : 'Gửi tin nhắn SOS kèm vị trí cho người thân.') : 'Cảm biến khói/CO báo động.', 'critical', `/f/incident/${id}`);
     } else if (isSos) {
-      this.sendCommand('siren', 'set', { on: true }, SYSTEM, 'guardian');
+      this.sirenOn();
       if (this.s.net.internet) this.s.timers.push({ at: t + 1200, kind: 'remote_ack', ref: id });
       if (this.s.simulateHelpers) this.s.timers.push({ at: t + 6000, kind: 'helper_ack', ref: id });
       this.notify(inc.title, kind === 'sos' ? 'Đã phát báo tại nhà. Đang chuyển tới người thân trong danh sách hỗ trợ.' : 'Còi khói/CO kích hoạt, đã bật còi và đèn dẫn lối.', 'critical', `/f/incident/${id}`);
     } else if (kind === 'fall') {
-      this.notify('Tín hiệu nghi ngã', `${this.room(room).name}: quan sát từ radar và nhiệt. Chưa đủ bằng chứng để kết luận.`, 'warning', `/f/incident/${id}`);
+      this.notify('Tín hiệu nghi ngã', `${this.room(room).name}: quan sát từ radar và nhiệt. Nếu không ai xác minh trong ${Math.round(FALL_ESCALATE_MS / 1000)} giây, Guardian sẽ tự báo người thân.`, 'warning', `/f/incident/${id}`);
+      this.s.timers.push({ at: t + FALL_ESCALATE_MS, kind: 'fall_escalate', ref: id });
     } else {
       this.notify(inc.title, 'Guardian đã mở ca theo luật tự động.', 'warning', `/f/incident/${id}`);
     }
     this.s.incidents.unshift(inc);
+    if (isSos) this.remindLater(id);
     this.audit('guardian.event', `Mở ca ${id} (${kind}, ${priority}) tại ${this.room(room).name}`, priority === 'P1' ? 'critical' : 'warning');
     this.emit();
     return inc;
@@ -569,15 +594,69 @@ export class HomeEngine {
     return this.s.incidents.find((i) => i.id === id);
   }
 
+  private sirenDevice() {
+    return this.s.devices.find((d) => d.kind === 'siren') ?? null;
+  }
+
+  private sirenOn() {
+    const siren = this.sirenDevice();
+    if (siren && !siren.state.on) this.sendCommand(siren.id, 'set', { on: true }, SYSTEM, 'guardian');
+    return !!siren;
+  }
+
+  canCoordinate(by: Actor) {
+    return by.role !== 'child';
+  }
+
+  private remindLater(id: string, round = 1) {
+    this.s.timers.push({ at: this.now() + (round === 1 ? HELP_REMIND_MS : HELP_REMIND_MS * 3), kind: 'help_remind', ref: `${id}|${round}` });
+  }
+
+  private escalate(inc: HomeIncident, why: string, by: string) {
+    inc.priority = 'P1';
+    inc.status = 'open';
+    const siren = this.sirenOn();
+    inc.steps.local = siren ? { state: 'done', at: this.now() } : { state: 'unknown' };
+    inc.steps.remote = this.s.real ? { state: 'active', note: 'Chờ gửi tin nhắn cho người thân' } : this.s.net.internet ? { state: 'active', note: 'Đang chuyển tới nhà cung cấp' } : { state: 'unknown', note: 'Hub mất Internet, chưa rõ tình trạng gửi' };
+    if (inc.steps.helper.state !== 'done') inc.steps.helper = { state: 'active' };
+    if (!this.s.real && this.s.net.internet) this.s.timers.push({ at: this.now() + 1200, kind: 'remote_ack', ref: inc.id });
+    inc.timeline.push({ at: this.now(), text: why, by });
+    this.notify(`Cần hỗ trợ: ${inc.title}`, `${why}. Mở ca để báo người thân hoặc gọi 115.`, 'critical', `/f/incident/${inc.id}`);
+    this.audit('guardian.event', `${inc.id}: ${why}`, 'critical');
+    this.remindLater(inc.id);
+  }
+
   sos(by: Actor & { phone?: string }, room: RoomId = 'living') {
     const inc = this.openIncident('sos', 'P1', room, { kind: 'button', at: this.now(), summary: `${by.name} gửi SOS trên ứng dụng`, ref: `sos-${this.now()}` });
-    inc.personId = by.id;
-    inc.personName = by.name;
-    inc.personPhone = by.phone;
-    if (this.s.real) inc.title = `SOS từ ${by.name}`;
-    inc.timeline.push({ at: this.now(), text: `${by.name} nhấn SOS`, by: by.name });
+    if (!inc.personId) {
+      inc.personId = by.id;
+      inc.personName = by.name;
+      inc.personPhone = by.phone;
+      if (this.s.real) inc.title = `SOS từ ${by.name}`;
+      inc.timeline.push({ at: this.now(), text: `${by.name} nhấn SOS`, by: by.name });
+    } else if (inc.personId !== by.id) {
+      inc.timeline.push({ at: this.now(), text: `${by.name} cũng nhấn SOS cho ca này`, by: by.name });
+    } else {
+      inc.timeline.push({ at: this.now(), text: `${by.name} nhấn SOS lần nữa`, by: by.name });
+    }
     this.emit();
     return inc;
+  }
+
+  assignHelper(id: string, helper: { id: string; name: string }, by: Actor) {
+    const inc = this.incident(id);
+    if (!inc || inc.status === 'closed' || !this.canCoordinate(by)) return false;
+    if (helper.id === by.id) {
+      this.acceptHelp(id, helper);
+      return true;
+    }
+    inc.assignee = helper.name;
+    inc.steps.helper = { state: 'active', by: helper.name };
+    inc.timeline.push({ at: this.now(), text: `${by.name} giao việc hỗ trợ cho ${helper.name}, chờ ${helper.name} xác nhận`, by: by.name });
+    this.notify(`${by.name} nhờ ${helper.name} hỗ trợ`, `${inc.id}, ${inc.title}. Chờ ${helper.name} xác nhận đang tới.`, 'warning', `/f/incident/${id}`);
+    this.audit('guardian.event', `${inc.id}: ${by.name} giao việc cho ${helper.name}`, 'notice');
+    this.emit();
+    return true;
   }
 
   acceptHelp(id: string, helper: { id: string; name: string }) {
@@ -593,23 +672,19 @@ export class HomeEngine {
     this.emit();
   }
 
-  verifyFall(id: string, outcome: 'needs_help' | 'false_alarm', by: Actor) {
+  verifyFall(id: string, outcome: 'needs_help' | 'false_alarm', by: Actor, note = '') {
     const inc = this.incident(id);
-    if (!inc) return;
-    inc.evidence.push({ kind: 'human', at: this.now(), summary: outcome === 'needs_help' ? `${by.name} xác nhận cần hỗ trợ` : `${by.name} xác nhận không sao`, ref: by.id });
+    if (!inc || inc.status === 'closed') return false;
+    if (outcome === 'false_alarm' && !this.canCoordinate(by)) return false;
+    inc.evidence.push({ kind: 'human', at: this.now(), summary: outcome === 'needs_help' ? `${by.name} xác nhận cần hỗ trợ${note ? `: ${note}` : ''}` : `${by.name} xác nhận không sao${note ? `: ${note}` : ''}`, ref: by.id });
     if (outcome === 'needs_help') {
-      inc.priority = 'P1';
-      inc.status = 'open';
-      inc.steps.local = { state: 'done', at: this.now() };
-      inc.steps.remote = this.s.net.internet ? { state: 'active', note: 'Đang chuyển tới nhà cung cấp' } : { state: 'unknown', note: 'Chưa rõ tình trạng gửi' };
-      inc.steps.helper = { state: 'active' };
-      this.sendCommand('siren', 'set', { on: true }, SYSTEM, 'guardian');
-      if (this.s.net.internet) this.s.timers.push({ at: this.now() + 1200, kind: 'remote_ack', ref: id });
-      inc.timeline.push({ at: this.now(), text: `${by.name} xác nhận cần hỗ trợ, nâng lên P1`, by: by.name });
+      if (inc.status === 'verifying' || inc.priority !== 'P1') this.escalate(inc, `${by.name} xác nhận cần hỗ trợ, nâng lên P1`, by.name);
+      else inc.timeline.push({ at: this.now(), text: `${by.name} xác nhận cần hỗ trợ`, by: by.name });
     } else {
-      this.closeIncident(id, 'Đã xác minh: không có sự cố', by);
+      this.closeIncident(id, note ? `Đã xác minh không có sự cố: ${note}` : 'Đã xác minh: không có sự cố', by);
     }
     this.emit();
+    return true;
   }
 
   confirmDestination(id: string, facilityId: string, by: Actor) {
@@ -643,16 +718,22 @@ export class HomeEngine {
 
   closeIncident(id: string, reason: string, by: Actor) {
     const inc = this.incident(id);
-    if (!inc) return;
+    if (!inc || inc.status === 'closed') return false;
+    const own = !!inc.personId && inc.personId === by.id;
+    if (!own && !this.canCoordinate(by)) return false;
+    const why = reason.trim() || 'Không ghi lý do';
     inc.status = 'closed';
-    inc.closedReason = reason;
-    inc.timeline.push({ at: this.now(), text: `Đóng ca: ${reason}`, by: by.name });
+    inc.closedReason = why;
+    inc.timeline.push({ at: this.now(), text: `Đóng ca: ${why}`, by: by.name });
+    this.s.timers = this.s.timers.filter((x) => !((x.kind === 'fall_escalate' || x.kind === 'help_remind' || x.kind === 'helper_ack') && x.ref.split('|')[0] === id));
     if (!this.openIncidents().some((i) => i.priority === 'P1')) {
-      const siren = this.device('siren');
-      if (siren?.state.on) this.sendCommand('siren', 'set', { on: false }, SYSTEM, 'guardian');
+      const siren = this.sirenDevice();
+      if (siren?.state.on) this.sendCommand(siren.id, 'set', { on: false }, SYSTEM, 'guardian');
     }
-    this.audit('guardian.event', `Đóng ${inc.id}: ${reason}`);
+    if (own && inc.kind === 'sos') this.notify(`${by.name} đã hủy SOS`, `${inc.id}: ${why}. Nên gọi hỏi lại cho chắc.`, 'warning', `/f/incident/${id}`);
+    this.audit('guardian.event', `Đóng ${inc.id}: ${why} (${by.name})`);
     this.emit();
+    return true;
   }
 
   setEdgeFlood(edgeId: string, flood: FloodState) {
@@ -775,6 +856,9 @@ export class HomeEngine {
         this.speedHist[room] = [];
         break;
       }
+      case 'fall_recover':
+        this.people = this.people.map((p) => (p.id === 9 ? { ...p, fall: undefined, posture: 'walking', vx: 500, vy: 120, stillSince: undefined } : p));
+        break;
       case 'person_hall':
         this.people = this.people.filter((p) => p.id !== 8);
         this.people.push({ id: 8, room: 'hall', x: -2000, y: 2500, vx: 500, vy: 0, posture: 'walking' });
@@ -872,6 +956,18 @@ export class HomeEngine {
         if (inc && inc.steps.helper.state === 'active') this.acceptHelp(inc.id, this.s.helpers[0]);
       } else if (tm.kind === 'pairing_expire') {
         if (this.s.pairing && this.s.pairing.code === tm.ref && this.s.pairing.step !== 'done') this.s.pairing.step = 'expired';
+      } else if (tm.kind === 'fall_escalate') {
+        const inc = this.incident(tm.ref);
+        if (inc && inc.status === 'verifying') this.escalate(inc, `Không ai xác minh tín hiệu ngã trong ${Math.round(FALL_ESCALATE_MS / 1000)} giây, Guardian tự nâng lên P1`, 'Guardian');
+      } else if (tm.kind === 'help_remind') {
+        const [ref, round] = tm.ref.split('|');
+        const inc = this.incident(ref);
+        if (inc && inc.status !== 'closed' && inc.steps.helper.state !== 'done') {
+          const mins = Math.round((t - inc.createdAt) / 60_000);
+          inc.timeline.push({ at: t, text: `Sau ${mins} phút vẫn chưa ai nhận hỗ trợ, nhắc lại cả nhà`, by: 'Guardian' });
+          this.notify(`Chưa ai nhận hỗ trợ: ${inc.title}`, `Đã ${mins} phút. Gọi ngay cho người trong nhà, nếu nguy hiểm hãy gọi ${inc.kind === 'smoke' ? '114' : '115'}.`, 'critical', `/f/incident/${inc.id}`);
+          if (round === '1') this.remindLater(inc.id, 2);
+        }
       } else if (tm.kind === 'kettle_off') {
         const d = this.device(tm.ref);
         if (d?.state.on) this.sendCommand(d.id, 'set', { on: false }, SYSTEM, 'automation');
@@ -888,6 +984,7 @@ export class HomeEngine {
       if (!radarDev?.online) continue;
       const targets = radarTargets(this.people, room);
       this.radar[room] = targets;
+      if (targets.some((x) => x.speed >= 25)) this.lastMove[room] = t;
       radarDev.state.targets = targets.length;
       radarDev.lastSeen = t;
       const thermDev = this.s.devices.find((d) => d.kind === 'thermal' && d.room === room);

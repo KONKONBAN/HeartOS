@@ -5,7 +5,7 @@ import { Phone } from '../../components/Layouts';
 import { Missing } from '../../components/Missing';
 import { SignOutButton } from '../../components/SignOut';
 import { RouteMap } from '../../components/RouteMap';
-import { Badge, Header, Row, Sim, Steps, Switch, TopBar } from '../../components/ui';
+import { Badge, Header, Row, Sheet, Sim, Steps, Switch, TopBar } from '../../components/ui';
 import { compareRoutes, FACILITIES } from '../../core/guardian/routes';
 import { hhmm } from '../../lib/format';
 import { speak } from '../../lib/media';
@@ -68,9 +68,11 @@ export function SSos() {
   const home = useHome();
   const nav = useNavigate();
   const inc = home.incident(id!);
+  const [cancelOpen, setCancelOpen] = useState(false);
   if (!inc) return <Missing simple title="Không tìm thấy ca" back="/s" label="Về màn hình chính" />;
   const acked = inc.steps.helper.state === 'done';
   const contacts = supportContacts(inc.personId ?? me.id);
+  const Hon = capFirst(hon);
   return (
     <Phone simple>
       <TopBar back backTo="/s" right={<Sim sos />} />
@@ -107,18 +109,28 @@ export function SSos() {
           <PhoneIcon size={20} /> Gọi người thân
         </button>
       )}
+      <a className="btn secondary" href="tel:115"><PhoneIcon size={20} /> Gọi cấp cứu 115</a>
       {inc.status !== 'closed' && (
-        <button
-          className="btn ghost"
-          onClick={() => {
-            home.closeIncident(inc.id, 'Người gửi báo bấm nhầm', { id: me.id, name: me.name, role: me.role });
-            toast(`Đã báo người thân: ${hon} bấm nhầm, không cần hỗ trợ.`);
-            nav('/s');
-          }}
-        >
+        <button className="btn ghost" onClick={() => setCancelOpen(true)}>
           Tôi bấm nhầm, hủy SOS
         </button>
       )}
+      <Sheet open={cancelOpen} onClose={() => setCancelOpen(false)} title={`${Hon} chắc chắn an toàn chứ?`}>
+        <p style={{ margin: 0, fontSize: 17, lineHeight: 1.5 }}>Hủy SOS thì người nhà sẽ được báo là {hon} bấm nhầm. Nếu {hon} vẫn cần giúp, đừng hủy.</p>
+        <button className="btn" onClick={() => setCancelOpen(false)}>Không, tôi vẫn cần giúp</button>
+        <button
+          className="btn secondary"
+          onClick={() => {
+            if (home.closeIncident(inc.id, 'Người gửi báo bấm nhầm', { id: me.id, name: me.name, role: me.role })) {
+              toast(`Đã báo người thân: ${hon} bấm nhầm, không cần hỗ trợ.`);
+              setCancelOpen(false);
+              nav('/s');
+            }
+          }}
+        >
+          Tôi an toàn, hủy SOS
+        </button>
+      </Sheet>
       <button className="btn secondary" onClick={() => nav('/s')}>Về trang nhà</button>
     </Phone>
   );

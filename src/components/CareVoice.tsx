@@ -1,4 +1,4 @@
-import { Check, Clock, HeartHandshake, Keyboard, Mic, PhoneCall, Send, Siren, Square, X } from 'lucide-react';
+import { Camera, Check, Clock, HeartHandshake, Keyboard, Mic, PhoneCall, Radar, Send, Siren, Square, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { addressOf, forSpeech, interpretReply, isStop, type Address, type Reply } from '../core/family/carewatch';
@@ -8,11 +8,21 @@ import { sendSOS } from '../state/actions';
 import { approveAction, askAssistant, dismissAction, useAiLive } from '../state/assistant';
 import { markDose } from '../state/butler';
 import { closeCheckIn, closeVoice, noteNav, noteOk, openVoice, startCareWatch, useCare, voiceAllowed, type CheckIn } from '../state/carewatch';
+import { assess, POSTURE_TEXT, voiceCues, type VisionVerdict } from '../core/guardian/verify';
+import { cameraCheck } from '../state/guardianVerify';
 import { getHome } from '../state/services';
 import { getApp, useApp, useMe } from '../state/store';
 import type { ChatMsg, Member } from '../state/types';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'idle';
+
+type CheckState = 'wait' | 'ok' | 'bad' | 'skip';
+interface VerifyRow {
+  id: 'voice' | 'motion' | 'camera';
+  label: string;
+  state: CheckState;
+  note: string;
+}
 
 const EMERGENCY = /(cứu|cấp cứu|\bsos\b|ngã rồi|té rồi|bị ngã|bị té|khó thở|đau ngực|tức ngực|ngất|chóng mặt quá)/i;
 
@@ -40,6 +50,9 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
   const [heard, setHeard] = useState('');
   const answered = useRef(false);
   const live = useRef(true);
+  const askedAt = useRef(Date.now());
+  const round = useRef(0);
+  const [checks, setChecks] = useState<VerifyRow[] | null>(null);
   const a: Address = addressOf(me);
   const You = cap(a.you);
 
@@ -72,10 +85,75 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     }
   };
 
-  const fine = async () => {
+  const setRow = (id: VerifyRow['id'], patch: Partial<VerifyRow>) => setChecks((rows) => (rows ? rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) : rows));
+
+  const verifyFallOk = async (text: string, latencyMs: number) => {
     answered.current = true;
-    if (c.kind === 'fall' && c.incidentId) getHome().verifyFall(c.incidentId, 'false_alarm', actorOf(me));
-    else noteOk(c.kind);
+    stopListening();
+    const home = getHome();
+    const inc = c.incidentId ? home.incident(c.incidentId) : undefined;
+    if (!inc) return finish();
+    const room = inc.room;
+    const radarHere = home.s.devices.some((d) => (d.kind === 'radar' || d.kind === 'thermal') && d.room === room && d.online);
+    const cue = voiceCues(text, latencyMs);
+    setChecks([
+      { id: 'voice', label: 'Giọng nói', state: cue.pain || cue.hedge || cue.slow ? 'bad' : 'ok', note: `"${text}"${cue.cues.length ? `, ${cue.cues.join(', ')}` : `, trả lời sau ${Math.max(1, Math.round(latencyMs / 1000))} giây`}` },
+      { id: 'motion', label: 'Cử động (radar)', state: radarHere ? 'wait' : 'skip', note: radarHere ? `Chờ ${a.you} đứng dậy hoặc đi vài bước` : 'Phòng không có radar' },
+      { id: 'camera', label: 'Camera (AI xem ảnh)', state: 'wait', note: 'Đang kiểm tra' },
+    ]);
+    home.addEvidence(inc.id, { kind: 'voice', at: Date.now(), summary: `${me.name} trả lời "${text}" sau ${Math.max(1, Math.round(latencyMs / 1000))} giây${cue.cues.length ? `, ${cue.cues.join(', ')}` : ''}`, ref: me.id });
+    const cam = cameraCheck(room);
+    void cam.then((res) => {
+      if (!live.current) return;
+      if (res.status === 'done') setRow('camera', { state: res.verdict.posture === 'lying_on_floor' || res.verdict.fallen_likely >= 0.6 ? 'bad' : 'ok', note: `${res.camera}: ${res.verdict.person_visible ? `thấy người đang ${POSTURE_TEXT[res.verdict.posture]}` : 'không thấy người'}` });
+      else setRow('camera', { state: 'skip', note: res.reason });
+    });
+    await say(`Dạ, ${a.you} thử đứng dậy hoặc đi lại vài bước giúp ${a.me} nhé. ${cap(a.me)} xem ${a.you} có ổn thật không ạ.`);
+    const start = Date.now();
+    let moved = false;
+    for (let s = 0; s < 25 && live.current && radarHere; s++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      if (home.movedSince(room, start - 500)) {
+        moved = true;
+        break;
+      }
+    }
+    if (!live.current) return;
+    if (radarHere) setRow('motion', moved ? { state: 'ok', note: 'Radar thấy cử động sau khi trả lời' } : { state: 'bad', note: home.stillLying(room) ? 'Vẫn nằm yên, chưa thấy cử động' : 'Chưa thấy cử động rõ' });
+    const camRes = await cam;
+    if (!live.current) return;
+    let vision: VisionVerdict | null = null;
+    if (camRes.status === 'done') {
+      vision = camRes.verdict;
+      const bad = vision.posture === 'lying_on_floor' || vision.fallen_likely >= 0.6;
+      setRow('camera', { state: bad ? 'bad' : 'ok', note: `${camRes.camera}: ${vision.person_visible ? `thấy người đang ${POSTURE_TEXT[vision.posture]}` : 'không thấy người'}${vision.notes ? `. ${vision.notes}` : ''}` });
+      home.addEvidence(inc.id, { kind: 'camera', at: Date.now(), summary: `AI xem ảnh ${camRes.camera}: ${vision.person_visible ? POSTURE_TEXT[vision.posture] : 'không thấy người'}, khả năng ngã ${Math.round(vision.fallen_likely * 100)}%`, ref: 'camera-snapshot' });
+    } else setRow('camera', { state: 'skip', note: camRes.reason });
+    if (radarHere) home.addEvidence(inc.id, { kind: 'radar', at: Date.now(), summary: moved ? 'Có cử động sau khi người nhà trả lời ổn' : 'Không thấy cử động sau khi người nhà trả lời ổn', ref: `verify-${room}` });
+    const r = assess({ voice: 'ok', text, latencyMs, moved: radarHere ? moved : null, stillLying: radarHere ? home.stillLying(room) : null, vision });
+    if (r.verdict === 'safe') {
+      await say(`Dạ, ${a.me} thấy ${a.you} ổn rồi ạ. Có gì ${a.you} cứ gọi ${a.me} nhé.`);
+      home.verifyFall(inc.id, 'false_alarm', actorOf(me), `Đã xác minh: ${r.reasons.join(', ')}`);
+      return finish(() => toast('Đã xác minh: không có sự cố.'));
+    }
+    if (r.verdict === 'danger' || round.current >= 1) {
+      await say(`${You} ơi, ${a.me} chưa yên tâm. ${cap(a.me)} báo người nhà tới với ${a.you} ngay nhé.`);
+      home.addEvidence(inc.id, { kind: 'human', at: Date.now(), summary: `Guardian chưa tin câu trả lời ổn: ${r.reasons.join(', ')}`, ref: 'verify' });
+      return escalate(`Chưa xác minh được ${me.name} an toàn. Đã báo người nhà.`);
+    }
+    round.current += 1;
+    answered.current = false;
+    setChecks(null);
+    askedAt.current = Date.now();
+    await say(`${You} ơi, ${a.me} chưa chắc ${a.you} ổn. ${You} có đứng dậy được không ạ? ${offerShort}`);
+    if (live.current) await listen();
+  };
+  const offerShort = `${cap(a.me)} có thể giúp được gì không ạ?`;
+
+  const fine = async () => {
+    if (c.kind === 'fall' && c.incidentId) return verifyFallOk('(bấm nút Tôi không sao)', Date.now() - askedAt.current);
+    answered.current = true;
+    noteOk(c.kind);
     stopListening();
     await say(`Dạ vâng ạ. Có gì ${a.you} cứ gọi ${a.me} nhé.`);
     finish();
@@ -100,8 +178,9 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     openVoice({ from: 'checkin', first, intro: first ? undefined : c.kind === 'sos-idle' ? `Dạ, ${a.you} muốn ${a.me} gọi cho ai ạ?` : `Dạ, ${a.you} cần ${a.me} giúp gì ạ?` });
   };
 
-  const handle = async (r: Reply, text: string) => {
+  const handle = async (r: Reply, text: string, latencyMs = 0) => {
     if (!live.current || answered.current) return;
+    if (r === 'no' && c.kind === 'fall') return verifyFallOk(text, latencyMs);
     if (r === 'no') return fine();
     if (r === 'taken') return taken();
     if (r === 'notyet' && c.dose) {
@@ -117,11 +196,12 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     stopSpeaking();
     setPhase('listening');
     setHeard('');
+    const startedAt = askedAt.current;
     const r = await listenOnce(lang, setHeard, 8000);
     if (!live.current || answered.current) return;
     setPhase('idle');
     if (r.error === 'denied') toast('Chưa cấp quyền micro. Bấm nút trên màn hình để trả lời.', 'warning');
-    await handle(interpretReply(r.text, c.kind), r.text);
+    await handle(interpretReply(r.text, c.kind), r.text, Date.now() - startedAt);
   };
 
   useEffect(() => {
@@ -132,6 +212,7 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
       if (voiceAllowed(c.kind)) {
         setPhase('speaking');
         await speakAsync(forSpeech(c.say), lang);
+        askedAt.current = Date.now();
         if (!live.current || answered.current) return;
         await listen();
       }
@@ -162,6 +243,18 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
         <h2 id="checkin-title">{c.title}</h2>
         <p className="checkin-sub">{c.sub}</p>
         {heard && <p className="checkin-heard">"{heard}"</p>}
+        {checks && (
+          <div className="verify" aria-live="polite">
+            <b className="verify-title">Đang xác minh câu trả lời</b>
+            {checks.map((r) => (
+              <div key={r.id} className={'verify-row ' + r.state}>
+                <span className="verify-ic">{r.id === 'voice' ? <Mic size={16} /> : r.id === 'motion' ? <Radar size={16} /> : <Camera size={16} />}</span>
+                <span className="verify-text"><b>{r.label}</b><small>{r.note}</small></span>
+                <span className="verify-state">{r.state === 'wait' ? <span className="dots"><i /><i /><i /></span> : r.state === 'ok' ? <Check size={16} /> : r.state === 'bad' ? <X size={16} /> : 'Bỏ qua'}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <p className="checkin-state" aria-live="polite">{phase === 'listening' ? `${cap(a.me)} đang nghe ${a.you} nói` : phase === 'speaking' ? `${cap(a.me)} đang hỏi thăm` : canListen() ? `Chạm vòng tròn để nói với ${a.me}` : ''}</p>
         <div className="checkin-acts">
           {c.kind === 'fall' && (
@@ -169,9 +262,11 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
               <button className="btn danger" onClick={() => void escalate(`Đã gửi SOS cho người nhà của ${me.name}.`)}>
                 <Siren size={20} /> Gọi người nhà giúp tôi
               </button>
-              <button className="btn secondary" onClick={() => void fine()}>
-                <Check size={20} /> Tôi không sao
-              </button>
+              {!checks && (
+                <button className="btn secondary" onClick={() => void fine()}>
+                  <Check size={20} /> Tôi không sao
+                </button>
+              )}
             </>
           )}
           {c.kind === 'sos-idle' && (

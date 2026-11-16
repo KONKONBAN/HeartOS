@@ -235,6 +235,7 @@ export interface AiPrefs {
   speak: boolean;
   checkins?: boolean;
   checkinVoice?: boolean;
+  fallCamera?: boolean;
   gateway: string;
   gatewayCode: string;
   gatewayToken: string;

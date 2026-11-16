@@ -188,3 +188,35 @@ describe('Gia Đình chỉ hỏi khi bấm qua lại giữa hai màn hình', () 
     expect(navLoop(afterLogin, now, true)).toBe(true);
   });
 });
+
+import { assess, voiceCues } from '../guardian/verify';
+
+describe('xác minh câu trả lời "tôi ổn" khi nghi ngã', () => {
+  const base = { voice: 'ok' as const, text: 'không sao đâu con', latencyMs: 3000, moved: null as boolean | null, stillLying: null as boolean | null, vision: null };
+  it('nói ổn và radar thấy đứng dậy thì tin', () => {
+    expect(assess({ ...base, moved: true, stillLying: false }).verdict).toBe('safe');
+  });
+  it('nói ổn nhưng vẫn nằm yên thì không tin, báo người nhà', () => {
+    const r = assess({ ...base, moved: false, stillLying: true });
+    expect(r.verdict).toBe('danger');
+    expect(r.reasons.join(' ')).toContain('nằm yên');
+  });
+  it('nói ổn nhưng có từ đau thì báo ngay', () => {
+    expect(assess({ ...base, text: 'không sao, chỉ hơi đau chân' }).verdict).toBe('danger');
+  });
+  it('camera thấy nằm dưới sàn thì báo dù nói ổn', () => {
+    expect(assess({ ...base, moved: true, vision: { person_visible: true, posture: 'lying_on_floor', fallen_likely: 0.82, notes: '' } }).verdict).toBe('danger');
+  });
+  it('trả lời ngập ngừng, chỉ có một tín hiệu thì chưa chắc', () => {
+    expect(assess({ ...base, text: 'ờ chắc ổn', moved: true }).verdict).toBe('unsure');
+    expect(assess({ ...base, text: 'ờ chắc ổn', moved: true, vision: { person_visible: true, posture: 'standing', fallen_likely: 0.05, notes: '' } }).verdict).toBe('safe');
+  });
+  it('không có radar hay camera thì chưa đủ để tin', () => {
+    expect(assess(base).verdict).toBe('unsure');
+  });
+  it('nhận ra trả lời chậm và ngập ngừng', () => {
+    const c = voiceCues('ừm không sao', 15_000);
+    expect(c.hedge).toBe(true);
+    expect(c.slow).toBe(true);
+  });
+});

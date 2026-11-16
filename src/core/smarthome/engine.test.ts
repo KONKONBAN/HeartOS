@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compareRoutes, seedEdges } from '../guardian/routes';
 import { memoryJsonStore } from '../storage';
-import { HomeEngine } from './engine';
+import { FALL_ESCALATE_MS, HELP_REMIND_MS, HomeEngine } from './engine';
 
 function clock(start = new Date('2026-11-14T18:40:00+07:00').getTime()) {
   let t = start;
@@ -93,6 +93,101 @@ describe('Guardian', () => {
     const inc = e.sos({ id: 'u-lan', name: 'Bà Lan', role: 'member' });
     run(e, c, 3000);
     expect(e.incident(inc.id)!.steps.remote.state).toBe('unknown');
+  });
+
+  const LAN = { id: 'u-lan', name: 'Bà Lan', role: 'member' as const };
+  const LINH = { id: 'u-linh', name: 'Linh', role: 'member' as const };
+  const fall = (e: HomeEngine, c: ReturnType<typeof clock>) => {
+    e.simulate('fall_hall');
+    run(e, c, 25_000, 500);
+    return e.s.incidents.find((i) => i.kind === 'fall')!;
+  };
+
+  it('nghi ngã không ai xác minh thì tự nâng lên P1, bật còi và nhắc cả nhà', () => {
+    const c = clock();
+    const e = demo(c.now);
+    const inc = fall(e, c);
+    expect(inc.status).toBe('verifying');
+    run(e, c, FALL_ESCALATE_MS + 2000, 1000);
+    const after = e.incident(inc.id)!;
+    expect(after.status).toBe('open');
+    expect(after.priority).toBe('P1');
+    expect(after.timeline.some((t) => /Không ai xác minh/.test(t.text))).toBe(true);
+    expect(e.s.commands.some((x) => x.deviceId === 'siren' && x.desired.on === true)).toBe(true);
+    expect(e.s.notices[0].severity).toBe('critical');
+  });
+
+  it('trẻ em không được báo không sao hay đóng ca, người lớn đóng được và còi tắt', () => {
+    const c = clock();
+    const e = demo(c.now);
+    const inc = fall(e, c);
+    expect(e.verifyFall(inc.id, 'false_alarm', MINH)).toBe(false);
+    expect(e.incident(inc.id)!.status).toBe('verifying');
+    expect(e.verifyFall(inc.id, 'needs_help', MINH)).toBe(true);
+    expect(e.incident(inc.id)!.priority).toBe('P1');
+    expect(e.closeIncident(inc.id, 'Đã an toàn', MINH)).toBe(false);
+    run(e, c, 3000);
+    expect(e.closeIncident(inc.id, 'Đã an toàn, có người ở bên', AN)).toBe(true);
+    expect(e.incident(inc.id)!.closedReason).toBe('Đã an toàn, có người ở bên');
+    run(e, c, 3000);
+    expect(e.s.commands.some((x) => x.deviceId === 'siren' && x.desired.on === false)).toBe(true);
+  });
+
+  it('đóng ca rồi thì không còn tự nâng cấp hay nhắc lại', () => {
+    const c = clock();
+    const e = demo(c.now);
+    const inc = fall(e, c);
+    e.verifyFall(inc.id, 'false_alarm', AN, 'Đã gọi, bà vẫn ổn');
+    expect(e.incident(inc.id)!.closedReason).toContain('Đã gọi, bà vẫn ổn');
+    run(e, c, FALL_ESCALATE_MS + 5000, 1000);
+    expect(e.incident(inc.id)!.status).toBe('closed');
+    expect(e.s.timers.some((x) => x.ref.startsWith(inc.id))).toBe(false);
+  });
+
+  it('SOS không ai nhận thì nhắc lại sau 3 phút, đã nhận thì thôi', () => {
+    const c = clock();
+    const e = demo(c.now);
+    e.setSimulateHelpers(false);
+    const inc = e.sos(LAN);
+    run(e, c, HELP_REMIND_MS + 2000, 1000);
+    expect(e.incident(inc.id)!.timeline.some((t) => /chưa ai nhận hỗ trợ/.test(t.text))).toBe(true);
+    const c2 = clock();
+    const e2 = demo(c2.now);
+    e2.setSimulateHelpers(false);
+    const inc2 = e2.sos(LAN);
+    e2.acceptHelp(inc2.id, { id: 'u-an', name: 'An' });
+    run(e2, c2, HELP_REMIND_MS + 2000, 1000);
+    expect(e2.incident(inc2.id)!.timeline.some((t) => /chưa ai nhận hỗ trợ/.test(t.text))).toBe(false);
+  });
+
+  it('hai người cùng bấm SOS thì giữ tên người bấm đầu', () => {
+    const c = clock();
+    const e = demo(c.now);
+    const a = e.sos(LAN);
+    const b = e.sos(LINH);
+    expect(b.id).toBe(a.id);
+    expect(e.incident(a.id)!.personName).toBe('Bà Lan');
+    expect(e.incident(a.id)!.timeline.some((t) => /Linh cũng nhấn SOS/.test(t.text))).toBe(true);
+  });
+
+  it('giao việc khác với tự nhận việc', () => {
+    const c = clock();
+    const e = demo(c.now);
+    e.setSimulateHelpers(false);
+    const inc = e.sos(LAN);
+    e.assignHelper(inc.id, { id: 'u-linh', name: 'Linh' }, AN);
+    expect(e.incident(inc.id)!.steps.helper.state).toBe('active');
+    expect(e.incident(inc.id)!.assignee).toBe('Linh');
+    e.acceptHelp(inc.id, { id: 'u-linh', name: 'Linh' });
+    expect(e.incident(inc.id)!.steps.helper.state).toBe('done');
+  });
+
+  it('người gửi tự hủy SOS thì cả nhà được báo', () => {
+    const c = clock();
+    const e = demo(c.now);
+    const inc = e.sos(LAN);
+    expect(e.closeIncident(inc.id, 'Người gửi báo bấm nhầm', LAN)).toBe(true);
+    expect(e.s.notices[0].title).toBe('Bà Lan đã hủy SOS');
   });
 
   it('route comparison matches design (A 12 min, B 17 min, 2/3 complete)', () => {

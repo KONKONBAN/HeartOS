@@ -140,7 +140,7 @@ export type IncidentKind = 'sos' | 'fall' | 'smoke' | 'leak' | 'door' | 'power';
 export type StepState = 'done' | 'active' | 'unknown' | 'todo' | 'failed';
 
 export interface Evidence {
-  kind: 'radar' | 'thermal' | 'button' | 'smoke' | 'leak' | 'door' | 'human';
+  kind: 'radar' | 'thermal' | 'button' | 'smoke' | 'leak' | 'door' | 'human' | 'voice' | 'camera';
   at: number;
   summary: string;
   ref: string;

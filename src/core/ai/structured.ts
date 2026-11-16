@@ -16,6 +16,7 @@ export interface GenRequest<S extends z.ZodType> {
   schema: S;
   maxTokens?: number;
   timeoutMs?: number;
+  images?: { base64: string; mime: 'image/jpeg' | 'image/png' | 'image/webp' }[];
 }
 
 const FALLBACKS = /^claude-(opus-5-5|opus-5|sonnet-5-5|fable-5-2|fable-5-1)$/;
@@ -31,7 +32,9 @@ export async function generate<S extends z.ZodType>(cfg: GenConfig, req: GenRequ
     const resp = await client.responses.parse({
       model: cfg.model,
       instructions: req.system,
-      input: req.user,
+      input: req.images?.length
+        ? [{ role: 'user' as const, content: [...req.images.map((im) => ({ type: 'input_image' as const, image_url: `data:${im.mime};base64,${im.base64}`, detail: 'low' as const })), { type: 'input_text' as const, text: req.user }] }]
+        : req.user,
       store: false,
       text: { format: zodTextFormat(req.schema, req.name) },
       ...(!cfg.managed && /^(gpt-5|gpt-6|o\d)/.test(cfg.model) && { reasoning: { effort: 'low' as const } }),
@@ -48,7 +51,7 @@ export async function generate<S extends z.ZodType>(cfg: GenConfig, req: GenRequ
     ...(!managed && FALLBACKS.test(cfg.model) && { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }),
     output_config: { ...(!managed && EFFORT.test(cfg.model) && { effort: 'low' as const }), format: betaZodOutputFormat(req.schema) },
     system: req.system,
-    messages: [{ role: 'user', content: req.user }],
+    messages: [{ role: 'user', content: req.images?.length ? [...req.images.map((im) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: im.mime, data: im.base64 } })), { type: 'text' as const, text: req.user }] : req.user }],
   });
   if (msg.stop_reason === 'refusal') throw new Error('Trợ lý AI từ chối yêu cầu này.');
   if (msg.stop_reason === 'max_tokens') throw new Error('Bản nháp bị cắt do quá dài.');

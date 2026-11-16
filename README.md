@@ -176,7 +176,7 @@ npm install
 | Lệnh | Việc làm |
 |---|---|
 | `npm run dev` | Chạy bản phát triển, mở được từ điện thoại cùng mạng LAN |
-| `npm test` | 113 bài kiểm thử đơn vị (thêm 20 hành trình thật khi đặt NET=1) |
+| `npm test` | 129 bài kiểm thử đơn vị (thêm 20 hành trình thật khi đặt NET=1) |
 | `npm run typecheck` | Kiểm kiểu cho ứng dụng và phần máy tính |
 | `npm run build` | Build web vào `dist/` |
 | `npm run desktop:dev` | Mở phần mềm quản trị từ mã nguồn |
@@ -220,6 +220,15 @@ Trên Linux chỉ build được bản portable và zip cho Windows. Bộ cài N
 - Nhắc uống thuốc: Gia Đình, Nhắc uống thuốc. Nhập thuốc theo đơn (giờ, trước hay sau ăn, ngày uống, số viên còn lại). Đến giờ HeartOS nhắc và đọc to ở giao diện Thân Quen, quá 30 phút chưa uống thì báo người thân được chọn, còn dưới 5 ngày thuốc thì nhắc mua thêm. Trợ lý AI cũng thêm được lịch thuốc khi người dùng nói, nhưng phải bấm duyệt.
 - Tự học thói quen: trợ lý ghi lại việc lặp lại (bật tắt thiết bị, việc nhà đã xong, cuộc gọi hỏi thăm) và nhận ra thói quen khi thấy cùng việc vào khoảng cùng giờ ít nhất 3 ngày, hoặc cùng thứ trong tuần ít nhất 3 tuần. Đến giờ thì nhắc, quá giờ chưa làm thì nhắc lại, lặp đủ lâu thì đề nghị tạo lịch tự động. Bỏ qua hai lần thì im 14 ngày. Xem, quên từng thói quen hoặc tắt trong Trợ lý AI, Thói quen trợ lý đã học. Dữ liệu chỉ nằm trên máy, đã mã hóa.
 - Chủ động hỏi thăm: khi thấy người dùng loay hoay (bấm qua lại giữa vài màn hình, chạm nhiều lần vào chỗ không bấm được, nói mà máy không nhận ra), mở màn Cần giúp quá 25 giây mà chưa gửi SOS, quá giờ uống thuốc, hoặc cảm biến nghi ngã, HeartOS tự đọc to câu hỏi theo đúng xưng hô (với bà: "Bà ơi, con thấy bà đang tìm gì đó. Dạ, con có thể giúp được gì không ạ?") rồi nghe câu trả lời. Nói "tôi ổn" thì cảm ơn và thôi, nói "có" thì mở trò chuyện bằng giọng nói, nói luôn điều cần thì trợ lý làm ngay. Nghi ngã mà người dùng xin giúp hoặc không trả lời sau 60 giây thì gửi SOS. Từ 22 giờ đến 6 giờ chỉ hiện chữ, trừ khi nghi ngã. Bật tắt trong Trợ lý AI, Chủ động hỏi thăm.
+- Guardian khi nghi ngã:
+  - Mở ca "đang xác minh" và đếm ngược 90 giây. Không ai xác minh thì tự nâng lên P1, bật còi và báo cả nhà. SOS không ai nhận thì nhắc lại sau 3 phút và 9 phút.
+  - Trên máy người lớn tuổi, HeartOS hỏi "có sao không ạ" bằng giọng nói. Câu trả lời "tôi ổn" không được tin một mình mà phải qua ba bước xác minh:
+    1. Phân tích lời nói: từ chỉ đau, ngập ngừng, trả lời chậm.
+    2. Thử cử động: nhờ đứng dậy hoặc đi vài bước, radar phải thấy cử động thật trong phòng.
+    3. Xem camera: nếu phòng có camera và gia đình bật "Xem nhanh camera khi nghi ngã", AI xem một ảnh. Ảnh không lưu, chỉ ghi kết luận.
+  - Khớp nhau thì đóng ca kèm lý do. Nói ổn mà vẫn nằm yên, có từ đau, hay camera thấy nằm dưới sàn thì báo người nhà ngay.
+  - HeartOS không nhận dạng giọng nói theo sinh trắc học. Tính xác thực của câu trả lời được kiểm bằng việc đối chiếu với cử động và hình ảnh trong đúng căn phòng đó.
+  - Đóng ca, báo không sao và huỷ SOS đều phải xác nhận và ghi lý do. Tài khoản trẻ em chỉ được báo cần hỗ trợ.
 - Trò chuyện bằng giọng nói: nút ở màn hình chính Thân Quen và nút sóng âm cạnh micro trong trợ lý. Nghe, trả lời bằng giọng nói rồi nghe tiếp, chạm vòng tròn để ngắt lời. Duyệt thẻ đề xuất bằng cách nói "đồng ý". Nói "thôi" hoặc "tạm biệt" để kết thúc. Nghe thấy "cứu", "bị ngã", "khó thở" thì hỏi lại rồi gửi SOS. Không có mạng vẫn trả lời được lịch hôm nay, lịch thuốc, giờ, gọi người nhà, đường về nhà.
 - Lịch sử hội thoại với Claude được giữ nguyên thứ tự chỉ thêm vào cuối, ngữ cảnh từng lượt nằm trong tin nhắn người dùng, nên khối suy nghĩ của mô hình không bị vô hiệu.
 - Người dùng chọn dữ liệu trợ lý được dùng: việc và lịch, thiết bị và an toàn, vị trí hiện tại.
