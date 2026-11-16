@@ -250,7 +250,7 @@ export function ChatView({ simple }: { simple?: boolean }) {
           ref={area}
           rows={1}
           className="composer-input"
-          placeholder={sp.listening ? 'Đang nghe' : simple ? 'Nói hoặc gõ câu hỏi' : 'Nhắn cho trợ lý'}
+          placeholder={sp.listening ? 'Đang nghe' : simple ? 'Hỏi trợ lý' : 'Nhắn cho trợ lý'}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

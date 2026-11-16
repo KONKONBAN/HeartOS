@@ -146,9 +146,17 @@ export function FNewsletter() {
       <TopBar back backTo="/f" />
       <Header title="Bản tin gia đình" sub="Trợ lý tóm tắt tuần qua từ việc chung, nếp nhà và ký ức. Bạn xem lại, sửa rồi mới gửi." />
       {!doc && (
-        <button className="btn" disabled={busy} onClick={() => void run()}>
-          <Newspaper size={18} /> {busy ? 'Trợ lý đang soạn bản tin' : 'Soạn bản tin tuần này'}
-        </button>
+        <>
+          <div className="card stack">
+            <h3>Bản tin tuần gồm</h3>
+            <div className="nl-item"><span className="tile"><ListChecks size={18} /></span><span><b>Việc chung đã xong</b><small>Ai đã giúp việc gì trong tuần</small></span></div>
+            <div className="nl-item"><span className="tile peach"><CalendarHeart size={18} /></span><span><b>Nếp nhà sắp tới</b><small>Bữa cơm, buổi kể chuyện, ngày giỗ</small></span></div>
+            <div className="nl-item"><span className="tile sand"><ImagePlus size={18} /></span><span><b>Ký ức mới</b><small>Ảnh và lời kể được chia sẻ</small></span></div>
+          </div>
+          <button className="btn" disabled={busy} onClick={() => void run()}>
+            <Newspaper size={18} /> {busy ? 'Trợ lý đang soạn bản tin' : 'Soạn bản tin tuần này'}
+          </button>
+        </>
       )}
       {doc && meta && (
         <>

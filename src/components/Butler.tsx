@@ -23,7 +23,7 @@ function Row({ i, simple, onDone, onDismiss }: { i: ButlerItem; simple?: boolean
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   return (
-    <div className={'butler-row' + (TONE[i.kind] ? ` ${TONE[i.kind]}` : '')} data-kind={i.kind}>
+    <div className={'butler-row' + (TONE[i.kind] ? ` ${TONE[i.kind]}` : '') + (i.primary ? ' has-primary' : '') + (i.dismissible ? ' has-x' : '')} data-kind={i.kind}>
       <span className="tile">{ICON[i.kind]}</span>
       <button className="butler-text" onClick={() => i.to && nav(i.to)} disabled={!i.to}>
         <span className="t">{i.title}</span>

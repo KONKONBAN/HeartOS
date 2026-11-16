@@ -257,7 +257,14 @@ export function FSync() {
   return (
     <Phone tabs>
       <TopBar back backTo="/f/permissions" />
-      <Header title={job ? 'Đồng bộ quyền đã thu hồi' : 'Trạng thái đồng bộ'} sub={job ? `${job.title}, Cập nhật ${hhmm(job.at)}` : 'Chưa có bản cập nhật quyền nào.'} />
+      <Header title={job ? 'Đồng bộ quyền đã thu hồi' : 'Trạng thái đồng bộ'} sub={job ? `${job.title}, Cập nhật ${hhmm(job.at)}` : 'Quyền chia sẻ được đồng bộ tới mọi máy trong nhà.'} />
+      {!job && (
+        <div className="empty">
+          <span className="empty-ic"><RefreshCw size={28} /></span>
+          <h3>Mọi máy đã khớp quyền</h3>
+          <p>Khi bạn thu hồi hoặc đổi quyền chia sẻ, HeartOS gửi bản cập nhật tới hub và từng điện thoại, trạng thái hiện ở đây.</p>
+        </div>
+      )}
       {job?.devices.map((d) => {
         const dev = devices.find((x) => x.id === d.deviceId)!;
         return (
