@@ -1,4 +1,5 @@
 import { commonSlots, fmtSlot, type MemberWindows, type Slot } from '../core/family/calendar';
+import { helpLine, localReply } from './localAssistant';
 import { draftInvitation, parseIntent, type InviteFacts } from '../core/family/genai';
 import { buf, fromB64, randomId, toB64 } from '../core/sentinel/encoding';
 import type { ReadResult, TraceStep } from '../core/sentinel/types';
@@ -455,12 +456,20 @@ export async function changeRole(memberId: string, role: Member['role'], by: str
 export async function assistantSend(text: string, by: string) {
   const at = Date.now();
   set((s) => {
-    s.chat.push({ id: randomId('msg', 4), from: 'user', text, at });
+    s.chat.push({ id: randomId('msg', 4), from: 'user', text, at, by });
   });
+  const me = getApp().members.find((m) => m.id === by);
+  const simple = me?.mode === 'simple';
+  const local = me ? localReply(text, me) : null;
   const intent = parseIntent(text);
   let reply = '';
   let action: { label: string; to: string } | undefined;
-  if (intent.kind === 'invite') {
+  if (local) {
+    reply = local.reply;
+    action = local.action;
+  } else if (simple && me && (intent.kind === 'unknown' || intent.kind === 'task')) {
+    reply = helpLine(me);
+  } else if (intent.kind === 'invite') {
     const app = getApp();
     const recips = adultIds(app.members, by);
     const r = await createInvitation({ hostId: by, occasion: intent.occasion, recipients: recips });
@@ -472,19 +481,19 @@ export async function assistantSend(text: string, by: string) {
     reply = `Mình gợi ý tạo việc "${intent.title}". Bạn chọn người phụ trách và giờ nhắc trước khi lưu.`;
     action = { label: 'Tạo việc chung', to: `/f/task-new?title=${encodeURIComponent(intent.title)}` };
   } else if (intent.kind === 'story') {
-    reply = 'Bạn có thể thu âm lời kể; lời chép chỉ tạo khi người kể đồng ý và quyền bản chép không rộng hơn bản gốc.';
-    action = { label: 'Thêm ký ức', to: '/f/memory-new' };
+    reply = simple ? 'Dạ, bấm nút bên dưới rồi kể, con ghi lại giọng kể cho con cháu nghe ạ.' : 'Bạn có thể thu âm lời kể; lời chép chỉ tạo khi người kể đồng ý và quyền bản chép không rộng hơn bản gốc.';
+    action = simple ? { label: 'Ghi lời kể', to: '/s/record' } : { label: 'Thêm ký ức', to: '/f/memory-new' };
   } else if (intent.kind === 'sos') {
-    reply = 'Nếu cần giúp ngay, mở màn SOS để báo tại nhà và người thân. Trợ lý không tự gửi SOS.';
-    action = { label: 'Mở SOS', to: '/f/sos' };
+    reply = simple ? 'Dạ, nếu cần giúp ngay, bấm nút Gửi SOS để báo người nhà ạ.' : 'Nếu cần giúp ngay, mở màn SOS để báo tại nhà và người thân. Trợ lý không tự gửi SOS.';
+    action = { label: 'Mở SOS', to: simple ? '/s/help' : '/f/sos' };
   } else if (intent.kind === 'device') {
-    reply = `Lệnh thiết bị cần đúng quyền và phản hồi từ hub. Mở danh sách thiết bị để ${intent.on ? 'bật' : 'tắt'} ${intent.target.trim()}.`;
-    action = { label: 'Thiết bị thông minh', to: '/f/smart' };
+    reply = simple ? `Dạ, việc ${intent.on ? 'bật' : 'tắt'} ${intent.target.trim()} cần người nhà làm trên máy của họ. ${me ? 'Bấm Gọi người thân để nhờ nhé' : ''}`.trim() : `Lệnh thiết bị cần đúng quyền và phản hồi từ hub. Mở danh sách thiết bị để ${intent.on ? 'bật' : 'tắt'} ${intent.target.trim()}.`;
+    action = simple ? { label: 'Gọi người thân', to: '/s/call' } : { label: 'Thiết bị thông minh', to: '/f/smart' };
   } else {
-    reply = 'Mình có thể soạn lời mời ăn cơm, gợi ý việc chung, giữ lại lời kể hoặc mở SOS. Bạn muốn làm gì?';
+    reply = 'Mình có thể soạn lời mời ăn cơm, gợi ý việc chung, giữ lại lời kể, cho biết lịch hôm nay, lịch thuốc hoặc mở SOS. Bạn muốn làm gì?';
   }
   set((s) => {
-    s.chat.push({ id: randomId('msg', 4), from: 'assistant', text: reply, at: Date.now(), action });
+    s.chat.push({ id: randomId('msg', 4), from: 'assistant', text: reply, at: Date.now(), action, by });
   });
 }
 

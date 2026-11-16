@@ -1,8 +1,9 @@
-import { Bell, Check, Eye, Heart, Lightbulb, PiggyBank, Plus, ShieldCheck, Sparkles, UserRound, Map as MapIcon, MessageCircleHeart, Newspaper } from 'lucide-react';
+import { Bell, Check, Eye, Heart, Lightbulb, PiggyBank, Plus, ShieldCheck, Sparkles, UserRound, Map as MapIcon, MessageCircleHeart, Newspaper, Pill } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { CareSuggestions } from './Caring';
+import { ButlerCard } from '../../components/Butler';
 import { Badge, Field, Header, ModePicker, Row, Seg, TopBar } from '../../components/ui';
 import { fmtSlot } from '../../core/family/calendar';
 import { fmtDate, nextOccurrence } from '../../core/family/recurrence';
@@ -58,6 +59,7 @@ export function FHome() {
         </div>
       </div>
       <Header date={dayLong()} title={`Chào ${homeName.replace(/^Nhà /, 'nhà ')}!`} />
+      <ButlerCard me={me} />
       {demo && me.id !== 'u-an' && <Row tone="peach" icon={<UserRound size={18} />} tileTone="white" title={`Đang dùng với tư cách ${me.name}`} meta={`Vai trò: ${me.relation}. Quyền hiển thị theo tài khoản này.`} to="/f/settings" />}
       {draft || queued ? (
         <Link to={draft ? `/f/draft/${draft.id}` : `/f/queued/${queued!.id}`} className="hero" style={{ textDecoration: 'none' }}>
@@ -113,6 +115,7 @@ export function FHome() {
       <Row icon={<ShieldCheck size={18} />} title="An toàn tại nhà" meta={open.length ? `${open.length} ca đang mở` : `${staleRooms.length} vùng cần kiểm tra`} badge={open.length || staleRooms.length ? <Badge tone={open.some((i) => i.priority === 'P1') ? 'danger' : undefined}>Có cập nhật</Badge> : undefined} to="/f/safe" />
       <Row icon={<Lightbulb size={18} />} tileTone="sand" title="Nhà thông minh" meta={home.real && !home.s.devices.length ? 'Chưa kết nối thiết bị, kết nối Home Assistant' : `${lightsOn} đèn đang bật, ${home.s.mode === 'home' ? 'Ở nhà' : home.s.mode === 'away' ? 'Vắng nhà' : 'Ban đêm'}`} to="/f/smart" />
       {next && <Row icon={<Heart size={18} />} tileTone="peach" title="Nghi thức gia đình" meta={`${next.r.name}, ${fmtDate(next.at)}`} to="/f/rituals" />}
+      <Row icon={<Pill size={18} />} tileTone="peach" title="Nhắc uống thuốc" meta="Lịch thuốc của từng người, báo người thân khi lỡ liều" to="/f/meds" />
       <Row icon={<Newspaper size={18} />} tileTone="peach" title="Bản tin gia đình" meta="Trợ lý tóm tắt tuần qua để gửi cả nhà" to="/f/newsletter" />
       <Row icon={<PiggyBank size={18} />} tileTone="sand" title="Quỹ Nếp Nhà" meta={goals[0]?.name ?? 'Tạo mục tiêu chung của gia đình'} to="/f/fund" />
     </Phone>

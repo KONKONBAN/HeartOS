@@ -1,7 +1,8 @@
-import { Bot, CalendarDays, Check, Clock, Map as MapIcon, Mic, Phone as PhoneIcon, PlayCircle, Siren, Square, Volume2 } from 'lucide-react';
+import { AudioLines, Bot, CalendarDays, Check, Clock, Map as MapIcon, Mic, Phone as PhoneIcon, PlayCircle, Siren, Square, Volume2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
+import { ButlerCard } from '../../components/Butler';
 import { Missing } from '../../components/Missing';
 import { Avatar, Badge, Chips, Field, Header, ModePicker, Row, TopBar } from '../../components/ui';
 import { fmtSlot, viTime } from '../../core/family/calendar';
@@ -12,6 +13,8 @@ import { toast } from '../../lib/ui-store';
 import { addMemory, openMemory, respondInvitation, supportContacts } from '../../state/actions';
 import { useHome } from '../../state/services';
 import { capFirst, honorific, memberName, namesOf, useApp, useMe } from '../../state/store';
+import { openVoice } from '../../state/carewatch';
+import { addressOf } from '../../core/family/carewatch';
 
 function useLanInvite() {
   const me = useMe();
@@ -47,6 +50,14 @@ export function SHome() {
     <Phone tabs simple>
       <TopBar right={<ModePicker mode="simple" />} brandTo="/s" />
       <Header date={dayLong()} title={`Chào ${me.name.toLowerCase().startsWith(`${hon}`) ? `${hon} ` + me.name.slice(3) : me.name}!`} read={`Chào ${me.name}. Hôm nay là ${dayLong()}.`} />
+      <ButlerCard me={me} simple limit={3} title="Nhắc cho hôm nay" />
+      <button className="talk-cta" onClick={() => { const a = addressOf(me); openVoice({ from: 'chat', intro: `Dạ, ${a.you} cần ${a.me} giúp gì ạ?` }); }}>
+        <span className="talk-orb"><AudioLines size={28} /></span>
+        <span className="talk-text">
+          <b>Trò chuyện bằng giọng nói</b>
+          <small>Bấm rồi nói tự nhiên, trợ lý nghe và đáp lại</small>
+        </span>
+      </button>
       {sosOpen && <Row tone="rose" icon={<Siren size={20} />} tileTone="white" title="SOS đang mở" meta={sosOpen.steps.helper.by ? `${sosOpen.steps.helper.by} đã nhận hỗ trợ` : 'Đang chờ người thân nhận việc'} to={`/s/sos/${sosOpen.id}`} />}
       <Row tone="tint" icon={<PhoneIcon size={22} />} tileTone="white" title="Gọi người thân" meta={namesOf(callees.map((c) => c.id))} to="/s/call" />
       {inv ? (

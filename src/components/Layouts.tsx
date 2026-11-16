@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../state/store';
 
 const FAMILY_TABS = [
-  { to: '/f', label: 'Nhà', icon: House, match: ['/f', '/f/ai', '/f/ai-settings', '/f/soften', '/f/newsletter', '/f/tasks', '/f/task', '/f/task-new', '/f/task-call', '/f/fund', '/f/fund-add', '/f/language', '/f/voice', '/f/notices'] },
+  { to: '/f', label: 'Nhà', icon: House, match: ['/f', '/f/ai', '/f/ai-settings', '/f/soften', '/f/newsletter', '/f/meds', '/f/med-new', '/f/habits', '/f/tasks', '/f/task', '/f/task-new', '/f/task-call', '/f/fund', '/f/fund-add', '/f/language', '/f/voice', '/f/notices'] },
   { to: '/f/rhythm', label: 'Nhịp Nhà', icon: CalendarDays, match: ['/f/rhythm', '/f/calendar', '/f/draft', '/f/compose', '/f/queued', '/f/rituals', '/f/ritual', '/f/ritual-new'] },
   { to: '/f/memories', label: 'Ký ức', icon: Image, match: ['/f/memories', '/f/memory', '/f/memory-new', '/f/memory-review'] },
   { to: '/f/safe', label: 'An toàn', icon: ShieldCheck, match: ['/f/safe', '/f/incidents', '/f/incident', '/f/assign', '/f/routes', '/f/route', '/f/map', '/f/camera', '/f/devices', '/f/pair', '/f/power', '/f/smart', '/f/scenes', '/f/automations', '/f/sos', '/f/offline', '/f/guardian', '/f/simulate'] },

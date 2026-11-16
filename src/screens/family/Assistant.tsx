@@ -1,16 +1,17 @@
-import { Bot, CalendarHeart, Check, Siren, ChevronRight, Home as HomeIcon, Languages, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Mic, MicOff, Navigation, Phone as PhoneIcon, Send, Settings2, Sparkles, Square, Volume2, X } from 'lucide-react';
+import { AudioLines, Bot, Check, Pill, ChevronRight, Home as HomeIcon, Languages, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Mic, MicOff, Navigation, Phone as PhoneIcon, Send, Settings2, Sparkles, Square, Volume2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
 import { RichText } from '../../components/RichText';
+import { ButlerCard } from '../../components/Butler';
 import { Badge, Field, Header, Row, Seg, TopBar } from '../../components/ui';
 import { CLAUDE_MODELS, PROVIDER_NAME } from '../../core/ai/types';
 import { speak, useSpeechInput, useVoiceSupport } from '../../lib/media';
-import { nextOccurrence } from '../../core/family/recurrence';
-import { hhmm, isToday } from '../../lib/format';
 import { toast } from '../../lib/ui-store';
 import { aiReady, isNeutral, providerOrder } from '../../state/aiConfig';
 import { approveAction, askAssistant, dismissAction, startNewConversation, stopAssistant, toolLabel, useAiLive } from '../../state/assistant';
+import { openVoice } from '../../state/carewatch';
+import { addressOf } from '../../core/family/carewatch';
 import { useHome } from '../../state/services';
 import { greetName, useApp, useMe } from '../../state/store';
 import type { AiAction, ChatMsg, Member } from '../../state/types';
@@ -32,6 +33,7 @@ const ACTION_ICON: Record<AiAction['kind'], ReactNode> = {
   call: <PhoneIcon size={18} />,
   invite: <MessageSquarePlus size={18} />,
   open: <ChevronRight size={18} />,
+  med: <Pill size={18} />,
 };
 
 function ActionCard({ msg, a, me, simple }: { msg: ChatMsg; a: AiAction; me: Member; simple?: boolean }) {
@@ -143,41 +145,6 @@ function useSuggestions(me: Member, simple?: boolean) {
   }, [simple, others.length, hasHome, devices, elder?.id]);
 }
 
-function TodayBrief({ me, simple, onAsk }: { me: Member; simple?: boolean; onAsk: (q: string) => void }) {
-  const tasks = useApp((s) => s.tasks);
-  const rituals = useApp((s) => s.rituals);
-  const members = useApp((s) => s.members);
-  const home = useHome();
-  const nav = useNavigate();
-  const now = Date.now();
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  const mine = tasks.filter((t) => t.status !== 'done' && (t.assignee === me.id || t.target === me.id) && t.remindAt <= end.getTime()).sort((a, b) => a.remindAt - b.remindAt);
-  const overdue = mine.filter((t) => t.remindAt < now).length;
-  const next = rituals.map((r) => ({ r, at: nextOccurrence(r.recurrence, new Date(), r.skip).getTime() })).filter((x) => x.r.participants.includes(me.id) && x.at - now < 36 * 3600_000).sort((a, b) => a.at - b.at)[0];
-  const incidents = home.openIncidents();
-  const lastCall = (id: string) => tasks.filter((t) => t.kind === 'call' && t.target === id && t.status === 'done').reduce((m, t) => Math.max(m, t.doneAt ?? 0), 0);
-  const elder = members.find((m) => m.id !== me.id && m.mode === 'simple' && m.phone && now - lastCall(m.id) > 3 * 86400_000);
-  const items: { icon: ReactNode; text: string; act: () => void; tone?: string }[] = [];
-  if (incidents.length) items.push({ icon: <Siren size={18} />, text: `${incidents.length} sự cố đang mở: ${incidents[0].title}`, act: () => nav(simple ? '/s/help' : `/f/incident/${incidents[0].id}`), tone: 'rose' });
-  if (mine.length) items.push({ icon: <ListChecks size={18} />, text: `${mine.length} việc hôm nay${overdue ? `, ${overdue} việc đã quá giờ` : ''}: ${mine[0].title} lúc ${hhmm(mine[0].remindAt)}`, act: () => onAsk('Hôm nay tôi có những việc gì, việc nào nên làm trước?') });
-  if (next) items.push({ icon: <CalendarHeart size={18} />, text: `${next.r.name} lúc ${hhmm(next.at)} ${isToday(next.at) ? 'hôm nay' : 'ngày mai'}`, act: () => onAsk(`Giúp tôi chuẩn bị cho ${next.r.name}`) });
-  if (elder) items.push({ icon: <PhoneIcon size={18} />, text: `Đã lâu chưa gọi hỏi thăm ${elder.name}`, act: () => onAsk(`Nhắc tôi gọi cho ${elder.name} tối nay`) });
-  if (!items.length) return null;
-  return (
-    <div className={'brief' + (simple ? ' big' : '')}>
-      <div className="brief-head">Hôm nay của {greetName(me)}</div>
-      {items.map((it, i) => (
-        <button key={i} className={'brief-row' + (it.tone ? ` ${it.tone}` : '')} onClick={it.act}>
-          <span className="tile">{it.icon}</span>
-          <span>{it.text}</span>
-          <ChevronRight size={16} />
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function ChatView({ simple }: { simple?: boolean }) {
   const me = useMe();
   const chat = useApp((s) => s.chat);
@@ -227,7 +194,7 @@ export function ChatView({ simple }: { simple?: boolean }) {
           </span>
           <h2>{`Chào ${greetName(me)}, mình giúp gì cho cả nhà?`}</h2>
           <p>{ready ? (managed ? 'Hỏi tự do bằng chữ hoặc giọng nói.' : `Trợ lý dùng ${label}. Hỏi tự do bằng chữ hoặc giọng nói.`) : 'Trợ lý đang dùng mẫu trên thiết bị, hiểu các câu đơn giản.'}</p>
-          <TodayBrief me={me} simple={simple} onAsk={(q) => void send(q)} />
+          <ButlerCard me={me} simple={simple} limit={4} title={`Hôm nay của ${greetName(me)}`} />
           {!ready && !simple && !managed && me.role === 'admin' && (
             <Link to="/f/ai-settings" className="row" style={{ marginTop: 6 }}>
               <span className="tile sand">
@@ -266,6 +233,18 @@ export function ChatView({ simple }: { simple?: boolean }) {
       <div className={'composer' + (simple ? ' big' : '')}>
         <button className={'iconbtn round' + (sp.listening ? ' on' : '')} aria-label={sp.listening ? 'Dừng nghe' : 'Nói với trợ lý'} onClick={sp.listening ? sp.stop : sp.start}>
           {sp.listening ? <MicOff size={simple ? 24 : 20} /> : <Mic size={simple ? 24 : 20} />}
+        </button>
+        <button
+          className="iconbtn round"
+          aria-label="Trò chuyện bằng giọng nói"
+          title="Trò chuyện bằng giọng nói"
+          disabled={busy}
+          onClick={() => {
+            const a = addressOf(me);
+            openVoice({ from: 'chat', intro: `Dạ, ${a.you} cần ${a.me} giúp gì ạ?` });
+          }}
+        >
+          <AudioLines size={simple ? 24 : 20} />
         </button>
         <textarea
           ref={area}

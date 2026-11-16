@@ -213,6 +213,14 @@ export interface Prefs {
   haToken?: string;
 }
 
+export interface HabitStore {
+  enabled: boolean;
+  events: import('../core/family/habits').HabitEvent[];
+  feedback: Record<string, import('../core/family/habits').HabitFeedback>;
+  cursor: { cmd: number; task: number };
+  notified: Record<string, string>;
+}
+
 export interface AiPrefs {
   enabled: boolean;
   provider: 'claude' | 'openai';
@@ -225,6 +233,8 @@ export interface AiPrefs {
   shareHome: boolean;
   shareLocation: boolean;
   speak: boolean;
+  checkins?: boolean;
+  checkinVoice?: boolean;
   gateway: string;
   gatewayCode: string;
   gatewayToken: string;
@@ -233,7 +243,7 @@ export interface AiPrefs {
 
 export interface AiAction {
   id: string;
-  kind: 'task' | 'device' | 'scene' | 'route' | 'call' | 'invite' | 'open';
+  kind: 'task' | 'device' | 'scene' | 'route' | 'call' | 'invite' | 'open' | 'med';
   title: string;
   detail: string;
   payload: Record<string, string | number | boolean | null>;

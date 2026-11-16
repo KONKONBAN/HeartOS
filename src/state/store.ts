@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { encryptedStateStorage } from '../core/atrest';
+import type { Medication, MedLog } from '../core/family/meds';
 import { atRest } from './services';
 import { immer } from 'zustand/middleware/immer';
 import type {
   AiConversation,
   AiPrefs,
+  HabitStore,
   CalendarShare,
   CameraSession,
   ChatMsg,
@@ -48,6 +50,10 @@ export interface AppState {
   aiConvs: Record<string, AiConversation>;
   places: SavedPlace[];
   recentSearches: string[];
+  habits: HabitStore;
+  medications: Medication[];
+  medLogs: MedLog[];
+  butlerSeen: Record<string, string>;
   seededAt: number;
   set: (fn: (s: AppState) => void) => void;
   setMode: (m: UiMode) => void;
@@ -92,8 +98,31 @@ export function emptyState(session?: Partial<Session>): AppData {
     aiConvs: {},
     places: [],
     recentSearches: [],
+    habits: emptyHabits(),
+    medications: [],
+    medLogs: [],
+    butlerSeen: {},
     seededAt: now,
   };
+}
+
+export const emptyHabits = (): HabitStore => ({ enabled: true, events: [], feedback: {}, cursor: { cmd: Date.now(), task: Date.now() }, notified: {} });
+
+function demoHabitEvents(now: number): HabitStore['events'] {
+  const out: HabitStore['events'] = [];
+  const at = (daysAgo: number, h: number, m: number) => {
+    const d = new Date(now - daysAgo * 86400_000);
+    d.setHours(h, m, 0, 0);
+    return d.getTime();
+  };
+  for (let i = 1; i <= 21; i++) {
+    const jitter = ((i * 7) % 13) - 6;
+    out.push({ who: 'u-an', kind: 'device', key: 'light-living:on=false', label: 'tắt Đèn phòng khách', at: at(i, 22, 30 + jitter), payload: { deviceId: 'light-living', desired: '{"on":false}' } });
+    if (i % 3 !== 0) out.push({ who: 'u-lan', kind: 'task', key: 'task:tưới cây ngoài ban công', label: 'tưới cây ngoài ban công', at: at(i, 18, 25 + jitter) });
+    const d = new Date(now - i * 86400_000);
+    if (d.getDay() === 0) out.push({ who: 'u-an', kind: 'call', key: 'call:u-lan', label: 'gọi hỏi thăm Bà Lan', at: at(i, 10, 5 + jitter), payload: { target: 'u-lan' } });
+  }
+  return out;
 }
 
 export function seed(): AppData {
@@ -157,6 +186,13 @@ export function seed(): AppData {
     aiConvs: {},
     places: [],
     recentSearches: [],
+    habits: { ...emptyHabits(), events: demoHabitEvents(now) },
+    medications: [
+      { id: 'med-amlo', memberId: 'u-lan', name: 'Amlodipine 5 mg', dose: '1 viên', times: ['07:00'], weekdays: null, meal: 'after', note: 'Thuốc huyết áp theo đơn bác sĩ', stock: 24, perDose: 1, caregivers: ['u-an'], active: true, createdBy: 'u-an', createdAt: now - 20 * 86400_000 },
+      { id: 'med-metf', memberId: 'u-lan', name: 'Metformin 500 mg', dose: '1 viên', times: ['07:30', '19:30'], weekdays: null, meal: 'after', note: 'Uống ngay sau bữa ăn', stock: 8, perDose: 1, caregivers: ['u-an'], active: true, createdBy: 'u-an', createdAt: now - 20 * 86400_000 },
+    ],
+    medLogs: [],
+    butlerSeen: {},
     seededAt: now,
   };
 }

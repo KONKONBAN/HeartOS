@@ -17,6 +17,10 @@ import * as FM from './screens/family/Memories';
 import * as FA from './screens/family/Assistant';
 import { FAiSettings, FAiTech } from './screens/family/AiSettings';
 import { FNewsletter, FSoften } from './screens/family/Caring';
+import { FHabits, FMedNew, FMeds } from './screens/family/Meds';
+import { startHabits } from './state/habits';
+import { startButler } from './state/butler';
+import { CareLayer } from './components/CareVoice';
 import * as SF from './screens/safety/Safety';
 import * as SG from './screens/safety/Guardian';
 import * as SD from './screens/safety/Devices';
@@ -119,6 +123,8 @@ export default function App() {
       .then(bootstrap)
       .then(async () => {
         initHa();
+        startHabits();
+        startButler();
         if (!isDesktop()) {
           await initHubLink(() => {
             const app = getApp();
@@ -134,6 +140,7 @@ export default function App() {
   return (
     <HashRouter>
       <Runtime />
+      <CareLayer />
       <Toasts />
       <ApprovalSheet />
       <Suspense fallback={<Splash error="Đang tải bàn vận hành" />}>
@@ -186,6 +193,9 @@ export default function App() {
         <Route path="/f/ai-settings" element={g(<FAiSettings />)} />
         <Route path="/f/ai-tech" element={g(<FAiTech />)} />
         <Route path="/f/soften" element={g(<FSoften />)} />
+        <Route path="/f/meds" element={g(<FMeds />)} />
+        <Route path="/f/med-new" element={g(<FMedNew />)} />
+        <Route path="/f/habits" element={g(<FHabits />)} />
         <Route path="/f/newsletter" element={g(<FNewsletter />)} />
         <Route path="/f/maps/*" element={maps()} />
         <Route path="/s/maps/*" element={maps(true)} />

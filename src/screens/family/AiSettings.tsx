@@ -1,4 +1,4 @@
-import { Check, ExternalLink, KeyRound, Server, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { Brain, Check, ExternalLink, HeartHandshake, KeyRound, Server, ShieldCheck, Sparkles, Trash2, Volume2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
@@ -182,12 +182,15 @@ export function FAiSettings() {
       <Row icon={<Sparkles size={18} />} title="Bật trợ lý AI" meta={meta} chevron={false} right={<Switch label="Bật trợ lý AI" checked={ai.enabled} onChange={(v) => set((s) => void (s.prefs.ai.enabled = v))} />} />
       {!managed && !ready && <div className="card sand"><p>Trợ lý AI nâng cao chưa được kích hoạt trên thiết bị này. Trong lúc đó trợ lý vẫn hiểu các câu đơn giản như soạn lời mời, nhắc việc, mở SOS. Liên hệ nơi bán HeartOS để được kích hoạt.</p></div>}
       <SharingRows />
+      <Row icon={<HeartHandshake size={18} />} title="Chủ động hỏi thăm" meta="Thấy người nhà loay hoay, quá giờ thuốc hay nghi ngã, trợ lý tự hỏi: Dạ, con có thể giúp được gì không ạ?" chevron={false} right={<Switch label="Chủ động hỏi thăm" checked={ai.checkins !== false} onChange={(v) => set((s) => void (s.prefs.ai.checkins = v))} />} />
+      {ai.checkins !== false && <Row icon={<Volume2 size={18} />} title="Hỏi thăm bằng giọng nói" meta="Đọc to câu hỏi rồi nghe trả lời. Từ 22 giờ đến 6 giờ chỉ hiện chữ, trừ khi nghi ngã" chevron={false} right={<Switch label="Hỏi thăm bằng giọng nói" checked={ai.checkinVoice !== false} onChange={(v) => set((s) => void (s.prefs.ai.checkinVoice = v))} />} />}
+      <Row icon={<Brain size={18} />} title="Thói quen trợ lý đã học" meta="Xem, quên từng thói quen hoặc tắt tự học" to="/f/habits" />
       <div className="card flat">
         <div className="hstack" style={{ marginBottom: 6 }}>
           <ShieldCheck size={18} color="var(--leaf)" />
           <h3 style={{ margin: 0 }}>Quyền riêng tư</h3>
         </div>
-        <p>Câu hỏi và phần dữ liệu bạn cho phép được mã hóa khi truyền tới máy chủ trợ lý HeartOS và đối tác xử lý trí tuệ nhân tạo đám mây (có thể đặt ở nước ngoài) chỉ để tạo câu trả lời. Trợ lý chỉ thấy dữ liệu mà {me.name} được xem, không thấy ký ức, quỹ chung hay camera. Mọi việc, lệnh thiết bị, chỉ đường và cuộc gọi đều cần bạn bấm duyệt.</p>
+        <p>Câu hỏi và phần dữ liệu bạn cho phép được mã hóa khi truyền tới máy chủ trợ lý HeartOS và đối tác xử lý trí tuệ nhân tạo đám mây (có thể đặt ở nước ngoài) chỉ để tạo câu trả lời. Trợ lý chỉ thấy dữ liệu mà {me.name} được xem, không thấy ký ức, quỹ chung hay camera. Mọi việc, lệnh thiết bị, chỉ đường và cuộc gọi đều cần bạn bấm duyệt hoặc nói đồng ý.</p>
       </div>
       <ClearHistory />
     </Phone>

@@ -10,6 +10,9 @@ import type { Device } from '../core/smarthome/types';
 import { randomId } from '../core/sentinel/encoding';
 import { speak } from '../lib/media';
 import { assistantSend, createInvitation, currentLocation } from './actions';
+import { butlerContext, newMedication } from './butler';
+import { habitContext } from './habits';
+import { normalizeTimes } from '../core/family/meds';
 import { baseFor, ensureGatewayToken, isManaged, isNeutral, keyFor, modelFor, providerOrder, refreshGateway } from './aiConfig';
 import { getHome, getSentinel } from './services';
 import { adultIds, getApp, greetName, memberName, useApp } from './store';
@@ -28,6 +31,7 @@ export const useAiLive = create<AiLive>(() => ({ busy: false, owner: '', text: '
 
 const TOOL_LABEL: Record<string, string> = {
   get_tasks: 'Đang xem việc chung',
+  propose_medication: 'Đang chuẩn bị nhắc thuốc',
   get_schedule: 'Đang xem lịch gia đình',
   get_home_status: 'Đang xem trạng thái nhà',
   search_places: 'Đang tìm địa điểm',
@@ -142,17 +146,26 @@ function systemPrompt(me: Member): string {
     '7. Định dạng: văn bản thuần, câu ngắn. Danh sách dùng gạch đầu dòng "- ". Có thể in đậm ý quan trọng bằng **chữ**. Không dùng tiêu đề markdown, bảng, emoji. Không dùng các ký tự "·", "→", "…" hay gạch dài; dùng dấu phẩy, dấu chấm thay thế.',
     '8. Giờ viết theo kiểu 24 giờ như 18:30. Khoảng cách dùng m hoặc km.',
     '9. Nếu yêu cầu chưa rõ (ví dụ chưa rõ ai làm, mấy giờ), hỏi lại một câu ngắn hoặc chọn mặc định hợp lý và nói rõ để người dùng sửa trước khi duyệt.',
+    '10. Bạn là quản gia chủ động, không chỉ trả lời. Mỗi lượt có khối ngữ cảnh gồm việc quản gia đang để ý, lịch thuốc hôm nay và thói quen đã học. Khi phù hợp, mở lời nhắc điều quan trọng nhất trước (thuốc đến giờ hoặc bị lỡ, sự cố, việc quá giờ, người lâu chưa được hỏi thăm) rồi mới trả lời câu hỏi, và đề xuất hành động bằng công cụ propose_*. Không nhắc lại cùng một điều nhiều lần trong một cuộc trò chuyện.',
+    '11. Về thuốc: chỉ nhắc theo lịch gia đình đã nhập, không tự đổi liều, không khuyên uống bù gấp đôi; dùng propose_medication khi người dùng muốn thêm lịch nhắc thuốc.',
   ].join('\n');
 }
 
-function contextBlock(me: Member, conv: AiConversation, simple: boolean) {
+function contextBlock(me: Member, conv: AiConversation, simple: boolean, voice = false) {
   const now = new Date();
   const lines = [
     `Thời điểm: ${WEEKDAY[now.getDay()]}, ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${fmtClock(now.getTime())} (${getApp().household?.tz ?? 'Asia/Ho_Chi_Minh'})`,
     `Giao diện đang dùng: ${simple ? 'Thân Quen' : 'Gia Đình'}`,
   ];
+  if (voice) lines.push('Đang trò chuyện bằng giọng nói, câu trả lời sẽ được đọc to: trả lời 1 đến 3 câu ngắn, lễ phép, không dùng danh sách, ký hiệu hay định dạng. Nếu cần người dùng duyệt thẻ đề xuất, nói rõ là chỉ cần nói "đồng ý" hoặc bấm nút trên màn hình.');
   if (conv.notes.length) lines.push('Kết quả các thẻ đề xuất trước:', ...conv.notes.map((n) => `- ${n}`));
-  void me;
+  if (getApp().prefs.ai.shareSchedule) {
+    const b = butlerContext(me);
+    if (b.items.length) lines.push('Quản gia đang để ý:', ...b.items.map((x) => `- ${x}`));
+    if (b.meds.length) lines.push('Lịch thuốc hôm nay:', ...b.meds.map((x) => `- ${x}`));
+    const h = habitContext(me.id);
+    if (h.length) lines.push('Thói quen đã học trên máy:', ...h.map((x) => `- ${x}`));
+  }
   return `<ngu_canh_ung_dung>\n${lines.join('\n')}\n</ngu_canh_ung_dung>`;
 }
 
@@ -410,12 +423,25 @@ function buildTools(me: Member, actions: AiAction[]): AiTool[] {
       },
     }),
     defineTool({
+      name: 'propose_medication',
+      description: 'Đề xuất thêm lịch nhắc uống thuốc cho một thành viên theo đơn bác sĩ mà người dùng nói ra. Hiện thẻ để người dùng duyệt.',
+      schema: z.object({ member: z.string().describe('Người uống'), name: z.string().min(2).describe('Tên thuốc và hàm lượng'), dose: z.string().optional().describe('Liều mỗi lần, ví dụ "1 viên"'), times: z.array(z.string().regex(/^\d{1,2}:\d{2}$/)).min(1).describe('Các giờ uống HH:mm'), meal: z.enum(['before', 'after', 'any']).optional(), stock: z.number().int().optional() }),
+      run: ({ member, name, dose, times, meal = 'after', stock }) => {
+        const m = findMember(member, app().members);
+        if (!m) return `Không tìm thấy thành viên "${member}".`;
+        const t = normalizeTimes(times);
+        if (!t.length) return 'Giờ uống chưa hợp lệ.';
+        return propose({ kind: 'med', title: `Nhắc thuốc: ${name}`, detail: `${m.name}, ${dose ?? '1 viên'} lúc ${t.join(', ')}${meal === 'after' ? ', sau ăn' : meal === 'before' ? ', trước ăn' : ''}`, payload: { memberId: m.id, name, dose: dose ?? '1 viên', times: t.join(','), meal, stock: stock ?? null } });
+      },
+    }),
+    defineTool({
       name: 'open_screen',
       description: 'Mở nhanh một màn hình trong HeartOS: sos (gửi cứu hộ), tasks (việc chung), calendar (lịch), devices (thiết bị), map (bản đồ), memories (ký ức), hospitals (bệnh viện gần nhà), safety (an toàn).',
-      schema: z.object({ screen: z.enum(['sos', 'tasks', 'calendar', 'devices', 'map', 'memories', 'hospitals', 'safety']) }),
+      schema: z.object({ screen: z.enum(['sos', 'tasks', 'calendar', 'devices', 'map', 'memories', 'hospitals', 'safety', 'meds']) }),
       run: ({ screen }) => {
         const simple = me.mode === 'simple';
         const map: Record<string, [string, string]> = {
+          meds: ['/f/meds', 'Mở nhắc uống thuốc'],
           sos: [simple ? '/s/help' : '/f/sos', 'Mở SOS'],
           tasks: [simple ? '/s/today' : '/f/tasks', 'Mở việc chung'],
           calendar: [simple ? '/s/today' : '/f/rhythm', 'Mở lịch gia đình'],
@@ -485,7 +511,7 @@ function push(msg: ChatMsg) {
   });
 }
 
-export async function askAssistant(text: string, meId: string, opts: { simple?: boolean } = {}) {
+export async function askAssistant(text: string, meId: string, opts: { simple?: boolean; quiet?: boolean; voice?: boolean } = {}) {
   const app = getApp();
   const me = app.members.find((m) => m.id === meId);
   if (!me || !text.trim() || useAiLive.getState().busy) return;
@@ -520,7 +546,7 @@ export async function askAssistant(text: string, meId: string, opts: { simple?: 
   useAiLive.setState({ busy: true, owner: me.id, text: '', tool: null, provider: order[0], controller });
   const actions: AiAction[] = [];
   const tools = buildTools(me, actions);
-  const user = `${contextBlock(me, conv, !!opts.simple)}\n\n${text.trim()}`;
+  const user = `${contextBlock(me, conv, !!opts.simple, !!opts.voice)}\n\n${text.trim()}`;
   const notices: string[] = [];
   let result: TurnResult | null = null;
   let used: AiProvider | null = null;
@@ -586,7 +612,7 @@ export async function askAssistant(text: string, meId: string, opts: { simple?: 
     }
   });
   push({ id: randomId('msg', 4), from: 'assistant', text: answer, at: Date.now(), by: me.id, conv: conv.id, provider: used, model: result.model, notice: notices.join(' ') || undefined, actions: actions.length ? actions.map((a) => ({ ...a })) : undefined });
-  if (ai.speak || opts.simple) speak(answer.replace(/\*\*/g, ''), app.prefs.voiceLang);
+  if ((ai.speak || opts.simple) && !opts.quiet) speak(answer.replace(/\*\*/g, ''), app.prefs.voiceLang);
   void getSentinel().log({ kind: 'note', actor: 'A', summary: `Trợ lý AI (${label(used)}) trả lời ${me.name}${actions.length ? `, ${actions.length} đề xuất chờ duyệt` : ''}` });
 }
 
@@ -663,6 +689,12 @@ export async function approveAction(msgId: string, actionId: string, meId: strin
         if (!r.ok) throw new Error(r.error);
         setAction(msgId, actionId, { status: 'done', note: 'Đã soạn bản nháp' }, `Người dùng đã tạo bản nháp lời mời "${String(p.occasion)}".`);
         nav(`/f/draft/${r.id}`);
+        return;
+      }
+      case 'med': {
+        const times = String(p.times).split(',');
+        newMedication({ memberId: String(p.memberId), name: String(p.name), dose: String(p.dose), times, weekdays: null, meal: (p.meal as 'before' | 'after' | 'any') ?? 'after', note: 'Thêm qua trợ lý', stock: p.stock === null ? null : Number(p.stock), perDose: Math.max(1, parseInt(String(p.dose), 10) || 1), caregivers: app.members.filter((x) => x.role === 'admin' && x.id !== String(p.memberId)).map((x) => x.id), createdBy: me.id });
+        setAction(msgId, actionId, { status: 'done', note: `Đã bật nhắc lúc ${times.join(', ')}` }, `Người dùng đã thêm lịch nhắc thuốc ${String(p.name)}.`);
         return;
       }
       case 'open':

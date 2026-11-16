@@ -471,18 +471,40 @@ export class HomeEngine {
     for (const r of this.s.rules) {
       if (!r.enabled || !this.matches(r.trigger, ev) || !this.conditionOk(r)) continue;
       if (r.lastFired && this.now() - r.lastFired < 15_000 && ev.type === 'sensor' && ev.event === 'motion') continue;
-      r.lastFired = this.now();
-      r.fireCount++;
-      for (const a of r.actions) {
-        if (a.type === 'device') this.sendCommand(a.deviceId, 'set', a.params ?? {}, SYSTEM, 'automation');
-        else if (a.type === 'notify') this.notify(r.name, a.text, a.severity, '/f/safe');
-        else if (a.type === 'incident') this.openIncident(a.kind, a.priority, room, evidence);
-        else if (a.type === 'shed') this.shedLoads();
-        else if (a.type === 'mode') this.s.mode = a.mode;
-      }
-      this.audit('smarthome.command', `Luật "${r.name}" kích hoạt`, 'notice');
+      this.runRule(r, room, evidence);
     }
     this.emit();
+  }
+
+  private runRule(r: AutomationRule, room: RoomId, evidence?: Evidence) {
+    r.lastFired = this.now();
+    r.fireCount++;
+    for (const a of r.actions) {
+      if (a.type === 'device') this.sendCommand(a.deviceId, 'set', a.params ?? {}, SYSTEM, 'automation');
+      else if (a.type === 'notify') this.notify(r.name, a.text, a.severity, '/f/safe');
+      else if (a.type === 'incident') this.openIncident(a.kind, a.priority, room, evidence);
+      else if (a.type === 'shed') this.shedLoads();
+      else if (a.type === 'mode') this.s.mode = a.mode;
+    }
+    this.audit('smarthome.command', `Luật "${r.name}" kích hoạt`, 'notice');
+  }
+
+  private lastMinute = '';
+
+  runTimeRules(t: number) {
+    const d = new Date(t);
+    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    if (hm === this.lastMinute) return;
+    this.lastMinute = hm;
+    const day = d.toDateString();
+    let fired = false;
+    for (const r of this.s.rules) {
+      if (!r.enabled || r.trigger.type !== 'time' || r.trigger.at !== hm || !this.conditionOk(r)) continue;
+      if (r.lastFired && new Date(r.lastFired).toDateString() === day) continue;
+      this.runRule(r, this.s.rooms[0]?.id ?? 'living');
+      fired = true;
+    }
+    if (fired) this.emit();
   }
 
   private shedLoads() {
@@ -814,6 +836,7 @@ export class HomeEngine {
 
   tick() {
     const t = this.now();
+    this.runTimeRules(t);
     if (this.s.real) {
       this.runTimers(t);
       if (t - this.lastSensor >= 1000) {
