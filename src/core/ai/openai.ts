@@ -133,7 +133,7 @@ async function run(input: TurnInput, model: string): Promise<TurnResult> {
     }
     throw new AiError('Trợ lý gọi công cụ quá nhiều lần trong một lượt.', 'server', 'openai');
   } catch (e) {
-    throw mapError(Sdk, e, input.managed);
+    throw mapError(Sdk, e, input.managed || input.neutral);
   }
 }
 

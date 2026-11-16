@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronRight, Home as HomeIcon, Languages, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Mic, MicOff, Navigation, Phone as PhoneIcon, Send, Settings2, Sparkles, Square, Volume2, X } from 'lucide-react';
+import { Bot, CalendarHeart, Check, Siren, ChevronRight, Home as HomeIcon, Languages, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Mic, MicOff, Navigation, Phone as PhoneIcon, Send, Settings2, Sparkles, Square, Volume2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Phone } from '../../components/Layouts';
@@ -6,8 +6,10 @@ import { RichText } from '../../components/RichText';
 import { Badge, Field, Header, Row, Seg, TopBar } from '../../components/ui';
 import { CLAUDE_MODELS, PROVIDER_NAME } from '../../core/ai/types';
 import { speak, useSpeechInput, useVoiceSupport } from '../../lib/media';
+import { nextOccurrence } from '../../core/family/recurrence';
+import { hhmm, isToday } from '../../lib/format';
 import { toast } from '../../lib/ui-store';
-import { aiReady, isManaged, providerOrder } from '../../state/aiConfig';
+import { aiReady, isNeutral, providerOrder } from '../../state/aiConfig';
 import { approveAction, askAssistant, dismissAction, startNewConversation, stopAssistant, toolLabel, useAiLive } from '../../state/assistant';
 import { useHome } from '../../state/services';
 import { greetName, useApp, useMe } from '../../state/store';
@@ -104,7 +106,7 @@ function Bubble({ m, me, simple, voiceLang, managed }: { m: ChatMsg; me: Member;
       )}
       {m.notice && <p className="bubble-notice">{m.notice}</p>}
       <div className="bubble-meta">
-        <span>{modelName(m.provider, m.model, managed)}</span>
+        <span>{m.error ? '' : modelName(m.provider, m.model, managed)}</span>
         <button className="iconbtn" aria-label="Đọc to câu trả lời" onClick={() => speak(m.text.replace(/\*\*/g, ''), voiceLang)}>
           <Volume2 size={15} />
         </button>
@@ -141,13 +143,48 @@ function useSuggestions(me: Member, simple?: boolean) {
   }, [simple, others.length, hasHome, devices, elder?.id]);
 }
 
+function TodayBrief({ me, simple, onAsk }: { me: Member; simple?: boolean; onAsk: (q: string) => void }) {
+  const tasks = useApp((s) => s.tasks);
+  const rituals = useApp((s) => s.rituals);
+  const members = useApp((s) => s.members);
+  const home = useHome();
+  const nav = useNavigate();
+  const now = Date.now();
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  const mine = tasks.filter((t) => t.status !== 'done' && (t.assignee === me.id || t.target === me.id) && t.remindAt <= end.getTime()).sort((a, b) => a.remindAt - b.remindAt);
+  const overdue = mine.filter((t) => t.remindAt < now).length;
+  const next = rituals.map((r) => ({ r, at: nextOccurrence(r.recurrence, new Date(), r.skip).getTime() })).filter((x) => x.r.participants.includes(me.id) && x.at - now < 36 * 3600_000).sort((a, b) => a.at - b.at)[0];
+  const incidents = home.openIncidents();
+  const lastCall = (id: string) => tasks.filter((t) => t.kind === 'call' && t.target === id && t.status === 'done').reduce((m, t) => Math.max(m, t.doneAt ?? 0), 0);
+  const elder = members.find((m) => m.id !== me.id && m.mode === 'simple' && m.phone && now - lastCall(m.id) > 3 * 86400_000);
+  const items: { icon: ReactNode; text: string; act: () => void; tone?: string }[] = [];
+  if (incidents.length) items.push({ icon: <Siren size={18} />, text: `${incidents.length} sự cố đang mở: ${incidents[0].title}`, act: () => nav(simple ? '/s/help' : `/f/incident/${incidents[0].id}`), tone: 'rose' });
+  if (mine.length) items.push({ icon: <ListChecks size={18} />, text: `${mine.length} việc hôm nay${overdue ? `, ${overdue} việc đã quá giờ` : ''}: ${mine[0].title} lúc ${hhmm(mine[0].remindAt)}`, act: () => onAsk('Hôm nay tôi có những việc gì, việc nào nên làm trước?') });
+  if (next) items.push({ icon: <CalendarHeart size={18} />, text: `${next.r.name} lúc ${hhmm(next.at)} ${isToday(next.at) ? 'hôm nay' : 'ngày mai'}`, act: () => onAsk(`Giúp tôi chuẩn bị cho ${next.r.name}`) });
+  if (elder) items.push({ icon: <PhoneIcon size={18} />, text: `Đã lâu chưa gọi hỏi thăm ${elder.name}`, act: () => onAsk(`Nhắc tôi gọi cho ${elder.name} tối nay`) });
+  if (!items.length) return null;
+  return (
+    <div className={'brief' + (simple ? ' big' : '')}>
+      <div className="brief-head">Hôm nay của {greetName(me)}</div>
+      {items.map((it, i) => (
+        <button key={i} className={'brief-row' + (it.tone ? ` ${it.tone}` : '')} onClick={it.act}>
+          <span className="tile">{it.icon}</span>
+          <span>{it.text}</span>
+          <ChevronRight size={16} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ChatView({ simple }: { simple?: boolean }) {
   const me = useMe();
   const chat = useApp((s) => s.chat);
   const prefs = useApp((s) => s.prefs);
   const live = useAiLive();
   const ready = aiReady(prefs.ai);
-  const managed = isManaged(prefs.ai);
+  const managed = isNeutral(prefs.ai);
   const order = providerOrder(prefs.ai);
   const [text, setText] = useState(() => new URLSearchParams(location.hash.split('?')[1]).get('text') ?? '');
   const sp = useSpeechInput(prefs.voiceLang);
@@ -189,7 +226,8 @@ export function ChatView({ simple }: { simple?: boolean }) {
             <Bot size={simple ? 34 : 28} />
           </span>
           <h2>{`Chào ${greetName(me)}, mình giúp gì cho cả nhà?`}</h2>
-          <p>{ready ? `Trợ lý dùng ${label}. Hỏi tự do bằng chữ hoặc giọng nói.` : 'Trợ lý đang dùng mẫu trên thiết bị, hiểu các câu đơn giản.'}</p>
+          <p>{ready ? (managed ? 'Hỏi tự do bằng chữ hoặc giọng nói.' : `Trợ lý dùng ${label}. Hỏi tự do bằng chữ hoặc giọng nói.`) : 'Trợ lý đang dùng mẫu trên thiết bị, hiểu các câu đơn giản.'}</p>
+          <TodayBrief me={me} simple={simple} onAsk={(q) => void send(q)} />
           {!ready && !simple && !managed && me.role === 'admin' && (
             <Link to="/f/ai-settings" className="row" style={{ marginTop: 6 }}>
               <span className="tile sand">
@@ -282,7 +320,7 @@ export function FAi() {
       />
       <div className="chat-title">
         <h1 className="h1" style={{ fontSize: 26 }}>Trợ lý HeartOS</h1>
-        <Badge tone={order.length ? 'dark' : 'line'}>{order.length ? modelName(order[0], order[0] === 'claude' ? prefs.ai.claudeModel : prefs.ai.openaiModel, isManaged(prefs.ai)) : 'Mẫu trên thiết bị'}</Badge>
+        <Badge tone={order.length ? 'dark' : 'line'}>{order.length ? modelName(order[0], order[0] === 'claude' ? prefs.ai.claudeModel : prefs.ai.openaiModel, isNeutral(prefs.ai)) : 'Mẫu trên thiết bị'}</Badge>
       </div>
       <ChatView />
       <p className="small muted" style={{ margin: 0 }}>Trợ lý chỉ đề xuất. Việc, lệnh thiết bị, chỉ đường và cuộc gọi chỉ thực hiện khi bạn bấm duyệt.</p>

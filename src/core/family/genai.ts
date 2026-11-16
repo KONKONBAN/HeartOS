@@ -122,7 +122,7 @@ export async function aiDraft(f: InviteFacts, cfg: DraftConfig): Promise<{ raw: 
 export async function draftInvitation(f: InviteFacts, cfg?: DraftConfig | null): Promise<DraftResult> {
   const t0 = performance.now();
   if (cfg?.apiKey) {
-    const name = cfg.managed ? 'trợ lý AI' : cfg.provider === 'openai' ? 'ChatGPT' : 'Claude';
+    const name = cfg.managed || cfg.neutral ? 'trợ lý AI' : cfg.provider === 'openai' ? 'ChatGPT' : 'Claude';
     try {
       const { raw, model } = await aiDraft(f, cfg);
       const c = checkDraft(raw, f);

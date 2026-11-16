@@ -215,6 +215,8 @@ Trên Linux chỉ build được bản portable và zip cho Windows. Bộ cài N
 - Build bản bán ra với `VITE_AI_GATEWAY=https://ai.ten-mien-cua-ban.vn` để khách cài là dùng được ngay.
 - Máy trưng bày hoặc kỹ thuật viên: Thêm, Cài đặt ứng dụng, chạm 7 lần vào "HeartOS 1.0.0" bằng tài khoản quản trị để mở Cài đặt kỹ thuật, nhập địa chỉ máy chủ. Mục này cũng cho nhập khóa API trực tiếp để thử, không dùng cho máy bán.
 - Chưa có máy chủ thì trợ lý dùng mẫu trên thiết bị, vẫn hiểu các câu đơn giản (soạn lời mời, nhắc việc, mở SOS).
+- Gắn khóa thẳng vào bản cài khi chưa có máy chủ: build với `HEARTOS_EMBED_CLAUDE_KEY` và/hoặc `HEARTOS_EMBED_OPENAI_KEY` (tùy chọn `HEARTOS_EMBED_PRIMARY=openai`). Khóa được mã hóa khi build, chỉ giải mã trong bộ nhớ lúc gọi, không hiện ở màn hình nào và không lưu xuống máy; giao diện không hiện tên nhà cung cấp. Đây là làm khó chứ không chặn hẳn: người rành kỹ thuật vẫn có thể lấy khóa từ APK, nên dùng khóa riêng có hạn mức chi tiêu hằng tháng và đổi khóa khi nghi bị lộ. Cách giấu khóa hoàn toàn là máy chủ HeartOS AI.
+- Trợ lý chủ động: mở trợ lý là thấy tóm tắt hôm nay (sự cố đang mở, việc tới hạn và quá giờ, nếp nhà sắp tới, người lớn tuổi lâu chưa được hỏi thăm), bấm một chạm để hỏi tiếp hoặc mở màn liên quan. Phần này chạy cả khi không có mạng và không có khóa AI.
 - Lịch sử hội thoại với Claude được giữ nguyên thứ tự chỉ thêm vào cuối, ngữ cảnh từng lượt nằm trong tin nhắn người dùng, nên khối suy nghĩ của mô hình không bị vô hiệu.
 - Người dùng chọn dữ liệu trợ lý được dùng: việc và lịch, thiết bị và an toàn, vị trí hiện tại.
 

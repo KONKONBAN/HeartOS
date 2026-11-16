@@ -109,7 +109,7 @@ export async function claudeTurn(input: TurnInput): Promise<TurnResult> {
     }
     throw new AiError('Trợ lý gọi công cụ quá nhiều lần trong một lượt.', 'server', 'claude');
   } catch (e) {
-    throw mapError(Sdk, e, input.managed);
+    throw mapError(Sdk, e, input.managed || input.neutral);
   }
 }
 

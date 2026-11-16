@@ -120,6 +120,7 @@ export class MapController {
       cooperativeGestures: false,
     });
     this.map.touchZoomRotate.enableRotation();
+    this.map.addControl(new maplibregl.ScaleControl({ maxWidth: 90, unit: 'metric' }), 'bottom-left');
     this.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     this.map.setMissingStyleImageResolver(async (id) => {
       const img = imageCache?.get(id) ?? (id.startsWith('poi-') ? await poiImage(id.slice(4)) : null);

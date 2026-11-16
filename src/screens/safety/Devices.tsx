@@ -15,6 +15,7 @@ import { useHubLink } from '../../state/hublink';
 import { getHome, useHome } from '../../state/services';
 import { useApp, useHouseholdName, useMe } from '../../state/store';
 import { haStateLabel } from './HomeAssistant';
+import { AreaChart } from '../../components/Charts';
 
 export const ICON: Partial<Record<DeviceKind, ReactNode>> = {
   hub: <Cpu size={18} />, light: <Lightbulb size={18} />, plug: <Plug size={18} />, door: <DoorOpen size={18} />, smoke: <Flame size={18} />, leak: <Droplets size={18} />, radar: <Radar size={18} />, thermal: <Activity size={18} />, camera: <Activity size={18} />, sos: <Siren size={18} />, siren: <Siren size={18} />, valve: <Droplets size={18} />, lock: <Lock size={18} />, ac: <AirVent size={18} />, curtain: <Blinds size={18} />, ups: <BatteryCharging size={18} />, generator: <Zap size={18} />, router: <Network size={18} />,
@@ -178,18 +179,6 @@ function FPairDemo() {
   );
 }
 
-function Spark({ data }: { data: { at: number; w: number }[] }) {
-  if (data.length < 2) return <div className="small muted">Đang thu dữ liệu</div>;
-  const max = Math.max(...data.map((d) => d.w), 100);
-  const pts = data.map((d, i) => `${(i / (data.length - 1)) * 100},${40 - (d.w / max) * 36}`).join(' ');
-  return (
-    <svg viewBox="0 0 100 42" style={{ width: '100%', height: 70 }} preserveAspectRatio="none" role="img" aria-label="Công suất trong 2 phút gần đây">
-      <polyline points={`0,42 ${pts} 100,42`} fill="#E4EDE1" stroke="none" />
-      <polyline points={pts} fill="none" stroke="#244C3E" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
 export function FPower() {
   const home = useHome();
   return home.s.real ? <FPowerReal /> : <FPowerDemo />;
@@ -211,8 +200,8 @@ function FPowerDemo() {
       <Row icon={<Power size={18} />} tileTone="sand" title="Máy phát và ATS" meta={`Máy phát ${{ standby: 'chờ', cranking: 'đang khởi động', running: 'đang chạy', cooldown: 'đang làm mát' }[p.generator]}, ATS đang dùng ${{ mains: 'điện lưới', battery: 'UPS', generator: 'máy phát' }[p.ats]}`} chevron={false} />
       <Row icon={n.internet ? <Wifi size={18} /> : <WifiOff size={18} />} tileTone={n.internet ? undefined : 'rose'} title="Mạng tại nhà" meta={`LAN ${n.lan ? 'hoạt động' : 'mất'}, Internet ${n.internet ? 'đang kết nối' : 'gián đoạn'}`} chevron={false} />
       <div className="card">
-        <div className="hstack"><b className="small" style={{ flex: 1 }}>Công suất toàn nhà</b><span className="small muted">{home.totalW()} W</span></div>
-        <Spark data={home.s.energy} />
+        <div className="chart-head"><b>Công suất toàn nhà</b><span>{Math.round(home.totalW()).toLocaleString('vi-VN')} W</span></div>
+        <AreaChart points={home.s.energy.map((e) => ({ x: e.at, y: e.w }))} title="Công suất toàn nhà trong vài phút gần đây" unit="W" />
       </div>
       <Row tone="tint" icon={<Check size={18} />} tileTone="white" title="Tải ưu tiên" meta="Hub, vùng cần thiết và đường SOS đã cấu hình. Khi chạy UPS, luật tự động cắt ổ cắm không thiết yếu." />
       <div className="stack">
@@ -661,8 +650,8 @@ function FPowerReal() {
       ))}
       {metered.length > 0 && (
         <div className="card">
-          <div className="hstack"><b className="small" style={{ flex: 1 }}>Công suất ổ cắm</b><span className="small muted">{total} W</span></div>
-          <Spark data={home.s.energy} />
+          <div className="chart-head"><b>Công suất các ổ cắm đo điện</b><span>{Math.round(total).toLocaleString('vi-VN')} W</span></div>
+          <AreaChart points={home.s.energy.map((e) => ({ x: e.at, y: e.w }))} title="Công suất các ổ cắm đo điện trong vài phút gần đây" unit="W" minMax={50} />
           <div className="list">{metered.map((d) => <div key={d.id} className="li small"><span style={{ flex: 1 }}>{d.name}</span><span className="muted">{d.state.on ? `${Math.round(Number(d.state.powerW ?? 0))} W` : 'Tắt'}</span></div>)}</div>
         </div>
       )}

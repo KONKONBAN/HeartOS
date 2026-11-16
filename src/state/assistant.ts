@@ -10,7 +10,7 @@ import type { Device } from '../core/smarthome/types';
 import { randomId } from '../core/sentinel/encoding';
 import { speak } from '../lib/media';
 import { assistantSend, createInvitation, currentLocation } from './actions';
-import { baseFor, ensureGatewayToken, isManaged, keyFor, modelFor, providerOrder, refreshGateway } from './aiConfig';
+import { baseFor, ensureGatewayToken, isManaged, isNeutral, keyFor, modelFor, providerOrder, refreshGateway } from './aiConfig';
 import { getHome, getSentinel } from './services';
 import { adultIds, getApp, greetName, memberName, useApp } from './store';
 import type { AiAction, AiConversation, ChatMsg, Member } from './types';
@@ -503,7 +503,8 @@ export async function askAssistant(text: string, meId: string, opts: { simple?: 
     }
   }
   const order = providerOrder(ai);
-  const label = (p: AiProvider) => (managed ? (order.indexOf(p) === 0 ? 'Trợ lý HeartOS' : 'Máy chủ dự phòng') : PROVIDER_NAME[p]);
+  const neutral = isNeutral(ai);
+  const label = (p: AiProvider) => (neutral ? (order.indexOf(p) === 0 ? 'Trợ lý HeartOS' : 'Máy chủ dự phòng') : PROVIDER_NAME[p]);
   if (!order.length) {
     useAiLive.setState({ busy: true, owner: me.id, text: '', tool: null, provider: null });
     try {
@@ -540,6 +541,7 @@ export async function askAssistant(text: string, meId: string, opts: { simple?: 
         signal: controller.signal,
         baseURL: baseFor(ai, p),
         managed,
+        neutral,
         onText: (d) => useAiLive.setState((s) => ({ text: s.text + d, tool: null })),
         onTool: (name) => useAiLive.setState({ tool: name }),
       });
@@ -559,18 +561,18 @@ export async function askAssistant(text: string, meId: string, opts: { simple?: 
       const err = e instanceof AiError ? e : new AiError((e as Error).message, 'network', p);
       lastError = err;
       if (err.kind === 'aborted') break;
-      if (order.indexOf(p) < order.length - 1) notices.push(managed ? 'Máy chủ chính đang bận, trợ lý dùng máy chủ dự phòng.' : `${label(p)} chưa trả lời được (${err.message}), ${label(order[order.indexOf(p) + 1])} trả lời thay.`);
+      if (order.indexOf(p) < order.length - 1) notices.push(neutral ? 'Máy chủ chính đang bận, trợ lý dùng máy chủ dự phòng.' : `${label(p)} chưa trả lời được (${err.message}), ${label(order[order.indexOf(p) + 1])} trả lời thay.`);
     }
   }
   const live = useAiLive.getState().text;
   useAiLive.setState({ busy: false, text: '', tool: null, controller: null });
   if (!result || !used) {
     const aborted = lastError?.kind === 'aborted';
-    push({ id: randomId('msg', 4), from: 'assistant', text: aborted ? (live ? cleanText(live) : 'Đã dừng.') : `Chưa gọi được trợ lý AI. ${lastError?.message ?? ''}`.trim(), at: Date.now(), by: me.id, conv: conv.id, error: !aborted || !live, action: aborted || managed ? undefined : { label: 'Mở cài đặt trợ lý AI', to: '/f/ai-settings' } });
+    push({ id: randomId('msg', 4), from: 'assistant', text: aborted ? (live ? cleanText(live) : 'Đã dừng.') : `Chưa gọi được trợ lý AI. ${lastError?.message ?? ''}`.trim(), at: Date.now(), by: me.id, conv: conv.id, error: !aborted || !live, action: aborted || neutral ? undefined : { label: 'Mở cài đặt trợ lý AI', to: '/f/ai-settings' } });
     return;
   }
   const answer = result.stop === 'refusal' ? 'Trợ lý không thể hỗ trợ yêu cầu này. Nếu đây là việc khẩn cấp, hãy bấm SOS hoặc gọi 115.' : cleanText(result.text.trim() || (actions.length ? 'Mình đã chuẩn bị, bạn xem thẻ bên dưới.' : 'Mình chưa có câu trả lời.'));
-  if (result.fellBackModel && !managed) notices.push(`Dùng ${result.fellBackModel} thay cho mô hình đã chọn.`);
+  if (result.fellBackModel && !neutral) notices.push(`Dùng ${result.fellBackModel} thay cho mô hình đã chọn.`);
   if (result.stop === 'length') notices.push('Câu trả lời dài quá nên bị cắt bớt.');
   const finalHistory = result.history;
   useApp.getState().set((s) => {

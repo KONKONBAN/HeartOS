@@ -6,6 +6,7 @@ import { Field, Header, Row, Seg, Sheet, Switch, TopBar } from '../../components
 import { CLAUDE_MODELS, OPENAI_DEFAULT, OPENAI_PREFERRED, PROVIDER_NAME, rankOpenAiModels, type AiProvider } from '../../core/ai/types';
 import { toast } from '../../lib/ui-store';
 import { BUILD_GATEWAY, isManaged, providerOrder, refreshGateway, testGateway } from '../../state/aiConfig';
+import { hasEmbedded } from '../../state/embedded';
 import { testProvider } from '../../state/assistant';
 import { useApp, useMe } from '../../state/store';
 import type { AiPrefs } from '../../state/types';
@@ -253,6 +254,7 @@ export function FAiTech() {
         </div>
         {result && <p className="small" style={{ margin: 0, color: result.ok ? 'var(--leaf)' : 'var(--rose-ink)' }}>{result.text}</p>}
         <p className="small muted" style={{ margin: 0 }}>{BUILD_GATEWAY ? `Bản cài này đã gắn sẵn máy chủ ${BUILD_GATEWAY}.` : 'Bản cài này chưa gắn sẵn máy chủ. Đặt VITE_AI_GATEWAY khi build để khách dùng ngay.'} Khóa API nằm trên máy chủ, không nằm trong ứng dụng.</p>
+        {hasEmbedded() && <p className="small" style={{ margin: 0, color: 'var(--sand-ink)' }}>Bản cài này có khóa API gắn sẵn đã mã hóa, dùng khi chưa có máy chủ. Khóa không hiển thị ở đâu trong ứng dụng.</p>}
       </div>
       {!managed && (
         <>

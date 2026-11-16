@@ -3,6 +3,7 @@ import type { DraftConfig } from '../core/family/genai';
 import { randomId } from '../core/sentinel/encoding';
 import { getApp, useApp } from './store';
 import type { AiPrefs } from './types';
+import { embedded } from './embedded';
 
 export const BUILD_GATEWAY = String(import.meta.env.VITE_AI_GATEWAY ?? '').trim();
 
@@ -12,11 +13,15 @@ export function gatewayOf(ai: AiPrefs) {
 
 export const isManaged = (ai: AiPrefs) => !!gatewayOf(ai);
 
+export const isNeutral = (ai: AiPrefs) => isManaged(ai) || !!embedded();
+
 const gw = { url: '', at: 0, primary: 'claude' as AiProvider, engines: { claude: true, openai: true } as Record<AiProvider, boolean> };
 
 export function keyFor(ai: AiPrefs, p: AiProvider) {
   if (isManaged(ai)) return ai.gatewayToken;
-  return p === 'claude' ? ai.claudeKey : ai.openaiKey;
+  const own = p === 'claude' ? ai.claudeKey : ai.openaiKey;
+  const emb = embedded();
+  return own || (emb ? (p === 'claude' ? emb.claude : emb.openai) : '');
 }
 
 export function modelFor(ai: AiPrefs, p: AiProvider) {
@@ -36,9 +41,11 @@ export function providerOrder(ai: AiPrefs): AiProvider[] {
     const other: AiProvider = gw.primary === 'claude' ? 'openai' : 'claude';
     return [gw.primary, other].filter((p) => gw.engines[p]);
   }
-  const other: AiProvider = ai.provider === 'claude' ? 'openai' : 'claude';
+  const emb = embedded();
+  const main: AiProvider = emb && !ai.claudeKey && !ai.openaiKey ? emb.primary : ai.provider;
+  const other: AiProvider = main === 'claude' ? 'openai' : 'claude';
   const list: AiProvider[] = [];
-  if (keyFor(ai, ai.provider)) list.push(ai.provider);
+  if (keyFor(ai, main)) list.push(main);
   if ((ai.fallback || !list.length) && keyFor(ai, other)) list.push(other);
   return list;
 }
@@ -52,7 +59,7 @@ export function draftConfig(ai: AiPrefs): DraftConfig | null {
   if (!p) return null;
   const managed = isManaged(ai);
   if (managed && !ai.gatewayToken) return null;
-  return { provider: p, apiKey: keyFor(ai, p), model: modelFor(ai, p), baseURL: baseFor(ai, p), managed };
+  return { provider: p, apiKey: keyFor(ai, p), model: modelFor(ai, p), baseURL: baseFor(ai, p), managed, neutral: isNeutral(ai) };
 }
 
 async function getJson(url: string, init?: RequestInit) {

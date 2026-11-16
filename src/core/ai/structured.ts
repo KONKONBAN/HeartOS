@@ -6,6 +6,7 @@ export interface GenConfig {
   model: string;
   baseURL?: string;
   managed?: boolean;
+  neutral?: boolean;
 }
 
 export interface GenRequest<S extends z.ZodType> {

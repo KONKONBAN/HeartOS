@@ -25,6 +25,7 @@ export interface TurnInput {
   signal?: AbortSignal;
   baseURL?: string;
   managed?: boolean;
+  neutral?: boolean;
 }
 
 export interface TurnResult {
