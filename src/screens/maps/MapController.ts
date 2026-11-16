@@ -4,7 +4,7 @@ import type { Feature, FeatureCollection, Polygon } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'virtual:maplibre-worker';
 import { endpoints } from '../../core/maps/config';
-import { bboxOf, bearing as bearingOf, sliceAlong, type LngLat } from '../../core/maps/geo';
+import { bboxOf, bearing as bearingOf, haversine, sliceAlong, type LngLat } from '../../core/maps/geo';
 import { GLYPHS, onewayImage, poiImage, svgOf } from '../../core/maps/icons';
 import type { Route } from '../../core/maps/route';
 import type { Place, PlaceCategory } from '../../core/maps/search';
@@ -211,7 +211,7 @@ export class MapController {
     const add = (id: string) => {
       if (!m.getSource(id)) m.addSource(id, { type: 'geojson', data: empty() });
     };
-    ['me-acc', 'routes', 'results', 'route-done', 'turn-arrow', 'turn-head'].forEach(add);
+    ['me-acc', 'routes', 'results', 'route-done', 'turn-arrow', 'turn-head', 'route-tail'].forEach(add);
     if (!m.hasImage('turn-head')) m.addImage('turn-head', imageCache?.get('turn-head') ?? arrowHead(), { pixelRatio: 2 });
     if (!m.getLayer('me-acc')) m.addLayer({ id: 'me-acc', type: 'fill', source: 'me-acc', paint: { 'fill-color': ROUTE_BLUE, 'fill-opacity': 0.12 } });
     if (!m.getLayer('me-acc-line')) m.addLayer({ id: 'me-acc-line', type: 'line', source: 'me-acc', paint: { 'line-color': ROUTE_BLUE, 'line-opacity': 0.35, 'line-width': 1 } });
@@ -224,6 +224,7 @@ export class MapController {
     if (!m.getLayer('route-case')) m.addLayer({ id: 'route-case', type: 'line', source: 'routes', filter: ['all', ['==', ['get', 'sel'], true], ['!=', ['get', 'walk'], true]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_CASE, 'line-width': width(10) } }, before);
     if (!m.getLayer('route-line')) m.addLayer({ id: 'route-line', type: 'line', source: 'routes', filter: ['all', ['==', ['get', 'sel'], true], ['!=', ['get', 'walk'], true]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_BLUE, 'line-width': width(7) } }, before);
     if (!m.getLayer('route-walk')) m.addLayer({ id: 'route-walk', type: 'line', source: 'routes', filter: ['all', ['==', ['get', 'sel'], true], ['==', ['get', 'walk'], true]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_BLUE, 'line-width': width(7), 'line-dasharray': [0.01, 2] } }, before);
+    if (!m.getLayer('route-tail')) m.addLayer({ id: 'route-tail', type: 'line', source: 'route-tail', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': this.theme === 'dark' ? '#9AA0A6' : '#5F6368', 'line-width': ['interpolate', ['linear'], ['zoom'], 14, 2, 18, 4], 'line-dasharray': [0.1, 2] } }, before);
     if (!m.getLayer('turn-arrow-case')) m.addLayer({ id: 'turn-arrow-case', type: 'line', source: 'turn-arrow', layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': ARROW_CASE, 'line-width': width(8.5) } });
     if (!m.getLayer('turn-arrow')) m.addLayer({ id: 'turn-arrow', type: 'line', source: 'turn-arrow', layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': '#FFFFFF', 'line-width': width(5.2) } });
     if (!m.getLayer('turn-head')) m.addLayer({ id: 'turn-head', type: 'symbol', source: 'turn-head', layout: { 'icon-image': 'turn-head', 'icon-rotate': ['get', 'b'], 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.55, 16, 1.05, 18, 1.9, 20, 3.2] } });
@@ -247,6 +248,10 @@ export class MapController {
           : []
         : routes.map((r, idx) => line(r.coords, { idx, sel: idx === this.state.selectedRoute, walk: r.mode === 'walk' })).sort((a, b) => Number(a.properties.sel) - Number(b.properties.sel)),
     });
+    const sel = nav ? null : routes[this.state.selectedRoute];
+    const end = nav ? nav.rest[nav.rest.length - 1] : sel?.coords[sel.coords.length - 1];
+    const dest = this.state.dest;
+    (m.getSource('route-tail') as GeoJSONSource | undefined)?.setData(end && dest && (nav || routes.length) && haversine(end, dest) > 12 && haversine(end, dest) < 600 ? { type: 'FeatureCollection', features: [line([end, dest])] } : empty());
     (m.getSource('route-done') as GeoJSONSource | undefined)?.setData(nav && nav.done.length > 1 ? { type: 'FeatureCollection', features: [line(nav.done)] } : empty());
     const arrow = nav?.arrow && nav.arrow.length > 1 ? nav.arrow : null;
     (m.getSource('turn-arrow') as GeoJSONSource | undefined)?.setData(arrow ? { type: 'FeatureCollection', features: [line(arrow)] } : empty());
@@ -264,7 +269,7 @@ export class MapController {
     if (prev.theme === look.theme && prev.satellite === look.satellite && prev.buildings3d === look.buildings3d) return;
     this.look = look;
     this.theme = look.satellite ? 'dark' : look.theme;
-    for (const id of ['route-done-case', 'route-done', 'route-alt-case', 'route-alt', 'route-case', 'route-line', 'route-walk', 'turn-arrow-case', 'turn-arrow', 'turn-head', 'results', 'me-acc', 'me-acc-line']) if (this.map.getLayer(id)) this.map.removeLayer(id);
+    for (const id of ['route-tail', 'route-done-case', 'route-done', 'route-alt-case', 'route-alt', 'route-case', 'route-line', 'route-walk', 'turn-arrow-case', 'turn-arrow', 'turn-head', 'results', 'me-acc', 'me-acc-line']) if (this.map.getLayer(id)) this.map.removeLayer(id);
     this.map.setStyle(buildStyle(look, endpoints()), { diff: false });
     if (prev.buildings3d !== look.buildings3d) this.map.easeTo({ pitch: look.buildings3d ? 50 : 0, duration: 600 });
   }
@@ -296,12 +301,14 @@ export class MapController {
   }
 
   setSelected(p: { lat: number; lng: number } | null) {
+    this.state.dest = p ? [p.lng, p.lat] : null;
     this.selMarker?.remove();
     this.selMarker = null;
     if (p) {
       const node = el('map-pin', '<svg viewBox="0 0 32 42" width="32" height="42"><path d="M16 41s14-13.2 14-24.5C30 7.9 23.7 1.5 16 1.5S2 7.9 2 16.5C2 27.8 16 41 16 41z" fill="#D93025" stroke="#A52714" stroke-width="1.5"/><circle cx="16" cy="16" r="5.5" fill="#7A1209"/></svg>');
       this.selMarker = new maplibregl.Marker({ element: node, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(this.map);
     }
+    this.sync();
   }
 
   setHome(home: { lat: number; lng: number } | null | undefined) {

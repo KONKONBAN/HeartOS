@@ -513,9 +513,12 @@ a.row:active, button.row:active { background-color: #f4eee6; }
 .route-label.sel { background: #1A73E8; color: #fff; }
 .route-label b { font-weight: 700; }
 .route-label span { font-size: 11px; font-weight: 600; opacity: .9; }
-.me-dot { width: 22px; height: 22px; position: relative; }
-.me-core { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #1A73E8; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
-.me-cone { position: absolute; left: -14px; top: -28px; width: 50px; height: 50px; transform-origin: 50% 78%; background: conic-gradient(from -32deg at 50% 78%, rgba(26,115,232,.38) 0deg, rgba(26,115,232,.38) 64deg, transparent 64deg); border-radius: 50%; display: none; pointer-events: none; }
+.me-dot { width: 26px; height: 26px; position: relative; }
+.me-core { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #1A73E8; border: 3px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.42); z-index: 1; }
+.me-dot::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; background: rgba(26,115,232,.28); animation: me-pulse 2.4s ease-out infinite; }
+@keyframes me-pulse { 0% { transform: scale(.55); opacity: .9; } 100% { transform: scale(1.55); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .me-dot::after { animation: none; opacity: .35; } }
+.me-cone { position: absolute; left: -12px; top: -26px; width: 50px; height: 50px; transform-origin: 50% 78%; background: conic-gradient(from -32deg at 50% 78%, rgba(26,115,232,.38) 0deg, rgba(26,115,232,.38) 64deg, transparent 64deg); border-radius: 50%; display: none; pointer-events: none; }
 .map-pin { width: 32px; height: 42px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); cursor: pointer; }
 .home-pin { width: 30px; height: 30px; border-radius: 50%; background: #244C3E; border: 2.5px solid #fff; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 .home-pin svg { width: 16px; height: 16px; }
@@ -736,3 +739,17 @@ a.row:active, button.row:active { background-color: #f4eee6; }
 @supports not selector(:focus-visible) {
   button:focus, a:focus, [role="button"]:focus, input:focus, textarea:focus, select:focus { outline: none; }
 }
+
+/* Nút danh mục trên bản đồ: biểu tượng màu theo loại */
+.mchip-ic { display: inline-grid; place-items: center; color: #8A8178; flex: none; }
+.mchip-ic[data-group="health"] { color: #D3483F; }
+.mchip-ic[data-group="food"] { color: #E2700F; }
+.mchip-ic[data-group="cafe"] { color: #A35A1B; }
+.mchip-ic[data-group="shop"] { color: #3F74C9; }
+.mchip-ic[data-group="fuel"] { color: #0F7C8C; }
+.mchip-ic[data-group="money"] { color: #2E7D4F; }
+.mchip-ic[data-group="school"] { color: #86664F; }
+.mchip.on .mchip-ic { color: #1967D2; }
+.mchip svg { flex: none; }
+.prow-glyph { display: inline-grid; place-items: center; }
+.prow-glyph svg { width: 19px; height: 19px; }

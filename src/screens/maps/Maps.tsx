@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUpDown, Bike, Bookmark, BookmarkCheck, Box, Building2, Car, Clock, CloudDownload, CloudOff, Compass, Crosshair, Footprints, Home as HomeIcon, Layers, ListOrdered, LocateFixed, MapPin, Mic, Moon, Navigation, Navigation2, Phone as PhoneIcon, Search, Share2, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Bike, Bookmark, BookmarkCheck, Box, Building2, Car, Clock, CloudDownload, CloudOff, Compass, Crosshair, Footprints, Home as HomeIcon, Layers, ListOrdered, LocateFixed, MapPin, Mic, Moon, Navigation, Navigation2, Phone as PhoneIcon, Search, Share2, Trash2, Volume2, VolumeX, X, Hospital, Pill, Utensils, Coffee, ShoppingCart, Fuel, Landmark, School } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { endpoints, tilesVersion } from '../../core/maps/config';
@@ -21,6 +21,18 @@ type View = 'explore' | 'dir' | 'nav';
 type SheetPos = 'peek' | 'half' | 'full';
 
 const MODE_ICON: Record<TravelMode, ReactNode> = { motorbike: <MotorbikeIcon />, car: <Car size={18} />, walk: <Footprints size={18} />, bike: <Bike size={18} /> };
+
+
+const CHIP_ICON: Partial<Record<string, ReactNode>> = {
+  hospital: <Hospital size={15} strokeWidth={2.3} />,
+  pharmacy: <Pill size={15} strokeWidth={2.3} />,
+  food: <Utensils size={15} strokeWidth={2.3} />,
+  cafe: <Coffee size={15} strokeWidth={2.3} />,
+  shop: <ShoppingCart size={15} strokeWidth={2.3} />,
+  fuel: <Fuel size={15} strokeWidth={2.3} />,
+  atm: <Landmark size={15} strokeWidth={2.3} />,
+  school: <School size={15} strokeWidth={2.3} />,
+};
 
 function MotorbikeIcon({ size = 18 }: { size?: number }) {
   return (
@@ -248,10 +260,11 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
     }
   }, [mapReady, sp.get('to'), sp.get('place'), sp.get('q'), sp.get('from')]);
 
-  const padding = useCallback(() => {
+  const padding = useCallback((pos?: SheetPos) => {
     const h = box.current?.clientHeight ?? 700;
-    const bottom = view === 'nav' ? 150 : sheet === 'peek' ? 190 : sheet === 'half' ? Math.round(h * 0.46) : Math.round(h * 0.5);
-    return { top: view === 'dir' ? 190 : view === 'nav' ? 170 : 130, bottom, left: 40, right: 40 };
+    const at = pos ?? sheet;
+    const bottom = (view === 'nav' ? 150 : at === 'peek' ? 190 : at === 'half' ? Math.round(h * 0.46) : Math.round(h * 0.5)) + 36;
+    return { top: view === 'dir' ? 200 : view === 'nav' ? 170 : 140, bottom, left: 48, right: 56 };
   }, [sheet, view]);
 
   function selectPlace(p: Place, fly: boolean) {
@@ -261,7 +274,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
     setSearching(false);
     setSheet('half');
     ctrl.current?.setSelected(p);
-    if (fly) ctrl.current?.map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(ctrl.current.map.getZoom(), 16), padding: padding(), duration: 650 });
+    if (fly) ctrl.current?.map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(ctrl.current.map.getZoom(), 16), padding: padding('half'), duration: 650 });
     if (!p.address) {
       void reverseGeocode([p.lng, p.lat]).then((r) => {
         if (!r) return;
@@ -296,7 +309,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
       ctrl.current?.setResults(list);
       if (list.length === 1) selectPlace(list[0], true);
       else if (list.length) {
-        ctrl.current?.fit(list.map((p) => [p.lng, p.lat] as LngLat), padding());
+        ctrl.current?.fit(list.map((p) => [p.lng, p.lat] as LngLat), padding('half'));
         setSheet('half');
       }
     } catch (e) {
@@ -314,7 +327,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
       const list = await nearbyCategory(chip, getGeoHere() ?? center());
       setResults({ title: `${chip.label} gần đây`, list, busy: false });
       ctrl.current?.setResults(list);
-      if (list.length) ctrl.current?.fit([...list.slice(0, 8).map((p) => [p.lng, p.lat] as LngLat), ...(getGeoHere() ? [getGeoHere()!] : [])], padding());
+      if (list.length) ctrl.current?.fit([...list.slice(0, 8).map((p) => [p.lng, p.lat] as LngLat), ...(getGeoHere() ? [getGeoHere()!] : [])], padding('half'));
     } catch (e) {
       setResults({ title: `${chip.label} gần đây`, list: [], busy: false });
       toast((e as Error).message, 'warning');
@@ -385,8 +398,9 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
           startAfter.current = false;
           nav(`${base}/nav?${new URLSearchParams(location.hash.split('?')[1] ?? '').toString()}`);
         }
-        const pts = list.flatMap((r) => [r.coords[0], r.coords[Math.floor(r.coords.length / 2)], r.coords[r.coords.length - 1]]);
-        ctrl.current?.fit(pts, padding(), 17);
+        const pts = [...list.flatMap((r) => [r.coords[0], r.coords[Math.floor(r.coords.length / 2)], r.coords[r.coords.length - 1]]), target];
+        const pad = padding();
+        ctrl.current?.fit(pts, { ...pad, top: pad.top + 44 }, 17);
         for (const m of online ? MODES.map((x) => x.id).filter((x) => x !== mode) : []) {
           void getRoutes(o!, [dest.lng, dest.lat], m, ac.signal)
             .then((l) => setDurations((d) => ({ ...d, [m]: l[0]?.duration })))
@@ -419,6 +433,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
     if (!mapReady) return;
     if (view === 'explore') {
       ctrl.current?.setRoutes([], 0, null, () => '');
+      ctrl.current?.setResults(results?.list ?? []);
       ctrl.current?.setSelected(selected);
       return;
     }
@@ -622,7 +637,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
               )}
               {CHIPS.map((c) => (
                 <button key={c.id} className={'mchip' + (results?.title.startsWith(c.label) ? ' on' : '')} onClick={() => void runChip(c)}>
-                  <span className="mchip-dot" data-group={groupOf(c.id)} />
+                  <span className="mchip-ic" data-group={groupOf(c.id)}>{CHIP_ICON[c.id] ?? <MapPin size={15} />}</span>
                   {c.label}
                 </button>
               ))}
@@ -964,7 +979,7 @@ export default function MapScreen({ simple }: { simple?: boolean }) {
                   <span className="m">Gần đây</span>
                 </button>
                 <button className="quick-item" onClick={() => void runChip(CHIPS[1])}>
-                  <span className="qi-ic pharm"><MapPin size={simple ? 24 : 20} /></span>
+                  <span className="qi-ic pharm"><Pill size={simple ? 24 : 20} /></span>
                   <span className="t">Nhà thuốc</span>
                   <span className="m">Gần đây</span>
                 </button>
@@ -1062,7 +1077,7 @@ function PlaceRow({ p, onClick, here }: { p: Place; onClick: () => void; here?: 
   return (
     <button className="prow" onClick={onClick}>
       <span className="prow-ic" data-group={p.category === 'home' ? 'home' : groupOf(p.category)}>
-        {p.category === 'home' ? <HomeIcon size={18} /> : p.category === 'saved' ? <Bookmark size={18} /> : <MapPin size={18} />}
+        {p.category === 'home' ? <HomeIcon size={18} /> : p.category === 'saved' ? <Bookmark size={18} /> : CHIP_ICON[p.category] ? <span className="prow-glyph">{CHIP_ICON[p.category]}</span> : <MapPin size={18} />}
       </span>
       <span className="prow-text">
         <span className="t">{p.name}</span>

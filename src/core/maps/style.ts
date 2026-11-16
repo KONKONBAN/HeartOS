@@ -230,7 +230,7 @@ export function buildStyle(look: MapLook | MapTheme, ep: MapEndpoints): StyleSpe
       ...src,
       'source-layer': 'poi',
       minzoom: 14,
-      filter: ['all', ['has', 'name'], ['<=', ['get', 'rank'], ['step', ['zoom'], 6, 15, 14, 16, 22, 17, 40]]],
+      filter: ['all', ['has', 'name'], ['<=', ['get', 'rank'], ['step', ['zoom'], 6, 15, 14, 16, 22, 17, 40]], ['any', ['!=', ['get', 'class'], 'bus'], ['step', ['zoom'], false, 17, true]]],
       layout: {
         'icon-image': ['concat', 'poi-', poiMatch((g) => g.id, 'other')] as unknown as ExpressionSpecification,
         'icon-size': 0.5,
