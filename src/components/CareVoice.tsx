@@ -10,7 +10,7 @@ import { markDose } from '../state/butler';
 import { closeCheckIn, closeVoice, noteNav, noteOk, openVoice, startCareWatch, useCare, voiceAllowed, type CheckIn } from '../state/carewatch';
 import { assess, POSTURE_TEXT, voiceCues, type VisionVerdict } from '../core/guardian/verify';
 import { cameraCheck } from '../state/guardianVerify';
-import { getHome } from '../state/services';
+import { getHome, useHome } from '../state/services';
 import { getApp, useApp, useMe } from '../state/store';
 import type { ChatMsg, Member } from '../state/types';
 
@@ -73,6 +73,10 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
   const escalate = async (why: string) => {
     answered.current = true;
     const home = getHome();
+    if (c.incidentId && home.incident(c.incidentId)?.status === 'closed') {
+      finish(() => toast('Người nhà đã xác nhận an toàn cho ca này.'));
+      return;
+    }
     if (c.incidentId) home.verifyFall(c.incidentId, 'needs_help', actorOf(me));
     try {
       const inc = await sendSOS(me.id, c.incidentId ? ((home.incident(c.incidentId)?.room as 'living' | 'bedroom') ?? 'living') : 'living');
@@ -87,7 +91,7 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
 
   const setRow = (id: VerifyRow['id'], patch: Partial<VerifyRow>) => setChecks((rows) => (rows ? rows.map((r) => (r.id === id ? { ...r, ...patch } : r)) : rows));
 
-  const verifyFallOk = async (text: string, latencyMs: number) => {
+  const verifyFallOk = async (text: string, latencyMs: number, pressed = false) => {
     answered.current = true;
     stopListening();
     const home = getHome();
@@ -97,11 +101,11 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     const radarHere = home.s.devices.some((d) => (d.kind === 'radar' || d.kind === 'thermal') && d.room === room && d.online);
     const cue = voiceCues(text, latencyMs);
     setChecks([
-      { id: 'voice', label: 'Giọng nói', state: cue.pain || cue.hedge || cue.slow ? 'bad' : 'ok', note: `"${text}"${cue.cues.length ? `, ${cue.cues.join(', ')}` : `, trả lời sau ${Math.max(1, Math.round(latencyMs / 1000))} giây`}` },
+      { id: 'voice', label: pressed ? 'Câu trả lời' : 'Giọng nói', state: cue.pain || cue.hedge || cue.slow ? 'bad' : 'ok', note: `${pressed ? 'Bấm nút Tôi không sao' : `"${text}"`}${cue.cues.length ? `, ${cue.cues.join(', ')}` : `, sau ${Math.max(1, Math.round(latencyMs / 1000))} giây`}` },
       { id: 'motion', label: 'Cử động (radar)', state: radarHere ? 'wait' : 'skip', note: radarHere ? `Chờ ${a.you} đứng dậy hoặc đi vài bước` : 'Phòng không có radar' },
       { id: 'camera', label: 'Camera (AI xem ảnh)', state: 'wait', note: 'Đang kiểm tra' },
     ]);
-    home.addEvidence(inc.id, { kind: 'voice', at: Date.now(), summary: `${me.name} trả lời "${text}" sau ${Math.max(1, Math.round(latencyMs / 1000))} giây${cue.cues.length ? `, ${cue.cues.join(', ')}` : ''}`, ref: me.id });
+    home.addEvidence(inc.id, { kind: pressed ? 'human' : 'voice', at: Date.now(), summary: `${me.name} ${pressed ? 'bấm nút Tôi không sao' : `trả lời "${text}"`} sau ${Math.max(1, Math.round(latencyMs / 1000))} giây${cue.cues.length ? `, ${cue.cues.join(', ')}` : ''}`, ref: me.id });
     const cam = cameraCheck(room);
     void cam.then((res) => {
       if (!live.current) return;
@@ -144,14 +148,14 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     round.current += 1;
     answered.current = false;
     setChecks(null);
-    askedAt.current = Date.now();
     await say(`${You} ơi, ${a.me} chưa chắc ${a.you} ổn. ${You} có đứng dậy được không ạ? ${offerShort}`);
+    askedAt.current = Date.now();
     if (live.current) await listen();
   };
   const offerShort = `${cap(a.me)} có thể giúp được gì không ạ?`;
 
   const fine = async () => {
-    if (c.kind === 'fall' && c.incidentId) return verifyFallOk('(bấm nút Tôi không sao)', Date.now() - askedAt.current);
+    if (c.kind === 'fall' && c.incidentId) return verifyFallOk('tôi không sao', Date.now() - askedAt.current, true);
     answered.current = true;
     noteOk(c.kind);
     stopListening();
@@ -189,6 +193,7 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     }
     if (r === 'yes') return help();
     if (r === 'request') return help(text);
+    if (r === 'silent' && c.kind === 'fall' && round.current >= 1) return escalate(`${me.name} không trả lời khi được hỏi lại. Đã báo người nhà.`);
   };
 
   const listen = async () => {
@@ -203,6 +208,16 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     if (r.error === 'denied') toast('Chưa cấp quyền micro. Bấm nút trên màn hình để trả lời.', 'warning');
     await handle(interpretReply(r.text, c.kind), r.text, Date.now() - startedAt);
   };
+
+  const homeLive = useHome();
+  const incStatus = c.incidentId ? homeLive.incident(c.incidentId)?.status : undefined;
+  useEffect(() => {
+    if (!c.incidentId || incStatus !== 'closed' || answered.current) return;
+    answered.current = true;
+    stopListening();
+    stopSpeaking();
+    finish(() => toast('Người nhà đã xác nhận an toàn cho ca này.'));
+  }, [incStatus]);
 
   useEffect(() => {
     live.current = true;

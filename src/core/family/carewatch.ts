@@ -1,3 +1,5 @@
+import { hasPain, tokens } from '../guardian/verify';
+
 export type Struggle = 'fall' | 'sos-idle' | 'med-missed' | 'speech-fail' | 'nav-loop' | 'dead-tap';
 
 export interface NavEvent {
@@ -167,6 +169,27 @@ const sayOneOf = (t: string, list: string[]) => list.some((w) => t === w || t.st
 
 export type Reply = 'yes' | 'no' | 'taken' | 'notyet' | 'request' | 'silent';
 
+const SUBJECT = new Set(['bà', 'ông', 'tôi', 'mẹ', 'bố', 'ba', 'má', 'con', 'cháu', 'em', 'mình', 'anh', 'chị', 'cô', 'chú', 'bác', 'dì', 'tao', 'tớ']);
+const FILL = new Set(['dạ', 'vâng', 'ạ', 'nhé', 'nha', 'mà', 'đâu', 'ơi', 'này', 'à', 'ờ', 'ừ', 'thì', 'cả', 'cũng', 'vẫn', 'rồi', 'hết', 'lắm', 'đã', 'đang', 'thật', 'thực']);
+const FINE = ['không sao', 'ổn', 'không cần', 'không có gì', 'không bị gì', 'không bị làm sao', 'không làm sao', 'bình thường', 'khỏe', 'khoẻ', 'không đau', 'đứng dậy được', 'tự đứng được', 'tự dậy được', 'đi được', 'không ngã', 'không bị ngã', 'khỏi', 'không cần đâu', 'không phải lo'];
+const ASK = /(^| )(gọi|giúp|cứu|lấy|mở|đưa|nhờ|kêu|báo)( |$)/;
+
+function contentTokens(text: string) {
+  return tokens(text).filter((w) => !SUBJECT.has(w) && !FILL.has(w));
+}
+
+const THANKS = new Set(['cảm', 'cám', 'ơn']);
+
+function saysFine(text: string) {
+  const p = ` ${tokens(text).join(' ')} `;
+  if (hasPain(text) || ASK.test(p)) return false;
+  const c = contentTokens(text);
+  if (!c.length) return false;
+  if ((c[0] === 'không' || c[0] === 'thôi') && c.slice(1).every((w) => THANKS.has(w))) return true;
+  if (c.length <= 8 && FINE.some((w) => p.includes(` ${w} `))) return true;
+  return c.length <= 4 && c.every((w) => THANKS.has(w));
+}
+
 export function interpretReply(text: string, kind?: Struggle): Reply {
   const raw = strip(text);
   if (!raw) return 'silent';
@@ -176,7 +199,9 @@ export function interpretReply(text: string, kind?: Struggle): Reply {
     if (words.length <= 4 && TAKEN.some((w) => t === w || t.startsWith(w + ' ') || t.endsWith(' ' + w))) return 'taken';
     if (words.length <= 3 && sayOneOf(t, NOT_YET)) return 'notyet';
   }
-  if (words.length <= 3 && (t === 'không' || sayOneOf(t, NO.filter((w) => w !== 'không')))) return 'no';
+  if (hasPain(text)) return 'request';
+  if (t === 'không' || (words.length <= 3 && sayOneOf(t, NO.filter((w) => w !== 'không')))) return 'no';
+  if (saysFine(text)) return 'no';
   if (YES.includes(t) || YES.includes(raw) || HELP_ME.test(t)) return 'yes';
   return 'request';
 }

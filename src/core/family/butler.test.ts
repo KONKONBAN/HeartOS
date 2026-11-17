@@ -220,3 +220,22 @@ describe('xác minh câu trả lời "tôi ổn" khi nghi ngã', () => {
     expect(c.slow).toBe(true);
   });
 });
+
+describe('hiểu đúng câu trả lời tự nhiên của người lớn tuổi', () => {
+  const FINE = ['bà không sao', 'bà không sao mà', 'bà vẫn ổn', 'ổn rồi con ơi', 'mẹ không sao', 'ông ổn', 'bình thường mà', 'bà không bị gì', 'không bị làm sao cả', 'không sao bà đứng dậy được rồi', 'bà không đau đâu', 'không, cảm ơn', 'cảm ơn con, bà ổn', 'dạ không sao ạ'];
+  it.each(FINE)('"%s" là ổn, không gửi SOS nhầm', (t) => {
+    expect(interpretReply(t, 'fall')).toBe('no');
+  });
+  const HELP = ['không sao, chỉ hơi đau chân', 'đau quá', 'không dậy được', 'bà ngã rồi', 'gọi thằng An', 'không biết nữa'];
+  it.each(HELP)('"%s" là cần giúp hoặc chưa rõ', (t) => {
+    expect(interpretReply(t, 'fall')).not.toBe('no');
+  });
+  it('chữ có dấu huyền như "bà", "mà", "giờ" không bị coi là ngập ngừng', () => {
+    expect(voiceCues('bà ổn mà, giờ bà đi nấu cơm', 2000).hedge).toBe(false);
+    expect(voiceCues('ờ chắc ổn', 2000).hedge).toBe(true);
+  });
+  it('"không đau" không bị coi là đau', () => {
+    expect(voiceCues('bà không đau đâu', 2000).pain).toBe(false);
+    expect(voiceCues('đau chân quá', 2000).pain).toBe(true);
+  });
+});

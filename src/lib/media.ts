@@ -4,6 +4,12 @@ import { toast } from './ui-store';
 const isNative = () => !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 
 const NO_VOICE = 'Điện thoại chưa có giọng đọc cho ngôn ngữ này. Vào Cài đặt, Ngôn ngữ, Chuyển văn bản thành giọng nói để cài thêm giọng tiếng Việt.';
+let noVoiceAt = 0;
+const warnNoVoice = () => {
+  if (Date.now() - noVoiceAt < 120_000) return;
+  noVoiceAt = Date.now();
+  toast(NO_VOICE, 'warning', 7000);
+};
 
 export function speak(text: string, lang = 'vi-VN') {
   if (!text.trim()) return false;
@@ -13,7 +19,7 @@ export function speak(text: string, lang = 'vi-VN') {
         await TextToSpeech.stop().catch(() => undefined);
         await TextToSpeech.speak({ text, lang, rate: 0.92 });
       })
-      .catch(() => toast(NO_VOICE, 'warning', 7000));
+      .catch(warnNoVoice);
     return true;
   }
   try {
@@ -43,7 +49,7 @@ export function speakAsync(text: string, lang = 'vi-VN'): Promise<void> {
         await TextToSpeech.stop().catch(() => undefined);
         await TextToSpeech.speak({ text, lang, rate: 0.92 });
       })
-      .catch(() => toast(NO_VOICE, 'warning', 7000));
+      .catch(warnNoVoice);
   }
   return new Promise((resolve) => {
     try {

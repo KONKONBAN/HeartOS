@@ -22,16 +22,48 @@ export interface VerifyResult {
   voiceTrust: 'high' | 'low';
 }
 
-const PAIN = /(đau|không dậy được|không đứng (dậy )?được|không cử động|chóng mặt|khó thở|tức ngực|gãy|chảy máu|ngất|cứu|giúp với|choáng|tê|run quá)/i;
-const HEDGE = /(chắc|hình như|ờ+|ừm+|à+|không biết|cũng được|hơi)/i;
+export const tokens = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize('NFC')
+    .replace(/[.,!?;:"'()]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+
+const padded = (text: string) => ` ${tokens(text).join(' ')} `;
+
+const PAIN_NEG = ['không dậy được', 'không đứng được', 'không đứng dậy được', 'không cử động được', 'không đi được', 'không thở được'];
+const PAIN = ['đau', 'chóng mặt', 'khó thở', 'tức ngực', 'gãy', 'chảy máu', 'ngất', 'cứu', 'choáng', 'tê', 'run quá', 'ngã rồi', 'té rồi', 'bị ngã', 'bị té', 'giúp với', 'cấp cứu'];
+const HEDGE = ['chắc', 'chắc là', 'hình như', 'ờ', 'ừm', 'à', 'hmm', 'không biết', 'cũng được', 'hơi', 'tạm'];
+
+export function hasPain(text: string) {
+  const p = padded(text);
+  if (PAIN_NEG.some((w) => p.includes(` ${w} `))) return true;
+  return PAIN.some((w) => {
+    let i = p.indexOf(` ${w} `);
+    while (i >= 0) {
+      const before = p.slice(0, i).trimEnd();
+      if (!/(^| )(không|chẳng|chả|đâu có|không có|không bị)$/.test(before)) return true;
+      i = p.indexOf(` ${w} `, i + 1);
+    }
+    return false;
+  });
+}
+
+export function hasHedge(text: string) {
+  const p = padded(text);
+  return HEDGE.some((w) => p.includes(` ${w} `));
+}
 
 export function voiceCues(text: string, latencyMs: number) {
-  const t = text.toLowerCase();
+  const pain = hasPain(text);
+  const hedge = hasHedge(text);
+  const slow = latencyMs > 12_000;
   const cues: string[] = [];
-  if (PAIN.test(t)) cues.push('trong câu trả lời có từ chỉ đau hoặc cần giúp');
-  if (HEDGE.test(t)) cues.push('câu trả lời ngập ngừng');
-  if (latencyMs > 12_000) cues.push(`trả lời chậm (${Math.round(latencyMs / 1000)} giây)`);
-  return { pain: PAIN.test(t), hedge: HEDGE.test(t), slow: latencyMs > 12_000, cues };
+  if (pain) cues.push('trong câu trả lời có từ chỉ đau hoặc cần giúp');
+  if (hedge) cues.push('câu trả lời ngập ngừng');
+  if (slow) cues.push(`trả lời chậm (${Math.round(latencyMs / 1000)} giây)`);
+  return { pain, hedge, slow, cues };
 }
 
 export function assess(i: VerifyInput): VerifyResult {
