@@ -98,10 +98,12 @@ export function FIncident() {
   const [okOpen, setOkOpen] = useState(false);
   const [, setTick] = useState(0);
   const [loc, setLoc] = useState<string>('');
+  const verifying = home.incident(id!)?.status === 'verifying';
   useEffect(() => {
+    if (!verifying) return;
     const t = window.setInterval(() => setTick((n) => n + 1), 1000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [verifying]);
   useEffect(() => {
     if (!inc || inc.kind !== 'sos') return;
     if (inc.location) return setLoc(`${inc.location.lat.toFixed(5)}, ${inc.location.lng.toFixed(5)}, sai số khoảng ${Math.round(inc.location.accuracy)} m`);
@@ -187,7 +189,7 @@ export function FIncident() {
               {contacts.slice(0, 4).map((m) => <a key={m.id} className="btn secondary" href={`tel:${m.phone}`}><PhoneIcon size={16} /> {contacts.length > 1 ? m.name : `Gọi ${m.name}`}</a>)}
             </div>
           )}
-          {me.id !== inc.personId && inc.steps.helper.state !== 'done' && <button className="btn" onClick={() => home.acceptHelp(inc.id, { id: me.id, name: me.name })}><UserCheck size={18} /> Tôi đang tới</button>}
+          {me.id !== inc.personId && inc.steps.helper.state !== 'done' && (!inc.assignee || inc.assignee === me.name) && <button className="btn" onClick={() => home.acceptHelp(inc.id, { id: me.id, name: me.name })}><UserCheck size={18} /> Tôi đang tới</button>}
           <a className="btn secondary" href={`tel:${emergency.n}`}><PhoneIcon size={16} /> {emergency.label}</a>
         </div>
       )}
@@ -199,7 +201,7 @@ export function FIncident() {
             <Link to={`/f/routes/${inc.id}`} className="btn secondary"><MapIcon size={18} /> Tuyến hỗ trợ</Link>
           </div>
           {inc.assignee && inc.steps.helper.state === 'active' && inc.assignee === me.name && <button className="btn" onClick={() => home.acceptHelp(inc.id, { id: me.id, name: me.name })}><UserCheck size={18} /> Tôi nhận việc, đang tới</button>}
-          {inc.assignee && inc.steps.helper.state === 'done' && inc.steps.handover.state !== 'done' && (inc.assignee === me.name || me.role === 'admin') && <button className="btn" onClick={() => home.markHandover(inc.id, actor)}><Check size={18} /> Xác nhận có mặt và bàn giao</button>}
+          {inc.assignee && inc.steps.handover.state !== 'done' && (inc.steps.helper.state === 'done' ? inc.assignee === me.name || me.role === 'admin' : me.role === 'admin' && inc.assignee !== me.name) && <button className="btn" onClick={() => home.markHandover(inc.id, actor)}><Check size={18} /> Xác nhận có mặt và bàn giao</button>}
           <button className="btn ghost" onClick={() => setCloseOpen(true)}>Đóng ca</button>
         </>
       )}

@@ -63,7 +63,7 @@ export function speakAsync(text: string, lang = 'vi-VN'): Promise<void> {
       const done = () => resolve();
       u.onend = done;
       u.onerror = done;
-      setTimeout(done, Math.min(30_000, 1500 + text.length * 90));
+      setTimeout(done, 4000 + text.length * 120);
       window.speechSynthesis.speak(u);
     } catch {
       resolve();

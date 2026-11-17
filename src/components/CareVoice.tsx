@@ -10,7 +10,7 @@ import { markDose } from '../state/butler';
 import { closeCheckIn, closeVoice, noteNav, noteOk, openVoice, startCareWatch, useCare, voiceAllowed, type CheckIn } from '../state/carewatch';
 import { assess, POSTURE_TEXT, voiceCues, type VisionVerdict } from '../core/guardian/verify';
 import { cameraCheck } from '../state/guardianVerify';
-import { getHome, useHome } from '../state/services';
+import { getHome } from '../state/services';
 import { getApp, useApp, useMe } from '../state/store';
 import type { ChatMsg, Member } from '../state/types';
 
@@ -209,15 +209,20 @@ function CheckInSheet({ c, me }: { c: CheckIn; me: Member }) {
     await handle(interpretReply(r.text, c.kind), r.text, Date.now() - startedAt);
   };
 
-  const homeLive = useHome();
-  const incStatus = c.incidentId ? homeLive.incident(c.incidentId)?.status : undefined;
   useEffect(() => {
-    if (!c.incidentId || incStatus !== 'closed' || answered.current) return;
-    answered.current = true;
-    stopListening();
-    stopSpeaking();
-    finish(() => toast('Người nhà đã xác nhận an toàn cho ca này.'));
-  }, [incStatus]);
+    if (!c.incidentId) return;
+    const home = getHome();
+    const off = home.subscribe(() => {
+      if (answered.current || home.incident(c.incidentId!)?.status !== 'closed') return;
+      answered.current = true;
+      stopListening();
+      stopSpeaking();
+      finish(() => toast('Người nhà đã xác nhận an toàn cho ca này.'));
+    });
+    return () => {
+      off();
+    };
+  }, [c.id]);
 
   useEffect(() => {
     live.current = true;
